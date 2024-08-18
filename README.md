@@ -19,7 +19,12 @@ cmake --build build
 ## Usage
 ### With shader toy shaders (most seem to work)
 ```sh
-./vsdf --toy path/to/shader.frag
+./build/vsdf --toy path/to/shader.frag
+```
+
+### Example test command using a sample shader in this repo
+```sh
+./build/vsdf --toy shaders/testtoyshader.frag
 ```
 
 Note: That if you use `--toy` we will prepend a template in
@@ -44,7 +49,7 @@ and adjusting it to your liking
 - See `shaders/vulktemplate.frag` to see how push constants
   are passed in
 ```sh
-./vsdf path/to/shader.frag
+./build/vsdf path/to/shader.frag
 ```
 
 ## Test Build

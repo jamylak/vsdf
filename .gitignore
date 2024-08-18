@@ -2,4 +2,4 @@ a.out
 .cache/clangd/index
 build
 testshaders
-shaders/fullscreenquad.spv
+shaders/*.spv

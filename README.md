@@ -63,6 +63,7 @@ nix develop
 - https://shadertoy.com
 - https://iquilezles.org/
 - https://www.youtube.com/playlist?list=PL0JVLUVCkk-l7CWCn3-cdftR0oajugYvd (zeux)
+- https://github.com/SaschaWillems/Vulkan
 
 ### CPP Guidelines
 (I should try follow this but haven't gotten through it all yet)

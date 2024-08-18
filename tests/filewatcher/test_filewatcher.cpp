@@ -56,6 +56,7 @@ TEST_F(FileWatcherTest, NoChangeCallbackNotCalled) {
     auto callback = [&callbackCalled]() { callbackCalled = true; };
     createFile(testFilePath, "New content");
     createFile(differentFilePath, "Different content");
+    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
 
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);

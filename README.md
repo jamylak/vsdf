@@ -55,6 +55,7 @@ and adjusting it to your liking
 ## Test Build
 ```sh
 cmake -B build -DBUILD_TESTS=ON -DDEBUG=ON
+cmake --build build
 ./build/tests/vsdf_tests
 ./build/tests/filewatcher/filewatcher_tests
 ```

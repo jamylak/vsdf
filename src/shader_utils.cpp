@@ -130,6 +130,11 @@ std::filesystem::path compile(const std::string &shaderFilename,
     spdlog::info("Shader linked: {}", linked);
     spdlog::info("Program info log: {}", program.getInfoLog());
 
+    if (!linked) {
+        spdlog::error("Failed to link shader program");
+        throw std::runtime_error("Failed to link shader program");
+    }
+
     // Now save SPIR-V binary to a file
     std::vector<unsigned int> spirv;
     spv::SpvBuildLogger logger{};

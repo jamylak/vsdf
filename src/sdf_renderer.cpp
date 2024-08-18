@@ -88,7 +88,16 @@ void SDFRenderer::setupRenderContext() {
 
 void SDFRenderer::createPipeline() {
     pipelineLayout = vkutils::createPipelineLayout(logicalDevice);
-    auto fragSpirvPath = shader_utils::compile(fragShaderPath, useToyTemplate);
+    std::filesystem::path fragSpirvPath;
+    try {
+        fragSpirvPath = shader_utils::compile(fragShaderPath, useToyTemplate);
+    } catch (const std::runtime_error &e) {
+        // An error occured while compiling the shader
+        // This can happen while doing live edits
+        // Just try find the old one until the error is fixed
+        fragSpirvPath = fragShaderPath;
+        fragSpirvPath.replace_extension(".spv");
+    }
     fragShaderModule =
         vkutils::createShaderModule(logicalDevice, fragSpirvPath);
     pipeline = vkutils::createGraphicsPipeline(

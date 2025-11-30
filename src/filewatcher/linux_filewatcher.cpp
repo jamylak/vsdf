@@ -2,6 +2,7 @@
 #include "filewatcher/inotify_utils.h"
 #include <cerrno>
 #include <chrono>
+#include <cstddef>
 #include <filesystem>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
@@ -26,17 +27,18 @@ void LinuxFileWatcher::watchFile() {
 
     while (running) {
         char buffer[BUF_LEN];
-        int length = read(fd, buffer, BUF_LEN);
+        ssize_t length = read(fd, buffer, BUF_LEN);
         if (length < 0)
             throw std::runtime_error("Failed to read filebuffer " +
                                      std::string(strerror(errno)));
 
-        int i = 0;
+        ssize_t i = 0;
 
         while (i < length) {
             // Remember this will be events for whole dir
             spdlog::debug("Read {} bytes from inotify", length);
-            inotify_event *event = (struct inotify_event *)buffer;
+            inotify_event *event =
+                reinterpret_cast<inotify_event *>(buffer + i);
             inotify_utils::logInotifyEvent(event);
             if (filename == event->name) {
                 auto currentTime = steady_clock::now();
@@ -50,16 +52,17 @@ void LinuxFileWatcher::watchFile() {
                     callback();
                 }
             }
-            i += EVENT_SIZE + event->len;
+            i += static_cast<ssize_t>(EVENT_SIZE) +
+                 static_cast<ssize_t>(event->len);
         }
     }
     spdlog::info("I finished");
 }
 
 void LinuxFileWatcher::startWatching(const std::string &filepath,
-                                     FileChangeCallback callback) {
+                                     FileChangeCallback cb) {
     spdlog::info("Start watching");
-    this->callback = callback;
+    this->callback = cb;
 
     fd = inotify_init();
     if (fd < 0) {

@@ -1,6 +1,7 @@
 #ifndef FILEUTILS_H
 #define FILEUTILS_H
 
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -15,8 +16,8 @@ loadBinaryFile(const std::string &filename) {
         throw std::runtime_error("Failed to open file: " + filename);
     }
 
-    size_t fileSize = static_cast<size_t>(file.tellg());
-    std::vector<char> buffer(fileSize);
+    auto fileSize = file.tellg();
+    std::vector<char> buffer(static_cast<std::size_t>(fileSize));
 
     file.seekg(0);
     file.read(buffer.data(), fileSize);

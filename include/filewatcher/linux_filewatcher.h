@@ -9,7 +9,7 @@ class LinuxFileWatcher : public FileWatcher {
     ~LinuxFileWatcher() { stopWatching(); }
 
     void startWatching(const std::string &filepath,
-                       FileChangeCallback callback) override;
+                       FileChangeCallback cb) override;
     void stopWatching() override;
 
   private:

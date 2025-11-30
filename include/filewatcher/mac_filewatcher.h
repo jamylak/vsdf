@@ -15,7 +15,7 @@ class MacFileWatcher : public FileWatcher {
 
     ~MacFileWatcher() { stopWatching(); }
     void startWatching(const std::string &filepath,
-                       FileChangeCallback callback) override;
+                       FileChangeCallback cb) override;
 
     void stopWatching() override;
 

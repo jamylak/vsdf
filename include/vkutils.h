@@ -1,5 +1,10 @@
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
 #ifndef VKUTILS_H
 #define VKUTILS_H
+// This is just to put the verbose vulkan stuff in its own place
+// but it will only be included once
 #include <cstddef>
 #include <cstdint>
 #include <spdlog/spdlog.h>
@@ -19,7 +24,6 @@
         if (err)                                                               \
             throw std::logic_error("Got a runtime_error");                     \
     } while (0);
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 inline constexpr size_t MAX_SWAPCHAIN_IMAGES = 10;
 
@@ -36,33 +40,33 @@ struct PushConstants {
  * unnesicarily. I want to sometimes avoid vector
  */
 struct SwapchainImages {
-    VkImage images[MAX_SWAPCHAIN_IMAGES];
-    uint32_t count;
+    std::array<VkImage, MAX_SWAPCHAIN_IMAGES> images{};
+    uint32_t count = 0;
 };
 
 struct SwapchainImageViews {
-    VkImageView imageViews[MAX_SWAPCHAIN_IMAGES];
-    uint32_t count;
+    std::array<VkImageView, MAX_SWAPCHAIN_IMAGES> imageViews{};
+    uint32_t count = 0;
 };
 
 struct CommandBuffers {
-    VkCommandBuffer commandBuffers[MAX_SWAPCHAIN_IMAGES];
-    uint32_t count;
+    std::array<VkCommandBuffer, MAX_SWAPCHAIN_IMAGES> commandBuffers{};
+    uint32_t count = 0;
 };
 
 struct Fences {
-    VkFence fences[MAX_SWAPCHAIN_IMAGES];
-    uint32_t count;
+    std::array<VkFence, MAX_SWAPCHAIN_IMAGES> fences{};
+    uint32_t count = 0;
 };
 
 struct Semaphores {
-    VkSemaphore semaphores[MAX_SWAPCHAIN_IMAGES];
-    uint32_t count;
+    std::array<VkSemaphore, MAX_SWAPCHAIN_IMAGES> semaphores{};
+    uint32_t count = 0;
 };
 
 struct FrameBuffers {
-    VkFramebuffer framebuffers[MAX_SWAPCHAIN_IMAGES];
-    uint32_t count;
+    std::array<VkFramebuffer, MAX_SWAPCHAIN_IMAGES> framebuffers{};
+    uint32_t count = 0;
 };
 
 [[nodiscard]] static VkInstance setupVulkanInstance() {
@@ -116,7 +120,7 @@ struct FrameBuffers {
         .flags = 0,
 #endif
         .pApplicationInfo = &appInfo,
-        .enabledLayerCount = ARRAY_SIZE(validationLayers),
+        .enabledLayerCount = std::size(validationLayers),
         .ppEnabledLayerNames = validationLayers,
         .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
         .ppEnabledExtensionNames = extensions.data(),
@@ -275,7 +279,7 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
         .pNext = &dynamicRenderingFeatures,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueInfo,
-        .enabledExtensionCount = ARRAY_SIZE(requiredExtensions),
+        .enabledExtensionCount = std::size(requiredExtensions),
         .ppEnabledExtensionNames = requiredExtensions,
     };
 
@@ -365,7 +369,7 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
                 VkSurfaceKHR surface,
                 const VkSurfaceCapabilitiesKHR &surfaceCapabilities,
                 VkExtent2D swapchainSize, VkSurfaceFormatKHR surfaceFormat,
-                GLFWwindow *window, VkSwapchainKHR oldSwapchain) {
+                VkSwapchainKHR oldSwapchain) {
     // Determine the number of VkImage's to use in the swapchain.
     // Ideally, we desire to own 1 image at a time, the rest of the images can
     // either be rendered to and/or being queued up for display.
@@ -381,25 +385,37 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
     VkSurfaceTransformFlagBitsKHR preTransform =
         VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
-    // Query the list of supported present modes
-    uint32_t presentModeCount;
+    // Query available present modes
+    uint32_t presentModeCount = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface,
                                               &presentModeCount, nullptr);
 
-    static constexpr uint32_t presentModeCountMax = 30; // more than enough
+    static constexpr uint32_t presentModeCountMax = 30; // Safe upper bound
     std::array<VkPresentModeKHR, presentModeCountMax> presentModes;
+
+    // Fill only the first presentModeCount elements
     vkGetPhysicalDeviceSurfacePresentModesKHR(
         physicalDevice, surface, &presentModeCount, presentModes.data());
 
+    // Log only the valid entries
+    spdlog::info("Available present modes:");
+    for (uint32_t i = 0; i < presentModeCount; i++) {
+        spdlog::info("- {}", (int)presentModes[i]);
+    }
+
     VkPresentModeKHR swapchainPresentMode =
-        VK_PRESENT_MODE_FIFO_KHR; // Default mode
-    for (const auto &mode : presentModes) {
+        VK_PRESENT_MODE_FIFO_KHR; // safe default
+
+    // Select mode (MAILBOX → IMMEDIATE → FIFO)
+    for (uint32_t i = 0; i < presentModeCount; i++) {
+        VkPresentModeKHR mode = presentModes[i];
+
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
             swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-            break; // Highest priority
-        } else if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+            break;
+        }
+        if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
             swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-            // Don't break to keep checking for MAILBOX
         }
     }
 
@@ -472,7 +488,7 @@ getSwapchainImages(VkDevice device, VkSwapchainKHR swapchain) {
     }
 
     VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount,
-                                     swapchainImages.images));
+                                     swapchainImages.images.data()));
     for (uint32_t i = 0; i < swapchainImageCount; i++) {
         spdlog::debug("Swapchain image {}", i);
     }
@@ -596,7 +612,7 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
         .commandBufferCount = commandBufferCount,
     };
     VK_CHECK(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo,
-                                      commandBuffers.commandBuffers));
+                                      commandBuffers.commandBuffers.data()));
     return commandBuffers;
 }
 
@@ -865,8 +881,7 @@ createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
     return queryPool;
 }
 
-static void recordCommandBuffer(VkDevice device, VkCommandPool commandPool,
-                                VkQueryPool queryPool, VkRenderPass renderPass,
+static void recordCommandBuffer(VkQueryPool queryPool, VkRenderPass renderPass,
                                 VkExtent2D extent, VkPipeline pipeline,
                                 VkPipelineLayout pipelineLayout,
                                 VkCommandBuffer commandBuffer,

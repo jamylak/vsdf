@@ -10,12 +10,16 @@
 // from the kernel before passing it along to the client via its callback.
 // Specifying a larger value may result in more effective temporal coalescing,
 // resulting in fewer callbacks and greater overall efficiency.
-static constexpr float LATENCY = 0.0;
+static constexpr CFTimeInterval LATENCY = 0.0;
 
 void MacFileWatcher::fsEventsCallback(
     ConstFSEventStreamRef streamRef, void *clientCallBackInfo, size_t numEvents,
     void *eventPaths, const FSEventStreamEventFlags eventFlags[],
     const FSEventStreamEventId eventIds[]) {
+    // Unused parameters
+    (void)streamRef;
+    (void)eventIds;
+
     char **paths = static_cast<char **>(eventPaths);
     MacFileWatcher *watcher = static_cast<MacFileWatcher *>(clientCallBackInfo);
 
@@ -26,7 +30,7 @@ void MacFileWatcher::fsEventsCallback(
         spdlog::debug("Against target: {}", watcher->filename);
 
         // Check if the event is related to a file
-        if (kFSEventStreamEventFlagItemIsFile &&
+        if ((eventFlags[i] & kFSEventStreamEventFlagItemIsFile) &&
             ((eventFlags[i] & kFSEventStreamEventFlagItemCreated ||
               eventFlags[i] & kFSEventStreamEventFlagItemModified) &&
              !(eventFlags[i] & kFSEventStreamEventFlagItemRemoved))) {
@@ -41,8 +45,8 @@ void MacFileWatcher::fsEventsCallback(
     spdlog::debug("File in watched dir changed");
 }
 void MacFileWatcher::startWatching(const std::string &path,
-                                   FileChangeCallback callback) {
-    this->callback = callback;
+                                   FileChangeCallback cb) {
+    this->callback = cb;
     running = true;
     std::filesystem::path abspath(std::filesystem::absolute(path));
     // So /tmp -> /private/tmp and matchs with the fseventstream paths

@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <glslang/Public/ResourceLimits.h>
@@ -26,6 +27,9 @@ EShLanguage getShaderLang(const std::string &extension) {
             return EShLangTessControl; // .tesc
         case 'e':
             return EShLangTessEvaluation; // .tese
+        default:
+            throw std::runtime_error("Unsupported shader extension: " +
+                                     extension);
         }
     case 'g':
         return EShLangGeometry; // .geom
@@ -149,7 +153,7 @@ std::filesystem::path compile(const std::string &shaderFilename,
     glslang::OutputSpvBin(spirv, outputPath.c_str());
 
     // Print some spirv as a test
-    for (int i = 0; i < 3; i++) {
+    for (size_t i = 0; i < 3; i++) {
         spdlog::debug("spirv[{}]: {}", i, spirv[i]);
     }
 

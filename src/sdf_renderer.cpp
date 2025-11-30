@@ -66,7 +66,7 @@ void SDFRenderer::setupRenderContext() {
     auto oldSwapchain = swapchain;
     swapchain = vkutils::createSwapchain(physicalDevice, logicalDevice, surface,
                                          surfaceCapabilities, swapchainSize,
-                                         swapchainFormat, window, oldSwapchain);
+                                         swapchainFormat, oldSwapchain);
     if (oldSwapchain != VK_NULL_HANDLE)
         vkDestroySwapchainKHR(logicalDevice, oldSwapchain, nullptr);
     swapchainImages = vkutils::getSwapchainImages(logicalDevice, swapchain);
@@ -151,8 +151,9 @@ void SDFRenderer::calcTimestamps(uint32_t imageIndex) {
     // the number of nanoseconds required for a timestamp query
     // to be incremented by 1
     // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceLimits.html
-    double totalGpuTime = (timestamps[1] - timestamps[0]) *
-                          deviceProperties.limits.timestampPeriod * 1e-6;
+    double totalGpuTime =
+        static_cast<double>(timestamps[1] - timestamps[0]) *
+        static_cast<double>(deviceProperties.limits.timestampPeriod) * 1e-6;
 
     auto cpuDuration =
         std::chrono::duration<double, std::milli>(cpuEndFrame - cpuStartFrame)
@@ -165,7 +166,7 @@ void SDFRenderer::calcTimestamps(uint32_t imageIndex) {
 
 void SDFRenderer::gameLoop() {
     uint32_t currentFrame = 0;
-    uint32_t semaphoreIndex = 0;
+    uint32_t frameIndex = 0;
     bool pipelineUpdated = false;
     auto filewatcher = filewatcher_factory::createFileWatcher();
     filewatcher->startWatching(fragShaderPath,
@@ -174,12 +175,11 @@ void SDFRenderer::gameLoop() {
         cpuStartFrame = std::chrono::high_resolution_clock::now();
         glfwPollEvents();
         uint32_t imageIndex;
-
         if (app.framebufferResized) {
             destroyRenderContext();
             setupRenderContext();
             app.framebufferResized = false;
-            semaphoreIndex = 0;
+            frameIndex = 0;
             spdlog::info("Framebuffer resized!");
         }
         if (pipelineUpdated) {
@@ -190,28 +190,29 @@ void SDFRenderer::gameLoop() {
             pipelineUpdated = false;
         }
 
+        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[frameIndex],
+                                 VK_TRUE, UINT64_MAX));
+
         VK_CHECK(vkAcquireNextImageKHR(
             logicalDevice, swapchain, UINT64_MAX,
-            imageAvailableSemaphores.semaphores[semaphoreIndex], VK_NULL_HANDLE,
+            imageAvailableSemaphores.semaphores[frameIndex], VK_NULL_HANDLE,
             &imageIndex));
 
-        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[imageIndex],
-                                 VK_TRUE, UINT64_MAX));
-        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[imageIndex]));
+        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[frameIndex]));
         vkutils::recordCommandBuffer(
-            logicalDevice, commandPool, queryPool, renderPass, swapchainSize,
-            pipeline, pipelineLayout, commandBuffers.commandBuffers[imageIndex],
+            queryPool, renderPass, swapchainSize, pipeline, pipelineLayout,
+            commandBuffers.commandBuffers[imageIndex],
             frameBuffers.framebuffers[imageIndex],
             getPushConstants(currentFrame), imageIndex);
         vkutils::submitCommandBuffer(
             queue, commandBuffers.commandBuffers[imageIndex],
             imageAvailableSemaphores.semaphores[imageIndex],
             renderFinishedSemaphores.semaphores[imageIndex],
-            fences.fences[imageIndex]);
+            fences.fences[frameIndex]);
         vkutils::presentImage(queue, swapchain,
-                              renderFinishedSemaphores.semaphores[imageIndex],
+                              renderFinishedSemaphores.semaphores[frameIndex],
                               imageIndex);
-        semaphoreIndex = (semaphoreIndex + 1) % swapchainImages.count;
+        frameIndex = (frameIndex + 1) % swapchainImages.count;
         currentFrame++;
         cpuEndFrame = std::chrono::high_resolution_clock::now();
         calcTimestamps(imageIndex);

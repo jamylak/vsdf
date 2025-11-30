@@ -30,7 +30,6 @@ class SDFRenderer {
     VkQueryPool queryPool = VK_NULL_HANDLE;
     VkSurfaceFormatKHR swapchainFormat;
     VkCommandPool commandPool;
-    VkPushConstantRange pushConstantRange;
     vkutils::Semaphores imageAvailableSemaphores;
     vkutils::Semaphores renderFinishedSemaphores;
     vkutils::Fences fences;
@@ -72,6 +71,8 @@ class SDFRenderer {
     getPushConstants(uint32_t currentFrame) noexcept;
 
   public:
+    SDFRenderer(const SDFRenderer &) = delete;
+    SDFRenderer &operator=(const SDFRenderer &) = delete;
     SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false);
     void setup();
     void gameLoop();

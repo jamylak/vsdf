@@ -10,7 +10,7 @@
 // from the kernel before passing it along to the client via its callback.
 // Specifying a larger value may result in more effective temporal coalescing,
 // resulting in fewer callbacks and greater overall efficiency.
-static constexpr float LATENCY = 0.0;
+static constexpr CFTimeInterval LATENCY = 0.0;
 
 void MacFileWatcher::fsEventsCallback(
     ConstFSEventStreamRef streamRef, void *clientCallBackInfo, size_t numEvents,

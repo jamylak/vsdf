@@ -72,6 +72,8 @@ class SDFRenderer {
     getPushConstants(uint32_t currentFrame) noexcept;
 
   public:
+    SDFRenderer(const SDFRenderer &) = delete;
+    SDFRenderer &operator=(const SDFRenderer &) = delete;
     SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false);
     void setup();
     void gameLoop();

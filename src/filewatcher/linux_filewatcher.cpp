@@ -26,12 +26,12 @@ void LinuxFileWatcher::watchFile() {
 
     while (running) {
         char buffer[BUF_LEN];
-        int length = read(fd, buffer, BUF_LEN);
+        ssize_t length = read(fd, buffer, BUF_LEN);
         if (length < 0)
             throw std::runtime_error("Failed to read filebuffer " +
                                      std::string(strerror(errno)));
 
-        int i = 0;
+        ssize_t i = 0;
 
         while (i < length) {
             // Remember this will be events for whole dir

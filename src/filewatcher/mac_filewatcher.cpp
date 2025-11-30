@@ -30,7 +30,7 @@ void MacFileWatcher::fsEventsCallback(
         spdlog::debug("Against target: {}", watcher->filename);
 
         // Check if the event is related to a file
-        if (kFSEventStreamEventFlagItemIsFile &&
+        if ((eventFlags[i] & kFSEventStreamEventFlagItemIsFile) &&
             ((eventFlags[i] & kFSEventStreamEventFlagItemCreated ||
               eventFlags[i] & kFSEventStreamEventFlagItemModified) &&
              !(eventFlags[i] & kFSEventStreamEventFlagItemRemoved))) {

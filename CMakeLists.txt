@@ -22,6 +22,11 @@ if(APPLE)
   target_sources(${PROJECT_NAME} PRIVATE src/filewatcher/mac_filewatcher.cpp)
   find_library(CORE_SERVICES_LIBRARY CoreServices)
   target_link_libraries(${PROJECT_NAME} PRIVATE ${CORE_SERVICES_LIBRARY})
+  # Lunar https://vulkan.lunarg.com/doc/sdk/1.4.328.1/mac/getting_started.html
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+      BUILD_RPATH "/usr/local/lib"
+      INSTALL_RPATH "/usr/local/lib"
+  )
 elseif(UNIX AND NOT APPLE)
   # Print building linux
   message("Building filewatcher for Linux")

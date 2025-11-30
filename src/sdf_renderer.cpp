@@ -151,8 +151,9 @@ void SDFRenderer::calcTimestamps(uint32_t imageIndex) {
     // the number of nanoseconds required for a timestamp query
     // to be incremented by 1
     // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceLimits.html
-    double totalGpuTime = (timestamps[1] - timestamps[0]) *
-                          deviceProperties.limits.timestampPeriod * 1e-6;
+    double totalGpuTime =
+        static_cast<double>(timestamps[1] - timestamps[0]) *
+        static_cast<double>(deviceProperties.limits.timestampPeriod) * 1e-6;
 
     auto cpuDuration =
         std::chrono::duration<double, std::milli>(cpuEndFrame - cpuStartFrame)

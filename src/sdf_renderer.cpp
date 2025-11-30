@@ -66,7 +66,7 @@ void SDFRenderer::setupRenderContext() {
     auto oldSwapchain = swapchain;
     swapchain = vkutils::createSwapchain(physicalDevice, logicalDevice, surface,
                                          surfaceCapabilities, swapchainSize,
-                                         swapchainFormat, window, oldSwapchain);
+                                         swapchainFormat, oldSwapchain);
     if (oldSwapchain != VK_NULL_HANDLE)
         vkDestroySwapchainKHR(logicalDevice, oldSwapchain, nullptr);
     swapchainImages = vkutils::getSwapchainImages(logicalDevice, swapchain);

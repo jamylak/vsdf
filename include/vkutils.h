@@ -364,8 +364,7 @@ getSwapchainSize(GLFWwindow *window,
 createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
                 VkSurfaceKHR surface,
                 const VkSurfaceCapabilitiesKHR &surfaceCapabilities,
-                VkExtent2D swapchainSize, VkSurfaceFormatKHR surfaceFormat,
-                GLFWwindow *window, VkSwapchainKHR oldSwapchain) {
+                VkExtent2D swapchainSize, VkSurfaceFormatKHR surfaceFormat, VkSwapchainKHR oldSwapchain) {
     // Determine the number of VkImage's to use in the swapchain.
     // Ideally, we desire to own 1 image at a time, the rest of the images can
     // either be rendered to and/or being queued up for display.

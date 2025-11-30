@@ -30,7 +30,6 @@ class SDFRenderer {
     VkQueryPool queryPool = VK_NULL_HANDLE;
     VkSurfaceFormatKHR swapchainFormat;
     VkCommandPool commandPool;
-    VkPushConstantRange pushConstantRange;
     vkutils::Semaphores imageAvailableSemaphores;
     vkutils::Semaphores renderFinishedSemaphores;
     vkutils::Fences fences;

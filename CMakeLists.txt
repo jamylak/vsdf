@@ -31,6 +31,16 @@ endif()
 
 add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp)
 
+# Recommended warnings and safeguards
+target_compile_options(${PROJECT_NAME} PRIVATE
+  -Wall -Wextra -Wpedantic -Werror
+  -Wshadow -Wnon-virtual-dtor
+  # -Wold-style-cast # (disabled as it complains about vulkan)
+  -Wcast-align
+  # -Wunused
+  -Woverloaded-virtual -Wconversion -Wsign-conversion -Wmisleading-indentation
+  -Wnull-dereference -Wdouble-promotion -Wformat=2
+)
 if(APPLE)
   message("Building filewatcher for macOS")
   target_sources(${PROJECT_NAME} PRIVATE src/filewatcher/mac_filewatcher.cpp)

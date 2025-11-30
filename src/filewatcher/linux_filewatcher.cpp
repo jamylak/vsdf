@@ -52,7 +52,8 @@ void LinuxFileWatcher::watchFile() {
                     callback();
                 }
             }
-            i += EVENT_SIZE + static_cast<size_t>(event->len);
+            i += static_cast<ssize_t>(EVENT_SIZE) +
+                 static_cast<ssize_t>(event->len);
         }
     }
     spdlog::info("I finished");

@@ -39,33 +39,33 @@ struct PushConstants {
  * unnesicarily. I want to sometimes avoid vector
  */
 struct SwapchainImages {
-    std::array<VkImage, MAX_SWAPCHAIN_IMAGES> images;
-    uint32_t count;
+    std::array<VkImage, MAX_SWAPCHAIN_IMAGES> images{};
+    uint32_t count = 0;
 };
 
 struct SwapchainImageViews {
-    std::array<VkImageView, MAX_SWAPCHAIN_IMAGES> imageViews;
-    uint32_t count;
+    std::array<VkImageView, MAX_SWAPCHAIN_IMAGES> imageViews{};
+    uint32_t count = 0;
 };
 
 struct CommandBuffers {
-    std::array<VkCommandBuffer, MAX_SWAPCHAIN_IMAGES> commandBuffers;
-    uint32_t count;
+    std::array<VkCommandBuffer, MAX_SWAPCHAIN_IMAGES> commandBuffers{};
+    uint32_t count = 0;
 };
 
 struct Fences {
-    std::array<VkFence, MAX_SWAPCHAIN_IMAGES> fences;
-    uint32_t count;
+    std::array<VkFence, MAX_SWAPCHAIN_IMAGES> fences{};
+    uint32_t count = 0;
 };
 
 struct Semaphores {
-    std::array<VkSemaphore, MAX_SWAPCHAIN_IMAGES> semaphores;
-    uint32_t count;
+    std::array<VkSemaphore, MAX_SWAPCHAIN_IMAGES> semaphores{};
+    uint32_t count = 0;
 };
 
 struct FrameBuffers {
-    std::array<VkFramebuffer, MAX_SWAPCHAIN_IMAGES> framebuffers;
-    uint32_t count;
+    std::array<VkFramebuffer, MAX_SWAPCHAIN_IMAGES> framebuffers{};
+    uint32_t count = 0;
 };
 
 [[nodiscard]] static VkInstance setupVulkanInstance() {

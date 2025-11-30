@@ -10,10 +10,13 @@ That way you can use your favourite editor / LSP and also utilise git.
 Supports Mac & Linux currently because it contains filewatcher implementations for those platforms so far but could add Windows and then the rest of the code should work on there...
 
 ## Mac Dev Setup (with Lunar)
+
 https://vulkan.lunarg.com/sdk/home
-Then follow the steps to do "sudo ./install_vulkan.py" in "SDK System Paths" section
-### Example Vulkan_SDK Env Var
-VULKAN_SDK $HOME/VulkanSDK/1.4.328.1/macOS
+
+Then follow the steps to do `sudo ./install_vulkan.py` in *SDK System Paths* section
+
+### Example `VULKAN_SDK` Env Var
+`VULKAN_SDK $HOME/VulkanSDK/1.4.328.1/macOS`
 
 ## Build
 ```sh

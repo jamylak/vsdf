@@ -27,6 +27,9 @@ EShLanguage getShaderLang(const std::string &extension) {
             return EShLangTessControl; // .tesc
         case 'e':
             return EShLangTessEvaluation; // .tese
+        default:
+            throw std::runtime_error("Unsupported shader extension: " +
+                                     extension);
         }
     case 'g':
         return EShLangGeometry; // .geom

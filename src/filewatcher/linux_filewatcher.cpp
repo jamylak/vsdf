@@ -2,6 +2,7 @@
 #include "filewatcher/inotify_utils.h"
 #include <cerrno>
 #include <chrono>
+#include <cstddef>
 #include <filesystem>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
@@ -36,7 +37,8 @@ void LinuxFileWatcher::watchFile() {
         while (i < length) {
             // Remember this will be events for whole dir
             spdlog::debug("Read {} bytes from inotify", length);
-            inotify_event *event = (struct inotify_event *)buffer;
+            inotify_event *event =
+                reinterpret_cast<inotify_event *>(buffer + i);
             inotify_utils::logInotifyEvent(event);
             if (filename == event->name) {
                 auto currentTime = steady_clock::now();
@@ -50,7 +52,7 @@ void LinuxFileWatcher::watchFile() {
                     callback();
                 }
             }
-            i += EVENT_SIZE + event->len;
+            i += EVENT_SIZE + static_cast<size_t>(event->len);
         }
     }
     spdlog::info("I finished");

@@ -41,6 +41,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
   -Woverloaded-virtual -Wconversion -Wsign-conversion -Wmisleading-indentation
   -Wnull-dereference -Wdouble-promotion -Wformat=2
   -Wno-missing-field-initializers
+  -Wno-shadow
 )
 if(APPLE)
   message("Building filewatcher for macOS")

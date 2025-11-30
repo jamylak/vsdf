@@ -878,7 +878,7 @@ createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
 }
 
 static void
-recordCommandBuffer(VkDevice device, VkQueryPool queryPool,
+recordCommandBuffer(VkQueryPool queryPool,
                     VkRenderPass renderPass, VkExtent2D extent,
                     VkPipeline pipeline, VkPipelineLayout pipelineLayout,
                     VkCommandBuffer commandBuffer, VkFramebuffer framebuffer,

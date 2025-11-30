@@ -1,4 +1,6 @@
-#pragma clang diagnostic ignored "-Wunused-function"
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
 #ifndef VKUTILS_H
 #define VKUTILS_H
 // This is just to put the verbose vulkan stuff in its own place
@@ -22,7 +24,6 @@
         if (err)                                                               \
             throw std::logic_error("Got a runtime_error");                     \
     } while (0);
-
 
 inline constexpr size_t MAX_SWAPCHAIN_IMAGES = 10;
 

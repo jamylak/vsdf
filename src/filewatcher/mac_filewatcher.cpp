@@ -16,6 +16,10 @@ void MacFileWatcher::fsEventsCallback(
     ConstFSEventStreamRef streamRef, void *clientCallBackInfo, size_t numEvents,
     void *eventPaths, const FSEventStreamEventFlags eventFlags[],
     const FSEventStreamEventId eventIds[]) {
+    // Unused parameters
+    (void)streamRef;
+    (void)eventIds;
+
     char **paths = static_cast<char **>(eventPaths);
     MacFileWatcher *watcher = static_cast<MacFileWatcher *>(clientCallBackInfo);
 

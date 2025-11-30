@@ -22,7 +22,7 @@
         if (err)                                                               \
             throw std::logic_error("Got a runtime_error");                     \
     } while (0);
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 
 inline constexpr size_t MAX_SWAPCHAIN_IMAGES = 10;
 
@@ -39,32 +39,32 @@ struct PushConstants {
  * unnesicarily. I want to sometimes avoid vector
  */
 struct SwapchainImages {
-    VkImage images[MAX_SWAPCHAIN_IMAGES];
+    std::array<VkImage, MAX_SWAPCHAIN_IMAGES> images;
     uint32_t count;
 };
 
 struct SwapchainImageViews {
-    VkImageView imageViews[MAX_SWAPCHAIN_IMAGES];
+    std::array<VkImageView, MAX_SWAPCHAIN_IMAGES> imageViews;
     uint32_t count;
 };
 
 struct CommandBuffers {
-    VkCommandBuffer commandBuffers[MAX_SWAPCHAIN_IMAGES];
+    std::array<VkCommandBuffer, MAX_SWAPCHAIN_IMAGES> commandBuffers;
     uint32_t count;
 };
 
 struct Fences {
-    VkFence fences[MAX_SWAPCHAIN_IMAGES];
+    std::array<VkFence, MAX_SWAPCHAIN_IMAGES> fences;
     uint32_t count;
 };
 
 struct Semaphores {
-    VkSemaphore semaphores[MAX_SWAPCHAIN_IMAGES];
+    std::array<VkSemaphore, MAX_SWAPCHAIN_IMAGES> semaphores;
     uint32_t count;
 };
 
 struct FrameBuffers {
-    VkFramebuffer framebuffers[MAX_SWAPCHAIN_IMAGES];
+    std::array<VkFramebuffer, MAX_SWAPCHAIN_IMAGES> framebuffers;
     uint32_t count;
 };
 
@@ -119,7 +119,7 @@ struct FrameBuffers {
         .flags = 0,
 #endif
         .pApplicationInfo = &appInfo,
-        .enabledLayerCount = ARRAY_SIZE(validationLayers),
+        .enabledLayerCount = std::size(validationLayers),
         .ppEnabledLayerNames = validationLayers,
         .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
         .ppEnabledExtensionNames = extensions.data(),
@@ -278,7 +278,7 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
         .pNext = &dynamicRenderingFeatures,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueInfo,
-        .enabledExtensionCount = ARRAY_SIZE(requiredExtensions),
+        .enabledExtensionCount = std::size(requiredExtensions),
         .ppEnabledExtensionNames = requiredExtensions,
     };
 
@@ -487,7 +487,7 @@ getSwapchainImages(VkDevice device, VkSwapchainKHR swapchain) {
     }
 
     VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount,
-                                     swapchainImages.images));
+                                     swapchainImages.images.data()));
     for (uint32_t i = 0; i < swapchainImageCount; i++) {
         spdlog::debug("Swapchain image {}", i);
     }
@@ -611,7 +611,7 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
         .commandBufferCount = commandBufferCount,
     };
     VK_CHECK(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo,
-                                      commandBuffers.commandBuffers));
+                                      commandBuffers.commandBuffers.data()));
     return commandBuffers;
 }
 

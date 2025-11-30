@@ -381,25 +381,37 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
     VkSurfaceTransformFlagBitsKHR preTransform =
         VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
-    // Query the list of supported present modes
-    uint32_t presentModeCount;
+    // Query available present modes
+    uint32_t presentModeCount = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface,
                                               &presentModeCount, nullptr);
 
-    static constexpr uint32_t presentModeCountMax = 30; // more than enough
+    static constexpr uint32_t presentModeCountMax = 30; // Safe upper bound
     std::array<VkPresentModeKHR, presentModeCountMax> presentModes;
+
+    // Fill only the first presentModeCount elements
     vkGetPhysicalDeviceSurfacePresentModesKHR(
         physicalDevice, surface, &presentModeCount, presentModes.data());
 
+    // Log only the valid entries
+    spdlog::info("Available present modes:");
+    for (uint32_t i = 0; i < presentModeCount; i++) {
+        spdlog::info("- {}", (int)presentModes[i]);
+    }
+
     VkPresentModeKHR swapchainPresentMode =
-        VK_PRESENT_MODE_FIFO_KHR; // Default mode
-    for (const auto &mode : presentModes) {
+        VK_PRESENT_MODE_FIFO_KHR; // safe default
+
+    // Select mode (MAILBOX → IMMEDIATE → FIFO)
+    for (uint32_t i = 0; i < presentModeCount; i++) {
+        VkPresentModeKHR mode = presentModes[i];
+
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
             swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-            break; // Highest priority
-        } else if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+            break;
+        }
+        if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
             swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-            // Don't break to keep checking for MAILBOX
         }
     }
 

@@ -199,8 +199,8 @@ void SDFRenderer::gameLoop() {
                                  VK_TRUE, UINT64_MAX));
         VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[imageIndex]));
         vkutils::recordCommandBuffer(
-            logicalDevice, commandPool, queryPool, renderPass, swapchainSize,
-            pipeline, pipelineLayout, commandBuffers.commandBuffers[imageIndex],
+            logicalDevice, queryPool, renderPass, swapchainSize, pipeline,
+            pipelineLayout, commandBuffers.commandBuffers[imageIndex],
             frameBuffers.framebuffers[imageIndex],
             getPushConstants(currentFrame), imageIndex);
         vkutils::submitCommandBuffer(

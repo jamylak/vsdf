@@ -877,14 +877,12 @@ createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
     return queryPool;
 }
 
-static void recordCommandBuffer(VkDevice device, VkCommandPool commandPool,
-                                VkQueryPool queryPool, VkRenderPass renderPass,
-                                VkExtent2D extent, VkPipeline pipeline,
-                                VkPipelineLayout pipelineLayout,
-                                VkCommandBuffer commandBuffer,
-                                VkFramebuffer framebuffer,
-                                const PushConstants &pushConstants,
-                                uint32_t imageIndex) {
+static void
+recordCommandBuffer(VkDevice device, VkQueryPool queryPool,
+                    VkRenderPass renderPass, VkExtent2D extent,
+                    VkPipeline pipeline, VkPipelineLayout pipelineLayout,
+                    VkCommandBuffer commandBuffer, VkFramebuffer framebuffer,
+                    const PushConstants &pushConstants, uint32_t imageIndex) {
     vkResetCommandBuffer(commandBuffer, 0);
     VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

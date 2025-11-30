@@ -1,5 +1,8 @@
+#pragma clang diagnostic ignored "-Wunused-function"
 #ifndef VKUTILS_H
 #define VKUTILS_H
+// This is just to put the verbose vulkan stuff in its own place
+// but it will only be included once
 #include <cstddef>
 #include <cstdint>
 #include <spdlog/spdlog.h>

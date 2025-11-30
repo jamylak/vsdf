@@ -166,7 +166,7 @@ void SDFRenderer::calcTimestamps(uint32_t imageIndex) {
 
 void SDFRenderer::gameLoop() {
     uint32_t currentFrame = 0;
-    uint32_t semaphoreIndex = 0;
+    uint32_t frameIndex = 0;
     bool pipelineUpdated = false;
     auto filewatcher = filewatcher_factory::createFileWatcher();
     filewatcher->startWatching(fragShaderPath,
@@ -175,12 +175,11 @@ void SDFRenderer::gameLoop() {
         cpuStartFrame = std::chrono::high_resolution_clock::now();
         glfwPollEvents();
         uint32_t imageIndex;
-
         if (app.framebufferResized) {
             destroyRenderContext();
             setupRenderContext();
             app.framebufferResized = false;
-            semaphoreIndex = 0;
+            frameIndex = 0;
             spdlog::info("Framebuffer resized!");
         }
         if (pipelineUpdated) {
@@ -191,14 +190,15 @@ void SDFRenderer::gameLoop() {
             pipelineUpdated = false;
         }
 
+        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[frameIndex],
+                                 VK_TRUE, UINT64_MAX));
+
         VK_CHECK(vkAcquireNextImageKHR(
             logicalDevice, swapchain, UINT64_MAX,
-            imageAvailableSemaphores.semaphores[semaphoreIndex], VK_NULL_HANDLE,
+            imageAvailableSemaphores.semaphores[frameIndex], VK_NULL_HANDLE,
             &imageIndex));
 
-        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[imageIndex],
-                                 VK_TRUE, UINT64_MAX));
-        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[imageIndex]));
+        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[frameIndex]));
         vkutils::recordCommandBuffer(
             queryPool, renderPass, swapchainSize, pipeline, pipelineLayout,
             commandBuffers.commandBuffers[imageIndex],
@@ -208,11 +208,11 @@ void SDFRenderer::gameLoop() {
             queue, commandBuffers.commandBuffers[imageIndex],
             imageAvailableSemaphores.semaphores[imageIndex],
             renderFinishedSemaphores.semaphores[imageIndex],
-            fences.fences[imageIndex]);
+            fences.fences[frameIndex]);
         vkutils::presentImage(queue, swapchain,
-                              renderFinishedSemaphores.semaphores[imageIndex],
+                              renderFinishedSemaphores.semaphores[frameIndex],
                               imageIndex);
-        semaphoreIndex = (semaphoreIndex + 1) % swapchainImages.count;
+        frameIndex = (frameIndex + 1) % swapchainImages.count;
         currentFrame++;
         cpuEndFrame = std::chrono::high_resolution_clock::now();
         calcTimestamps(imageIndex);

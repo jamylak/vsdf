@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <glslang/Public/ResourceLimits.h>
@@ -149,7 +150,7 @@ std::filesystem::path compile(const std::string &shaderFilename,
     glslang::OutputSpvBin(spirv, outputPath.c_str());
 
     // Print some spirv as a test
-    for (int i = 0; i < 3; i++) {
+    for (size_t i = 0; i < 3; i++) {
         spdlog::debug("spirv[{}]: {}", i, spirv[i]);
     }
 

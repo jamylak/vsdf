@@ -45,8 +45,8 @@ void MacFileWatcher::fsEventsCallback(
     spdlog::debug("File in watched dir changed");
 }
 void MacFileWatcher::startWatching(const std::string &path,
-                                   FileChangeCallback callback) {
-    this->callback = callback;
+                                   FileChangeCallback cb) {
+    this->callback = cb;
     running = true;
     std::filesystem::path abspath(std::filesystem::absolute(path));
     // So /tmp -> /private/tmp and matchs with the fseventstream paths

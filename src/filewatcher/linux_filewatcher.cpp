@@ -57,9 +57,9 @@ void LinuxFileWatcher::watchFile() {
 }
 
 void LinuxFileWatcher::startWatching(const std::string &filepath,
-                                     FileChangeCallback callback) {
+                                     FileChangeCallback cb) {
     spdlog::info("Start watching");
-    this->callback = callback;
+    this->callback = cb;
 
     fd = inotify_init();
     if (fd < 0) {

@@ -1,3 +1,17 @@
+option(ENABLE_SANITIZERS "Build with sanitizers" OFF)
+option(ENABLE_FUZZING "Build fuzz targets" OFF)
+
+if (ENABLE_SANITIZERS)
+  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
+  add_link_options(-fsanitize=address,undefined)
+endif()
+
+if (ENABLE_FUZZING)
+  add_executable(fuzz_target fuzz.cpp)
+  target_compile_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined -O1 -g)
+  target_link_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined)
+endif()
+
 cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_CXX_STANDARD 20)

@@ -4,7 +4,7 @@
   description = "vsdf";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/23.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/25.11";
     utils.url = "github:numtide/flake-utils";
   };
 
@@ -36,7 +36,7 @@
 
           packages = with pkgs; [
             # Development Tools
-            llvmPackages_14.clang
+            llvmPackages_21.clang
             cmake
             cmakeCurses
 
@@ -47,9 +47,12 @@
             glfw
             glm
             spdlog
-            boost
             vulkan-loader
             vulkan-headers
+
+            # shaderc
+            spirv-tools
+            glslang
           ];
 
           # Setting up the environment variables you need during

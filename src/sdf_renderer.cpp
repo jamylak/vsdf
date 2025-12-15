@@ -172,7 +172,6 @@ void SDFRenderer::gameLoop() {
     uint32_t currentFrame = 0;
     uint32_t frameIndex = 0;
     bool pipelineUpdated = false;
-    bool sabotageTriggered = false;
     auto filewatcher = filewatcher_factory::createFileWatcher();
     filewatcher->startWatching(fragShaderPath,
                                [&]() { pipelineUpdated = true; });
@@ -197,19 +196,6 @@ void SDFRenderer::gameLoop() {
             destroyPipeline();
             createPipeline();
             pipelineUpdated = false;
-        }
-
-        if (!sabotageTriggered && currentFrame >= 50) {
-            // Deliberately invalidate synchronization after 50 frames to
-            // ensure smoke tests flag broken Vulkan usage.
-            spdlog::error(
-                "Sabotage: destroying fences and semaphores mid-frame.");
-            vkutils::destroySemaphores(logicalDevice,
-                                       imageAvailableSemaphores);
-            vkutils::destroySemaphores(logicalDevice,
-                                       renderFinishedSemaphores);
-            vkutils::destroyFences(logicalDevice, fences);
-            sabotageTriggered = true;
         }
 
         VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[frameIndex],

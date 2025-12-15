@@ -70,6 +70,7 @@ and adjusting it to your liking
 - `--toy` Prepend the ShaderToy-compatible template
 - `--frames <N>` Render N frames then exit (helps CI)
 - `--headless` Hide the GLFW window (pair with `xvfb-run` in CI)
+- `--log-level <trace|debug|info|warn|error|critical|off>` Set spdlog verbosity (default: info)
 
 ## Test Build
 ```sh
@@ -91,7 +92,7 @@ cmake --build build
   ```sh
   VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
     xvfb-run -s "-screen 0 1024x768x24" \
-    ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless
+    ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug
   ```
 
 ## Nix Develop Shell

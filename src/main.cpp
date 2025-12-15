@@ -1,9 +1,13 @@
 #include "sdf_renderer.h"
 #include <filesystem>
+#include <optional>
 #include <spdlog/spdlog.h>
+#include <string>
 
 int main(int argc, char **argv) {
     bool useToyTemplate = false;
+    std::optional<uint32_t> maxFrames;
+    bool headless = false;
     std::filesystem::path shaderFile;
 
     if (argc < 2)
@@ -14,6 +18,15 @@ int main(int argc, char **argv) {
         arg = argv[i];
         if (arg == "--toy") {
             useToyTemplate = true;
+            continue;
+        } else if (arg == "--headless") {
+            headless = true;
+            continue;
+        } else if (arg == "--frames") {
+            if (i + 1 >= argc) {
+                throw std::runtime_error("--frames requires a value");
+            }
+            maxFrames = static_cast<uint32_t>(std::stoul(argv[++i]));
             continue;
         } else if (arg.substr(0, 2) !=
                    "--") { // Assuming shader file is not preceded by "--"
@@ -33,7 +46,7 @@ int main(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
-    SDFRenderer renderer{shaderFile, useToyTemplate};
+    SDFRenderer renderer{shaderFile, useToyTemplate, maxFrames, headless};
     renderer.setup();
     renderer.gameLoop();
     return 0;

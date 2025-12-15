@@ -14,8 +14,11 @@ void framebufferResizeCallback(GLFWwindow *window, int width,
     spdlog::info("Framebuffer resized to {}x{}", width, height);
 };
 
-SDFRenderer::SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate)
-    : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate) {}
+SDFRenderer::SDFRenderer(const std::string &fragShaderPath,
+                         bool useToyTemplate,
+                         std::optional<uint32_t> maxFrames, bool headless)
+    : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
+      maxFrames(maxFrames), headless(headless) {}
 
 void SDFRenderer::setup() {
     glfwSetup();
@@ -28,6 +31,7 @@ void SDFRenderer::setup() {
 void SDFRenderer::glfwSetup() {
     // GLFW Setup
     glfwutils::initGLFW();
+    glfwWindowHint(GLFW_VISIBLE, headless ? GLFW_FALSE : GLFW_TRUE);
     window =
         glfwutils::createGLFWwindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
     glfwSetWindowUserPointer(window, &app);
@@ -172,6 +176,10 @@ void SDFRenderer::gameLoop() {
     filewatcher->startWatching(fragShaderPath,
                                [&]() { pipelineUpdated = true; });
     while (!glfwWindowShouldClose(window)) {
+        if (maxFrames && currentFrame >= *maxFrames) {
+            spdlog::info("Reached max frames {}, exiting.", *maxFrames);
+            break;
+        }
         cpuStartFrame = std::chrono::high_resolution_clock::now();
         glfwPollEvents();
         uint32_t imageIndex;

@@ -25,6 +25,11 @@ cmake --build build
 ./build/vsdf {filepath}.frag
 ```
 
+Headless / CI-friendly single-frame run (hide the window and exit after N frames):
+```sh
+./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless
+```
+
 ## Usage
 ### With shader toy shaders (most seem to work)
 ```sh
@@ -60,6 +65,11 @@ and adjusting it to your liking
 ```sh
 ./build/vsdf path/to/shader.frag
 ```
+
+### CLI Flags
+- `--toy` Prepend the ShaderToy-compatible template
+- `--frames <N>` Render N frames then exit (helps CI)
+- `--headless` Hide the GLFW window (pair with `xvfb-run` in CI)
 
 ## Test Build
 ```sh

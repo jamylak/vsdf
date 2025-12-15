@@ -1,4 +1,4 @@
-name: CI
+name: Smoke Test
 
 on:
   push:
@@ -30,11 +30,8 @@ jobs:
       - name: Build
         run: cmake --build build
 
-      - name: Run unit tests
-        run: build/tests/vsdf_tests && build/tests/filewatcher/filewatcher_tests
-
       - name: Vulkan smoke test (CPU driver via lavapipe + fake display)
         run: |
           # xvfb provides the display for GLFW; lavapipe provides the Vulkan ICD
           xvfb-run -s "-screen 0 1024x768x24" \
-            ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless
+            ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug

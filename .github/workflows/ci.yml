@@ -8,6 +8,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      # Force CPU Vulkan ICD (lavapipe) so the smoke test runs without a GPU
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
     steps:
       - uses: actions/checkout@v4
 
@@ -30,9 +33,8 @@ jobs:
       - name: Run unit tests
         run: ctest --test-dir build --output-on-failure
 
-      - name: Vulkan smoke test (CPU driver)
-        env:
-          VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+      - name: Vulkan smoke test (CPU driver via lavapipe + fake display)
         run: |
+          # xvfb provides the display for GLFW; lavapipe provides the Vulkan ICD
           xvfb-run -s "-screen 0 1024x768x24" \
             ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless

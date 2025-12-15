@@ -25,13 +25,13 @@ jobs:
             mesa-vulkan-drivers xvfb
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -B build -G Ninja .
 
       - name: Build
         run: cmake --build build
 
       - name: Run unit tests
-        run: ctest --test-dir build --output-on-failure
+        run: build/tests/vsdf_tests && build/tests/filewatcher/filewatcher_tests
 
       - name: Vulkan smoke test (CPU driver via lavapipe + fake display)
         run: |

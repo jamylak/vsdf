@@ -28,10 +28,11 @@ int main(int argc, char **argv) {
             }
             maxFrames = static_cast<uint32_t>(std::stoul(argv[++i]));
             continue;
-        } else if (arg.substr(0, 2) !=
-                   "--") { // Assuming shader file is not preceded by "--"
-            shaderFile = arg;
-            break;
+        } else if (arg.substr(0, 2) != "--") {
+            if (shaderFile.empty()) {
+                shaderFile = arg;
+            }
+            continue;
         }
     }
 

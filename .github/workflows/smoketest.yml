@@ -30,8 +30,14 @@ jobs:
       - name: Build
         run: cmake --build build
 
-      - name: Vulkan smoke test (CPU driver via lavapipe + fake display)
+      - name: Vulkan single frame smoke test (CPU driver via lavapipe + fake display)
         run: |
           # xvfb provides the display for GLFW; lavapipe provides the Vulkan ICD
           xvfb-run -s "-screen 0 1024x768x24" \
             ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug
+
+
+      - name: Vulkan 100 frame smoke test
+        run: |
+          xvfb-run -s "-screen 0 1024x768x24" \
+            ./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info

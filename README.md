@@ -1,6 +1,9 @@
 # VSDF
 Vulkan SDF Renderer + Hot Reloader
 
+[![Continuous Integration](https://github.com/jamylak/vsdf/actions/workflows/test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/test.yml)
+[![Smoke Test](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml)
+
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 
 Render an SDF like ShaderToy using Vulkan and hot reload based on frag shader changes.

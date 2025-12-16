@@ -59,7 +59,7 @@ void WindowsFileWatcher::watchFile() {
 
         // If the overlapped event fired, there are change notifications to read.
         if (waitResult == WAIT_OBJECT_0) {
-            // Directory change event
+            // Fetch the number of bytes produced by the async operation.
             if (!GetOverlappedResult(hDirectory, &overlapped, &bytesReturned,
                                      FALSE)) {
                 spdlog::error("GetOverlappedResult failed: {}",
@@ -67,6 +67,7 @@ void WindowsFileWatcher::watchFile() {
                 break;
             }
 
+            // Zero bytes means either overflow or spurious wake-up; skip.
             if (bytesReturned == 0) {
                 spdlog::debug("Buffer overflow or no changes");
                 ResetEvent(overlapped.hEvent);

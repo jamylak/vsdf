@@ -23,6 +23,7 @@ void WindowsFileWatcher::watchFile() {
     // Track how many bytes ReadDirectoryChangesW wrote on each iteration.
     DWORD bytesReturned = 0;
     // OVERLAPPED structure enables async I/O without blocking this thread.
+    // https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-overlapped
     OVERLAPPED overlapped = {0};
     // Create a manual-reset event that signals when async I/O completes.
     overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);

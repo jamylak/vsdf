@@ -72,6 +72,8 @@ int main(int argc, char **argv) {
                 shaderFile = arg;
             }
             continue;
+        } else {
+            throw std::runtime_error("Unknown flag: " + arg);
         }
     }
 

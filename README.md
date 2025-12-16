@@ -88,24 +88,32 @@ cmake --build build
 ### Build with Sanitizers
 To enable Address Sanitizer (ASan) and Undefined Behavior Sanitizer (UBSan):
 ```sh
-cmake -B build -DENABLE_SANITIZERS=ON
+# Using the convenience script
+./scripts/build_sanitizers.sh
+
+# Or manually:
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON
 cmake --build build
-./build/vsdf --toy shaders/testtoyshader.frag
+./build/tests/vsdf_tests
 ```
 
 Note: Debug builds automatically enable AddressSanitizer.
 
 ### Fuzzing
-To build the fuzzing target (requires Clang with libFuzzer support):
+To build and run the fuzzing target (requires Clang with libFuzzer support):
 ```sh
+# Using the convenience script
+./scripts/run_fuzzer.sh
+
+# Or manually:
 export CC=clang
 export CXX=clang++
 cmake -B build -DENABLE_FUZZING=ON
 cmake --build build
-./build/fuzz_target -max_total_time=60
+./build/fuzz_target -max_total_time=60 fuzz_corpus/
 ```
 
-The fuzzer tests the shader compilation pipeline with malformed inputs to discover potential crashes and memory issues.
+The fuzzer tests the shader compilation pipeline with malformed inputs to discover potential crashes and memory issues. Seed corpus files are provided in `fuzz_corpus/`.
 
 ### CI Notes (CPU Vulkan driver)
 - On Ubuntu runners install a CPU Vulkan ICD such as `mesa-vulkan-drivers` (lavapipe) and `xvfb`:

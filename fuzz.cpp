@@ -17,41 +17,49 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
     // Create a temporary file with the fuzzer data
     std::string tempFilename = "/tmp/fuzz_shader.frag";
+    std::string spvFilename = "/tmp/fuzz_shader.spv";
     
     try {
-        std::ofstream tempFile(tempFilename, std::ios::binary);
-        if (!tempFile.is_open()) {
-            return 0;
-        }
+        {
+            std::ofstream tempFile(tempFilename, std::ios::binary);
+            if (!tempFile.is_open()) {
+                return 0;
+            }
+            
+            tempFile.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(size));
+        } // tempFile automatically closed here
         
-        tempFile.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(size));
-        tempFile.close();
-        
-        // Try to compile the shader - this is what we're fuzzing
+        // Try to compile the shader without toy template
         // We expect many failures with malformed input, which is fine
         try {
             shader_utils::compile(tempFilename, false);
-            // Clean up the .spv file if compilation succeeded
-            std::filesystem::remove(tempFilename);
-            std::filesystem::remove("/tmp/fuzz_shader.spv");
+            std::filesystem::remove(spvFilename);
         } catch (const std::exception &e) {
             // Expected to throw on invalid input - this is normal
-            std::filesystem::remove(tempFilename);
         }
         
-        // Also test with toy template mode
+        // Also test with toy template mode (recreate the file)
+        {
+            std::ofstream tempFile(tempFilename, std::ios::binary);
+            if (tempFile.is_open()) {
+                tempFile.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(size));
+            }
+        }
+        
         try {
             shader_utils::compile(tempFilename, true);
-            std::filesystem::remove(tempFilename);
-            std::filesystem::remove("/tmp/fuzz_shader.spv");
+            std::filesystem::remove(spvFilename);
         } catch (const std::exception &e) {
             // Expected to throw on invalid input
-            std::filesystem::remove(tempFilename);
         }
+        
+        // Clean up the temp shader file
+        std::filesystem::remove(tempFilename);
         
     } catch (...) {
         // Clean up on any unexpected error
         std::filesystem::remove(tempFilename);
+        std::filesystem::remove(spvFilename);
     }
     
     return 0;

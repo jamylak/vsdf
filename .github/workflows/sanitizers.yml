@@ -1,0 +1,78 @@
+name: Sanitizers and Fuzzing
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  sanitizer-build:
+    name: Build with Sanitizers
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          clang \
+          cmake ninja-build \
+          libgtest-dev libspdlog-dev \
+          libglfw3 libglfw3-dev \
+          libvulkan-dev \
+          glslang-tools glslang-dev \
+          libglm-dev
+
+    - name: Configure with Sanitizers
+      run: |
+        export CC=clang
+        export CXX=clang++
+        cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON -B build -G Ninja
+
+    - name: Build with Sanitizers
+      run: cmake --build build
+
+    - name: Run tests with Sanitizers
+      run: |
+        build/tests/vsdf_tests
+        build/tests/filewatcher/filewatcher_tests
+
+  fuzzing-build:
+    name: Build Fuzzing Target
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          clang \
+          cmake ninja-build \
+          libspdlog-dev \
+          libglfw3 libglfw3-dev \
+          libvulkan-dev \
+          glslang-tools glslang-dev \
+          libglm-dev
+
+    - name: Configure Fuzzing Target
+      run: |
+        export CC=clang
+        export CXX=clang++
+        cmake -DENABLE_FUZZING=ON -B build -G Ninja
+
+    - name: Build Fuzzing Target
+      run: cmake --build build --target fuzz_target
+
+    - name: Run Fuzzer (short test)
+      run: |
+        ./build/fuzz_target -max_total_time=10 -max_len=4096 fuzz_corpus/ || true

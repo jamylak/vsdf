@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
             continue;
         } else if (arg == "--frames") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--frames requires a value");
+                throw std::runtime_error("--frames requires a positive integer value");
             }
             try {
                 maxFrames = static_cast<uint32_t>(std::stoul(argv[++i]));

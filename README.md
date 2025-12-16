@@ -24,18 +24,19 @@ Then follow the steps to do `sudo ./install_vulkan.py` in *SDK System Paths* sec
 
 ## Windows Dev Setup
 
-1. Download and install the Vulkan SDK from https://vulkan.lunarg.com/sdk/home
-2. Install vcpkg (if not already installed):
+1. Install vcpkg (if not already installed):
    ```powershell
    git clone https://github.com/Microsoft/vcpkg.git
    cd vcpkg
    .\bootstrap-vcpkg.bat
    ```
-3. Install dependencies using vcpkg:
+2. Install dependencies using vcpkg (includes Vulkan):
    ```powershell
-   vcpkg install glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
+   vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
    vcpkg integrate install
    ```
+
+Note: vcpkg provides Vulkan headers and loader, eliminating the need for a separate Vulkan SDK installation.
 
 ## Build
 

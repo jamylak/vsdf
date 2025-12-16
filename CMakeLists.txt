@@ -24,7 +24,14 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_link_options(-fsanitize=address)
 endif()
 
-add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp)
+# Create a library for shader_utils to be reused by main executable, tests, and fuzzer
+add_library(shader_utils_lib STATIC src/shader_utils.cpp)
+target_link_libraries(shader_utils_lib PUBLIC spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
+target_include_directories(shader_utils_lib PUBLIC include ${GLM_INCLUDE_DIRS})
+
+add_executable(${PROJECT_NAME} src/main.cpp src/sdf_renderer.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE shader_utils_lib)
+target_include_directories(${PROJECT_NAME} PRIVATE include)
 
 # Recommended warnings and safeguards
 target_compile_options(${PROJECT_NAME} PRIVATE
@@ -56,8 +63,7 @@ elseif(UNIX AND NOT APPLE)
   target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
-include_directories(${PROJECT_NAME} PRIVATE include ${GLM_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan)
 
 # Option to enable or disable the building of tests
 option(BUILD_TESTS "Build the tests" OFF)
@@ -69,9 +75,8 @@ endif()
 
 # Fuzzing target
 if (ENABLE_FUZZING)
-  add_executable(fuzz_target fuzz.cpp src/shader_utils.cpp)
+  add_executable(fuzz_target fuzz.cpp)
   target_compile_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined -O1 -g)
   target_link_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined)
-  target_link_libraries(fuzz_target PRIVATE spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
-  target_include_directories(fuzz_target PRIVATE include ${GLM_INCLUDE_DIRS})
+  target_link_libraries(fuzz_target PRIVATE shader_utils_lib)
 endif()

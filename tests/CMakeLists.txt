@@ -5,8 +5,8 @@ find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
 
 # Add test executable
-add_executable(${PROJECT_NAME} ../src/shader_utils.cpp test_shader_comp.cpp)
-target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES} pthread spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
+add_executable(${PROJECT_NAME} test_shader_comp.cpp)
+target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES} pthread shader_utils_lib)
 
 # Discover and run tests
 include(GoogleTest)

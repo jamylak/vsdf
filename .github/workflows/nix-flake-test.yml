@@ -35,3 +35,7 @@ jobs:
         run: |
           nix develop --command bash -c "./build/tests/vsdf_tests"
           nix develop --command bash -c "./build/tests/filewatcher/filewatcher_tests"
+
+      - name: Test flake package build
+        run: |
+          nix build .#default

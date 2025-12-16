@@ -37,6 +37,7 @@ stdenv.mkDerivation {
   cmakeFlags = [
     "-DCMAKE_BUILD_TYPE=Release"
     "-DBUILD_TESTS=OFF"
+    "-DCMAKE_CXX_STANDARD=20"
   ];
 
   meta = with lib; {

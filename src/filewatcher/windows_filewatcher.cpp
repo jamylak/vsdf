@@ -6,45 +6,57 @@
 
 using namespace std::chrono;
 
-// Buffer size for ReadDirectoryChangesW
+// Fixed-size buffer that ReadDirectoryChangesW fills with change notifications.
 static constexpr DWORD BUFFER_SIZE = 4096;
 
-// Debounce threshold to avoid duplicate events (in milliseconds)
+// Minimum spacing between callbacks to coalesce duplicate notifications.
 static constexpr auto DEBOUNCE_THRESHOLD_MS = 50ms;
 
-// Initial time offset to ensure first event always triggers
+// Offset so that the first detected change always fires (elapsed > threshold).
 static constexpr auto INITIAL_TIME_OFFSET = std::chrono::seconds(100);
 
+// Background loop that waits on Windows directory change notifications.
 void WindowsFileWatcher::watchFile() {
     spdlog::info("Windows file watcher thread started");
+    // Allocate a stack buffer for ReadDirectoryChangesW to write events into.
     char buffer[BUFFER_SIZE];
+    // Track how many bytes ReadDirectoryChangesW wrote on each iteration.
     DWORD bytesReturned = 0;
+    // OVERLAPPED structure enables async I/O without blocking this thread.
     OVERLAPPED overlapped = {0};
+    // Create a manual-reset event that signals when async I/O completes.
     overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
+    // Bail out early if the event creation failed (resource exhaustion, etc.).
     if (overlapped.hEvent == NULL) {
         spdlog::error("Failed to create event for overlapped I/O");
         return;
     }
 
+    // Initialize lastEventTime so the very first change never gets debounced.
     auto lastEventTime = std::chrono::steady_clock::now() - INITIAL_TIME_OFFSET;
 
+    // Main loop runs until stopWatching flips the running flag.
     while (running) {
+        // Kick off async directory monitoring for writes and renames.
         BOOL success = ReadDirectoryChangesW(
             hDirectory, buffer, BUFFER_SIZE, FALSE,
             FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
             &bytesReturned, &overlapped, NULL);
 
+        // If the call failed immediately, log and exit the loop.
         if (!success) {
             spdlog::error("ReadDirectoryChangesW failed: {}", GetLastError());
             break;
         }
 
-        // Wait for either the directory change event or the stop event
+        // Wait for either a directory change event or the user stop event.
         HANDLE handles[2] = {overlapped.hEvent, hStopEvent};
+        // Block until one of the two handles is signaled.
         DWORD waitResult =
             WaitForMultipleObjects(2, handles, FALSE, INFINITE);
 
+        // If the overlapped event fired, there are change notifications to read.
         if (waitResult == WAIT_OBJECT_0) {
             // Directory change event
             if (!GetOverlappedResult(hDirectory, &overlapped, &bytesReturned,

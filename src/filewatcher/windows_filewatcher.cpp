@@ -9,6 +9,12 @@ using namespace std::chrono;
 // Buffer size for ReadDirectoryChangesW
 #define BUFFER_SIZE 4096
 
+// Debounce threshold to avoid duplicate events (in milliseconds)
+static constexpr auto DEBOUNCE_THRESHOLD_MS = 50ms;
+
+// Initial time offset to ensure first event always triggers
+static constexpr auto INITIAL_TIME_OFFSET = std::chrono::seconds(100);
+
 void WindowsFileWatcher::watchFile() {
     spdlog::info("Windows file watcher thread started");
     char buffer[BUFFER_SIZE];
@@ -21,8 +27,7 @@ void WindowsFileWatcher::watchFile() {
         return;
     }
 
-    auto lastEventTime =
-        std::chrono::steady_clock::now() - std::chrono::seconds(100);
+    auto lastEventTime = std::chrono::steady_clock::now() - INITIAL_TIME_OFFSET;
 
     while (running) {
         BOOL success = ReadDirectoryChangesW(
@@ -81,7 +86,7 @@ void WindowsFileWatcher::watchFile() {
                     auto elapsedTime = currentTime - lastEventTime;
                     lastEventTime = currentTime;
 
-                    if (elapsedTime < 50ms) {
+                    if (elapsedTime < DEBOUNCE_THRESHOLD_MS) {
                         spdlog::debug(
                             "Skipping event as it may be duplicate write");
                     } else {

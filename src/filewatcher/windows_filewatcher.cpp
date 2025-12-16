@@ -59,11 +59,18 @@ void WindowsFileWatcher::watchFile() {
                 reinterpret_cast<FILE_NOTIFY_INFORMATION *>(buffer);
 
             do {
-                // Convert wide string to narrow string
+                // Convert wide string to UTF-8 string
                 int nameLen = fni->FileNameLength / sizeof(WCHAR);
                 std::wstring wideFilename(fni->FileName, nameLen);
-                std::string changedFile(wideFilename.begin(),
-                                        wideFilename.end());
+                
+                // Use WideCharToMultiByte for proper UTF-16 to UTF-8 conversion
+                int size_needed = WideCharToMultiByte(CP_UTF8, 0, 
+                    wideFilename.c_str(), static_cast<int>(wideFilename.length()),
+                    NULL, 0, NULL, NULL);
+                std::string changedFile(size_needed, 0);
+                WideCharToMultiByte(CP_UTF8, 0, wideFilename.c_str(),
+                    static_cast<int>(wideFilename.length()), &changedFile[0],
+                    size_needed, NULL, NULL);
 
                 spdlog::debug("File change detected: {}", changedFile);
                 spdlog::debug("Comparing with target: {}", filename);

@@ -9,12 +9,12 @@ add_executable(${PROJECT_NAME} ../src/shader_utils.cpp test_shader_comp.cpp)
 
 # Platform-specific threading library
 if(UNIX)
-  set(THREAD_LIB pthread)
+  find_package(Threads REQUIRED)
+  target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES} Threads::Threads spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
 else()
-  set(THREAD_LIB "")
+  # Windows doesn't need explicit pthread library
+  target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES} spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
 endif()
-
-target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES} ${THREAD_LIB} spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
 
 # Discover and run tests
 include(GoogleTest)

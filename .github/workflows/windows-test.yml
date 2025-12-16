@@ -20,11 +20,12 @@ jobs:
 
     - name: Install Vulkan SDK
       run: |
-        # Download and install Vulkan SDK using a specific version
-        $version = "1.3.290.0"
+        # Download and install Vulkan SDK
+        # Note: Update this version periodically for latest SDK features and security updates
+        $version = "1.3.296.0"
         $url = "https://sdk.lunarg.com/sdk/download/$version/windows/VulkanSDK-$version-Installer.exe"
         $installer = "$env:TEMP\vulkan-sdk.exe"
-        Write-Host "Downloading Vulkan SDK from $url"
+        Write-Host "Downloading Vulkan SDK version $version from $url"
         Invoke-WebRequest -Uri $url -OutFile $installer
         Write-Host "Installing Vulkan SDK..."
         Start-Process -FilePath $installer -ArgumentList "/S" -Wait

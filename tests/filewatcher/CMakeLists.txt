@@ -23,7 +23,7 @@ endif()
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES} ${EXTRA_LIBS} spdlog::spdlog)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
   target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
   target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
 endif()

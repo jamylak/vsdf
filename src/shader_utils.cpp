@@ -150,7 +150,8 @@ std::filesystem::path compile(const std::string &shaderFilename,
     // Save to file
     std::filesystem::path outputPath = shaderFilename;
     outputPath.replace_extension(".spv");
-    glslang::OutputSpvBin(spirv, outputPath.c_str());
+    // Convert to string to ensure char* path (Windows uses wchar_t* for paths)
+    glslang::OutputSpvBin(spirv, outputPath.string().c_str());
 
     // Print some spirv as a test
     for (size_t i = 0; i < 3; i++) {

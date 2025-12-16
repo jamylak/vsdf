@@ -2,8 +2,18 @@ name: Nix Flake Test
 
 on:
   push:
-    branches: [main, master, flake_fix]
+    branches: [main, master, flake_fix, copilot/sub-pr-7-yet-again]
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'default.nix'
+      - '.github/workflows/nix-flake-test.yml'
   pull_request:
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'default.nix'
+      - '.github/workflows/nix-flake-test.yml'
 
 jobs:
   nix-flake-test:

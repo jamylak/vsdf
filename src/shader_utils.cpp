@@ -1,14 +1,14 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
-#include <sstream>
-#include <stdexcept>
-#include <string>
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 #include <glslang/SPIRV/Logger.h>
 #include <spdlog/spdlog.h>
+#include <sstream>
+#include <stdexcept>
+#include <string>
 
 static constexpr char FRAG_SHADER_TEMPLATE[] = "shaders/toytemplate.frag";
 
@@ -50,8 +50,16 @@ std::string readShaderSource(const std::string &filename) {
         spdlog::error("Failed to open shader source file: {}", filename);
         return "";
     }
-    return std::string((std::istreambuf_iterator<char>(file)),
-                       std::istreambuf_iterator<char>());
+
+    file.seekg(0, std::ios::end);
+    auto size = file.tellg();
+    file.seekg(0);
+
+    std::string result;
+    result.resize(static_cast<size_t>(size));
+    file.read(result.data(), size);
+
+    return result;
 }
 
 // Apply our template to the shader which includes things

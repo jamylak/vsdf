@@ -124,8 +124,14 @@ void WindowsFileWatcher::startWatching(const std::string &filepath,
 
     spdlog::info("Watching dirPath: {} for file: {}", dirPath, filename);
 
-    // Convert to wide string for Windows API
-    std::wstring wideDirPath(dirPath.begin(), dirPath.end());
+    // Convert UTF-8 string to wide string for Windows API
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, dirPath.c_str(),
+                                          static_cast<int>(dirPath.length()),
+                                          NULL, 0);
+    std::wstring wideDirPath(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, dirPath.c_str(),
+                        static_cast<int>(dirPath.length()), &wideDirPath[0],
+                        size_needed);
 
     // Open directory handle
     hDirectory = CreateFileW(

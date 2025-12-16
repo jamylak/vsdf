@@ -134,7 +134,6 @@ SDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
     pushConstants.iTime = static_cast<float>(glfwGetTime());
     pushConstants.iFrame = currentFrame;
     pushConstants.iResolution = glm::vec2(swapchainSize.width, swapchainSize.height);
-    
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {

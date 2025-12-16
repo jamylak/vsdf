@@ -7,7 +7,7 @@
 using namespace std::chrono;
 
 // Buffer size for ReadDirectoryChangesW
-#define BUFFER_SIZE 4096
+static constexpr DWORD BUFFER_SIZE = 4096;
 
 // Debounce threshold to avoid duplicate events (in milliseconds)
 static constexpr auto DEBOUNCE_THRESHOLD_MS = 50ms;

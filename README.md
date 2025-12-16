@@ -1,8 +1,9 @@
 # VSDF
 Vulkan SDF Renderer + Hot Reloader
 
-[![Continuous Integration](https://github.com/jamylak/vsdf/actions/workflows/test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/test.yml)
-[![Smoke Test](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml)
+[![CI - Linux](https://github.com/jamylak/vsdf/actions/workflows/test.yml/badge.svg?event=push&job=build-and-test-linux)](https://github.com/jamylak/vsdf/actions/workflows/test.yml)
+[![CI - macOS](https://github.com/jamylak/vsdf/actions/workflows/test.yml/badge.svg?event=push&job=build-and-test-macos)](https://github.com/jamylak/vsdf/actions/workflows/test.yml)
+[![Smoke Test - Linux](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml)
 
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 

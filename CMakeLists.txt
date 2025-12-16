@@ -34,7 +34,7 @@ add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_rendere
 # Recommended warnings and safeguards
 if(MSVC)
   target_compile_options(${PROJECT_NAME} PRIVATE
-    /W4 /WX
+    /W4
   )
 else()
   target_compile_options(${PROJECT_NAME} PRIVATE

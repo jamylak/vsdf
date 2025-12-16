@@ -1,17 +1,3 @@
-option(ENABLE_SANITIZERS "Build with sanitizers" OFF)
-option(ENABLE_FUZZING "Build fuzz targets" OFF)
-
-if (ENABLE_SANITIZERS)
-  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
-  add_link_options(-fsanitize=address,undefined)
-endif()
-
-if (ENABLE_FUZZING)
-  add_executable(fuzz_target fuzz.cpp)
-  target_compile_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined -O1 -g)
-  target_link_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined)
-endif()
-
 cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -24,6 +10,15 @@ find_package(spdlog REQUIRED)
 find_package(glm REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Options for sanitizers and fuzzing
+option(ENABLE_SANITIZERS "Build with sanitizers" OFF)
+option(ENABLE_FUZZING "Build fuzz targets" OFF)
+
+if (ENABLE_SANITIZERS)
+  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
+  add_link_options(-fsanitize=address,undefined)
+endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_options(-fsanitize=address)
   add_link_options(-fsanitize=address)
@@ -70,4 +65,13 @@ option(BUILD_TESTS "Build the tests" OFF)
 if(BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+# Fuzzing target
+if (ENABLE_FUZZING)
+  add_executable(fuzz_target fuzz.cpp src/shader_utils.cpp)
+  target_compile_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined -O1 -g)
+  target_link_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined)
+  target_link_libraries(fuzz_target PRIVATE spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
+  target_include_directories(fuzz_target PRIVATE include ${GLM_INCLUDE_DIRS})
 endif()

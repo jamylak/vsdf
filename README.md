@@ -83,6 +83,30 @@ cmake --build build
 ./build/tests/filewatcher/filewatcher_tests
 ```
 
+## Fuzzing and Sanitization
+
+### Build with Sanitizers
+To enable Address Sanitizer (ASan) and Undefined Behavior Sanitizer (UBSan):
+```sh
+cmake -B build -DENABLE_SANITIZERS=ON
+cmake --build build
+./build/vsdf --toy shaders/testtoyshader.frag
+```
+
+Note: Debug builds automatically enable AddressSanitizer.
+
+### Fuzzing
+To build the fuzzing target (requires Clang with libFuzzer support):
+```sh
+export CC=clang
+export CXX=clang++
+cmake -B build -DENABLE_FUZZING=ON
+cmake --build build
+./build/fuzz_target -max_total_time=60
+```
+
+The fuzzer tests the shader compilation pipeline with malformed inputs to discover potential crashes and memory issues.
+
 ### CI Notes (CPU Vulkan driver)
 - On Ubuntu runners install a CPU Vulkan ICD such as `mesa-vulkan-drivers` (lavapipe) and `xvfb`:
   ```sh

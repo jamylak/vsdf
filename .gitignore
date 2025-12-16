@@ -3,3 +3,7 @@ a.out
 build
 testshaders
 shaders/*.spv
+fuzz-*.log
+crash-*
+leak-*
+timeout-*

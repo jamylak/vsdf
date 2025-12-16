@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
-    SDFRenderer renderer{shaderFile, useToyTemplate, maxFrames, headless};
+    SDFRenderer renderer{shaderFile.string(), useToyTemplate, maxFrames, headless};
     renderer.setup();
     renderer.gameLoop();
     return 0;

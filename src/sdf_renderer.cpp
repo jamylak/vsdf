@@ -59,7 +59,7 @@ void SDFRenderer::vulkanSetup() {
     std::filesystem::path vertSpirvPath{
         shader_utils::compile(FULL_SCREEN_QUAD_VERT_SHADER_PATH)};
     vertShaderModule =
-        vkutils::createShaderModule(logicalDevice, vertSpirvPath);
+        vkutils::createShaderModule(logicalDevice, vertSpirvPath.string());
 }
 
 void SDFRenderer::setupRenderContext() {
@@ -103,7 +103,7 @@ void SDFRenderer::createPipeline() {
         fragSpirvPath.replace_extension(".spv");
     }
     fragShaderModule =
-        vkutils::createShaderModule(logicalDevice, fragSpirvPath);
+        vkutils::createShaderModule(logicalDevice, fragSpirvPath.string());
     pipeline = vkutils::createGraphicsPipeline(
         logicalDevice, renderPass, pipelineLayout, swapchainSize,
         vertShaderModule, fragShaderModule);
@@ -130,11 +130,11 @@ void SDFRenderer::destroyRenderContext() {
 
 [[nodiscard]] vkutils::PushConstants
 SDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
-    vkutils::PushConstants pushConstants = {
-        .iTime = static_cast<float>(glfwGetTime()),
-        .iFrame = currentFrame,
-        .iResolution = glm::vec2(swapchainSize.width, swapchainSize.height),
-    };
+    vkutils::PushConstants pushConstants;
+    pushConstants.iTime = static_cast<float>(glfwGetTime());
+    pushConstants.iFrame = currentFrame;
+    pushConstants.iResolution = glm::vec2(swapchainSize.width, swapchainSize.height);
+    
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {

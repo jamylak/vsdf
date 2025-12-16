@@ -4,8 +4,8 @@
 #include <optional>
 #include <vulkan/vulkan.h>
 
-inline constexpr uint WINDOW_WIDTH = 800;
-inline constexpr uint WINDOW_HEIGHT = 600;
+inline constexpr uint32_t WINDOW_WIDTH = 800;
+inline constexpr uint32_t WINDOW_HEIGHT = 600;
 inline constexpr char WINDOW_TITLE[] = "Vulkan";
 inline constexpr char FULL_SCREEN_QUAD_VERT_SHADER_PATH[] =
     "shaders/fullscreenquad.vert";

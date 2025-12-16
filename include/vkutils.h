@@ -31,7 +31,7 @@ inline constexpr size_t MAX_SWAPCHAIN_IMAGES = 10;
 namespace vkutils {
 struct PushConstants {
     float iTime;
-    uint iFrame;
+    uint32_t iFrame;
     glm::vec2 iResolution;
     glm::vec2 iMouse;
 };

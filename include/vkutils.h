@@ -7,6 +7,7 @@
 // but it will only be included once
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <spdlog/spdlog.h>
 #include <sys/types.h>
 #include <vector>
@@ -100,17 +101,43 @@ struct FrameBuffers {
 
     spdlog::debug("Creating vk instance...");
 
-    static const char *validationLayers[] = {
+    // Query available validation layers
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    std::vector<VkLayerProperties> availableLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+    spdlog::debug("Available validation layers:");
+    for (const auto &layer : availableLayers) {
+        spdlog::debug("- {}", layer.layerName);
+    }
+
+    const std::vector<const char *> desiredLayers = {
         "VK_LAYER_KHRONOS_validation",
-        // "VK_LAYER_LUNARG_api_dump",
-        // "VK_LAYER_LUNARG_parameter_validation",
-        // "VK_LAYER_LUNARG_screenshot",
-        // "VK_LAYER_LUNARG_core_validation",
-        // "VK_LAYER_LUNARG_device_limits",
-        // "VK_LAYER_LUNARG_object_tracker",
     };
 
-    static const VkInstanceCreateInfo createInfo = {
+    std::vector<const char *> enabledLayers;
+    for (const char *layerName : desiredLayers) {
+        bool layerFound = false;
+        for (const auto &layerProperties : availableLayers) {
+            if (strcmp(layerName, layerProperties.layerName) == 0) {
+                layerFound = true;
+                break;
+            }
+        }
+        if (layerFound) {
+            enabledLayers.push_back(layerName);
+        } else {
+            spdlog::warn("Validation layer not found: {}", layerName);
+        }
+    }
+
+    spdlog::debug("Enabling validation layers:");
+    for (const auto &layer : enabledLayers) {
+        spdlog::debug("- {}", layer);
+    }
+
+    VkInstanceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = nullptr,
 #ifdef __APPLE__
@@ -120,8 +147,8 @@ struct FrameBuffers {
         .flags = 0,
 #endif
         .pApplicationInfo = &appInfo,
-        .enabledLayerCount = std::size(validationLayers),
-        .ppEnabledLayerNames = validationLayers,
+        .enabledLayerCount = static_cast<uint32_t>(enabledLayers.size()),
+        .ppEnabledLayerNames = enabledLayers.data(),
         .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
         .ppEnabledExtensionNames = extensions.data(),
     };

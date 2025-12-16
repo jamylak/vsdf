@@ -1,6 +1,7 @@
 #ifndef SDF_RENDERER_H
 #define SDF_RENDERER_H
 #include "vkutils.h"
+#include <optional>
 #include <vulkan/vulkan.h>
 
 inline constexpr uint WINDOW_WIDTH = 800;
@@ -53,6 +54,10 @@ class SDFRenderer {
     VkPipeline pipeline;
     vkutils::CommandBuffers commandBuffers;
 
+    // Runtime configuration
+    std::optional<uint32_t> maxFrames;
+    bool headless = false;
+
     // Timing
     std::chrono::time_point<std::chrono::high_resolution_clock> cpuStartFrame,
         cpuEndFrame;
@@ -73,7 +78,9 @@ class SDFRenderer {
   public:
     SDFRenderer(const SDFRenderer &) = delete;
     SDFRenderer &operator=(const SDFRenderer &) = delete;
-    SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false);
+    SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false,
+                std::optional<uint32_t> maxFrames = std::nullopt,
+                bool headless = false);
     void setup();
     void gameLoop();
 };

@@ -25,6 +25,11 @@ cmake --build build
 ./build/vsdf {filepath}.frag
 ```
 
+Headless / CI-friendly single-frame run (hide the window and exit after N frames):
+```sh
+./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless
+```
+
 ## Usage
 ### With shader toy shaders (most seem to work)
 ```sh
@@ -61,6 +66,12 @@ and adjusting it to your liking
 ./build/vsdf path/to/shader.frag
 ```
 
+### CLI Flags
+- `--toy` Prepend the ShaderToy-compatible template
+- `--frames <N>` Render N frames then exit (helps CI)
+- `--headless` Hide the GLFW window (pair with `xvfb-run` in CI)
+- `--log-level <trace|debug|info|warn|error|critical|off>` Set spdlog verbosity (default: info)
+
 ## Test Build
 ```sh
 cmake -B build -DBUILD_TESTS=ON -DDEBUG=ON
@@ -68,6 +79,21 @@ cmake --build build
 ./build/tests/vsdf_tests
 ./build/tests/filewatcher/filewatcher_tests
 ```
+
+### CI Notes (CPU Vulkan driver)
+- On Ubuntu runners install a CPU Vulkan ICD such as `mesa-vulkan-drivers` (lavapipe) and `xvfb`:
+  ```sh
+  sudo apt-get update
+  sudo apt-get install -y mesa-vulkan-drivers xvfb \
+    cmake ninja-build g++ libgtest-dev libspdlog-dev libglfw3 libglfw3-dev \
+    libvulkan-dev glslang-tools glslang-dev libglm-dev
+  ```
+- Run the renderer headless for one frame with a fake display:
+  ```sh
+  VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
+    xvfb-run -s "-screen 0 1024x768x24" \
+    ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug
+  ```
 
 ## Nix Develop Shell
 ```sh

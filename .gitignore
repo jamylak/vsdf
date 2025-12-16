@@ -3,3 +3,4 @@ a.out
 build
 testshaders
 shaders/*.spv
+_codeql_detected_source_root

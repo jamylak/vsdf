@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Force CPU Vulkan ICD (lavapipe) so the smoke test runs without a GPU
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
     
     steps:
       - name: Checkout code
@@ -21,6 +24,11 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
           extra_nix_config: |
             experimental-features = nix-command flakes
+
+      - name: Install smoke test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mesa-vulkan-drivers xvfb
 
       - name: Test flake development shell
         run: |
@@ -37,6 +45,15 @@ jobs:
         run: |
           nix develop --command bash -c "./build/tests/vsdf_tests"
           nix develop --command bash -c "./build/tests/filewatcher/filewatcher_tests"
+
+      - name: Vulkan single frame smoke test (CPU driver via lavapipe + fake display)
+        run: |
+          # xvfb provides the display for GLFW; lavapipe provides the Vulkan ICD
+          nix develop --command bash -c "xvfb-run -s '-screen 0 1024x768x24' ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug"
+
+      - name: Vulkan 100 frame smoke test
+        run: |
+          nix develop --command bash -c "xvfb-run -s '-screen 0 1024x768x24' ./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info"
 
       - name: Test flake package build
         run: |

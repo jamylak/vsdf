@@ -64,6 +64,11 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
 include_directories(${PROJECT_NAME} PRIVATE include ${GLM_INCLUDE_DIRS})
 
+# Install the executable
+install(TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION bin
+)
+
 # Option to enable or disable the building of tests
 option(BUILD_TESTS "Build the tests" OFF)
 

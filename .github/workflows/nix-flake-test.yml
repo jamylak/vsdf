@@ -59,11 +59,11 @@ jobs:
       - name: Vulkan single frame smoke test (CPU driver via lavapipe + fake display)
         run: |
           # xvfb provides the display for GLFW; lavapipe provides the Vulkan ICD
-          nix develop --command bash -c "xvfb-run -s '-screen 0 1024x768x24' ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug"
+          nix develop --command bash -c "VK_ICD_FILENAMES=$VK_ICD_FILENAMES LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:\$LD_LIBRARY_PATH xvfb-run -s '-screen 0 1024x768x24' ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug"
 
       - name: Vulkan 100 frame smoke test
         run: |
-          nix develop --command bash -c "xvfb-run -s '-screen 0 1024x768x24' ./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info"
+          nix develop --command bash -c "VK_ICD_FILENAMES=$VK_ICD_FILENAMES LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:\$LD_LIBRARY_PATH xvfb-run -s '-screen 0 1024x768x24' ./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info"
 
       - name: Test flake package build
         run: |

@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
             continue;
         } else if (arg == "--log-level") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--log-level requires a value");
+                throw std::runtime_error("--log-level requires a value (trace|debug|info|warn|error|critical|off)");
             }
             logLevel = parseLogLevel(argv[++i]);
             continue;

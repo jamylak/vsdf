@@ -20,24 +20,33 @@ jobs:
 
     - name: Install Vulkan SDK
       run: |
-        # Download and install Vulkan SDK
-        $url = "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-sdk.exe"
+        # Download and install Vulkan SDK using a specific version
+        $version = "1.3.290.0"
+        $url = "https://sdk.lunarg.com/sdk/download/$version/windows/VulkanSDK-$version-Installer.exe"
         $installer = "$env:TEMP\vulkan-sdk.exe"
+        Write-Host "Downloading Vulkan SDK from $url"
         Invoke-WebRequest -Uri $url -OutFile $installer
+        Write-Host "Installing Vulkan SDK..."
         Start-Process -FilePath $installer -ArgumentList "/S" -Wait
-        # Wait a bit for installation to complete
-        Start-Sleep -Seconds 10
+        # Wait for installation to complete
+        Start-Sleep -Seconds 15
 
     - name: Setup VULKAN_SDK environment
       run: |
         # Find the installed Vulkan SDK directory
-        $vulkanPath = Get-ChildItem -Path "C:\VulkanSDK" -Directory | Select-Object -First 1
-        if ($vulkanPath) {
-          echo "VULKAN_SDK=$($vulkanPath.FullName)" >> $env:GITHUB_ENV
-          echo "VK_SDK_PATH=$($vulkanPath.FullName)" >> $env:GITHUB_ENV
-          echo "$($vulkanPath.FullName)\Bin" >> $env:GITHUB_PATH
+        if (Test-Path "C:\VulkanSDK") {
+          $vulkanPath = Get-ChildItem -Path "C:\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+          if ($vulkanPath) {
+            Write-Host "Found Vulkan SDK at: $($vulkanPath.FullName)"
+            echo "VULKAN_SDK=$($vulkanPath.FullName)" >> $env:GITHUB_ENV
+            echo "VK_SDK_PATH=$($vulkanPath.FullName)" >> $env:GITHUB_ENV
+            echo "$($vulkanPath.FullName)\Bin" >> $env:GITHUB_PATH
+          } else {
+            Write-Error "Vulkan SDK directory exists but is empty"
+            exit 1
+          }
         } else {
-          echo "Vulkan SDK not found in C:\VulkanSDK"
+          Write-Error "Vulkan SDK not found in C:\VulkanSDK"
           exit 1
         }
 
@@ -63,5 +72,21 @@ jobs:
 
     - name: Run unit tests
       run: |
-        .\build\tests\vsdf_tests\Release\vsdf_tests.exe
-        .\build\tests\filewatcher\Release\filewatcher_tests.exe
+        # Run vsdf_tests
+        $vsdfTestPath = ".\build\tests\Release\vsdf_tests.exe"
+        if (Test-Path $vsdfTestPath) {
+          Write-Host "Running vsdf_tests..."
+          & $vsdfTestPath
+        } else {
+          Write-Error "vsdf_tests not found at $vsdfTestPath"
+          exit 1
+        }
+        # Run filewatcher_tests
+        $filewatcherTestPath = ".\build\tests\filewatcher\Release\filewatcher_tests.exe"
+        if (Test-Path $filewatcherTestPath) {
+          Write-Host "Running filewatcher_tests..."
+          & $filewatcherTestPath
+        } else {
+          Write-Error "filewatcher_tests not found at $filewatcherTestPath"
+          exit 1
+        }

@@ -95,7 +95,7 @@ void SDFRenderer::createPipeline() {
     std::filesystem::path fragSpirvPath;
     try {
         fragSpirvPath = shader_utils::compile(fragShaderPath, useToyTemplate);
-    } catch (const std::runtime_error &e) {
+    } catch (const std::runtime_error&) {
         // An error occured while compiling the shader
         // This can happen while doing live edits
         // Just try find the old one until the error is fixed

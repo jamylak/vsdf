@@ -1,0 +1,67 @@
+name: Windows CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test-windows:
+    name: Build and Test on Windows
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Vulkan SDK
+      run: |
+        # Download and install Vulkan SDK
+        $url = "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-sdk.exe"
+        $installer = "$env:TEMP\vulkan-sdk.exe"
+        Invoke-WebRequest -Uri $url -OutFile $installer
+        Start-Process -FilePath $installer -ArgumentList "/S" -Wait
+        # Wait a bit for installation to complete
+        Start-Sleep -Seconds 10
+
+    - name: Setup VULKAN_SDK environment
+      run: |
+        # Find the installed Vulkan SDK directory
+        $vulkanPath = Get-ChildItem -Path "C:\VulkanSDK" -Directory | Select-Object -First 1
+        if ($vulkanPath) {
+          echo "VULKAN_SDK=$($vulkanPath.FullName)" >> $env:GITHUB_ENV
+          echo "VK_SDK_PATH=$($vulkanPath.FullName)" >> $env:GITHUB_ENV
+          echo "$($vulkanPath.FullName)\Bin" >> $env:GITHUB_PATH
+        } else {
+          echo "Vulkan SDK not found in C:\VulkanSDK"
+          exit 1
+        }
+
+    - name: Install vcpkg dependencies
+      run: |
+        vcpkg install glfw3:x64-windows
+        vcpkg install glslang:x64-windows
+        vcpkg install spdlog:x64-windows
+        vcpkg install glm:x64-windows
+        vcpkg install gtest:x64-windows
+        vcpkg integrate install
+
+    - name: Configure CMake
+      run: |
+        cmake -B build `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DBUILD_TESTS=ON `
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+          .
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Run unit tests
+      run: |
+        .\build\tests\vsdf_tests\Release\vsdf_tests.exe
+        .\build\tests\filewatcher\Release\filewatcher_tests.exe

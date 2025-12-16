@@ -15,6 +15,9 @@ if(APPLE)
 elseif(UNIX AND NOT APPLE)
   list(APPEND SOURCE_FILES ../../src/filewatcher/linux_filewatcher.cpp)
   set(EXTRA_LIBS pthread)  # Typically needed for Linux builds
+elseif(WIN32)
+  list(APPEND SOURCE_FILES ../../src/filewatcher/windows_filewatcher.cpp)
+  set(EXTRA_LIBS "")  # No extra libs needed for Windows
 endif()
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})

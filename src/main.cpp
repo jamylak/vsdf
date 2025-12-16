@@ -53,7 +53,13 @@ int main(int argc, char **argv) {
             if (i + 1 >= argc) {
                 throw std::runtime_error("--frames requires a value");
             }
-            maxFrames = static_cast<uint32_t>(std::stoul(argv[++i]));
+            try {
+                maxFrames = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument& e) {
+                throw std::runtime_error("--frames requires a valid positive integer value");
+            } catch (const std::out_of_range& e) {
+                throw std::runtime_error("--frames value is out of range for a positive integer");
+            }
             continue;
         } else if (arg == "--log-level") {
             if (i + 1 >= argc) {

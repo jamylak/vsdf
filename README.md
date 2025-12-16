@@ -118,21 +118,6 @@ cmake --build build --config Debug
 .\build\tests\filewatcher\Debug\filewatcher_tests.exe
 ```
 
-### CI Notes (CPU Vulkan driver)
-- On Ubuntu runners install a CPU Vulkan ICD such as `mesa-vulkan-drivers` (lavapipe) and `xvfb`:
-  ```sh
-  sudo apt-get update
-  sudo apt-get install -y mesa-vulkan-drivers xvfb \
-    cmake ninja-build g++ libgtest-dev libspdlog-dev libglfw3 libglfw3-dev \
-    libvulkan-dev glslang-tools glslang-dev libglm-dev
-  ```
-- Run the renderer headless for one frame with a fake display:
-  ```sh
-  VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
-    xvfb-run -s "-screen 0 1024x768x24" \
-    ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug
-  ```
-
 ## Nix Develop Shell
 ```sh
 nix develop

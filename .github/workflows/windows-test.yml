@@ -22,18 +22,39 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Vulkan SDK
+      timeout-minutes: 5
       run: |
-        # Download and install Vulkan SDK
-        # Note: Update this version periodically for latest SDK features and security updates
+        # Download and install Vulkan SDK with timeout and error handling
         $version = "1.3.296.0"
         $url = "https://sdk.lunarg.com/sdk/download/$version/windows/VulkanSDK-$version-Installer.exe"
         $installer = "$env:TEMP\vulkan-sdk.exe"
-        Write-Host "Downloading Vulkan SDK version $version from $url"
-        Invoke-WebRequest -Uri $url -OutFile $installer
-        Write-Host "Installing Vulkan SDK..."
-        Start-Process -FilePath $installer -ArgumentList "/S" -Wait
-        # Wait for installation to complete
-        Start-Sleep -Seconds 15
+        
+        Write-Host "Downloading Vulkan SDK version $version"
+        Write-Host "URL: $url"
+        
+        try {
+          # Set timeout for download (2 minutes max)
+          $ProgressPreference = 'SilentlyContinue'  # Speed up download
+          Invoke-WebRequest -Uri $url -OutFile $installer -TimeoutSec 120 -ErrorAction Stop
+          
+          Write-Host "Download complete. File size: $((Get-Item $installer).Length / 1MB) MB"
+          Write-Host "Installing Vulkan SDK silently..."
+          
+          $process = Start-Process -FilePath $installer -ArgumentList "/S" -Wait -PassThru
+          
+          if ($process.ExitCode -ne 0) {
+            Write-Error "Vulkan SDK installation failed with exit code: $($process.ExitCode)"
+            exit 1
+          }
+          
+          Write-Host "Installation completed successfully"
+          Start-Sleep -Seconds 5
+        }
+        catch {
+          Write-Error "Failed to download or install Vulkan SDK: $_"
+          Write-Host "Attempting to use pre-installed Vulkan components from runner..."
+          # Continue anyway - vcpkg may have what we need
+        }
 
     - name: Setup VULKAN_SDK environment
       run: |
@@ -46,24 +67,29 @@ jobs:
             echo "VK_SDK_PATH=$($vulkanPath.FullName)" >> $env:GITHUB_ENV
             echo "$($vulkanPath.FullName)\Bin" >> $env:GITHUB_PATH
           } else {
-            Write-Error "Vulkan SDK directory exists but is empty"
-            exit 1
+            Write-Warning "Vulkan SDK directory exists but is empty"
           }
         } else {
-          Write-Error "Vulkan SDK not found in C:\VulkanSDK"
-          exit 1
+          Write-Warning "Vulkan SDK not found at C:\VulkanSDK"
+          Write-Host "Checking for Vulkan installation via vcpkg..."
         }
 
     - name: Install vcpkg dependencies
+      timeout-minutes: 10
       run: |
+        Write-Host "Installing dependencies via vcpkg..."
+        # Install Vulkan SDK components via vcpkg as fallback
+        vcpkg install vulkan:x64-windows
         vcpkg install glfw3:x64-windows
         vcpkg install glslang:x64-windows
         vcpkg install spdlog:x64-windows
         vcpkg install glm:x64-windows
         vcpkg install gtest:x64-windows
         vcpkg integrate install
+        Write-Host "vcpkg dependencies installed successfully"
 
     - name: Configure CMake
+      timeout-minutes: 5
       run: |
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
@@ -72,9 +98,11 @@ jobs:
           .
 
     - name: Build
+      timeout-minutes: 10
       run: cmake --build build --config Release
 
     - name: Run unit tests
+      timeout-minutes: 5
       run: |
         # Run vsdf_tests
         $vsdfTestPath = ".\build\tests\Release\vsdf_tests.exe"

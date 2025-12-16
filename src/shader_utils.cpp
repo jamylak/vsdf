@@ -50,8 +50,9 @@ std::string readShaderSource(const std::string &filename) {
         spdlog::error("Failed to open shader source file: {}", filename);
         return "";
     }
-    return std::string((std::istreambuf_iterator<char>(file)),
-                       std::istreambuf_iterator<char>());
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
 }
 
 // Apply our template to the shader which includes things

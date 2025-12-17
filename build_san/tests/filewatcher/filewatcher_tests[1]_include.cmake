@@ -1,0 +1,5 @@
+if(EXISTS "/home/runner/work/vsdf/vsdf/build_san/tests/filewatcher/filewatcher_tests[1]_tests.cmake")
+  include("/home/runner/work/vsdf/vsdf/build_san/tests/filewatcher/filewatcher_tests[1]_tests.cmake")
+else()
+  add_test(filewatcher_tests_NOT_BUILT filewatcher_tests_NOT_BUILT)
+endif()

@@ -1,0 +1,65 @@
+name: Fuzzing and Sanitizers
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sanitizers-test:
+    name: Build and Test with Sanitizers
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential clang libglfw3-dev libvulkan-dev glslang-tools libspdlog-dev libglm-dev libgtest-dev vulkan-validationlayers-dev spirv-tools
+
+    - name: Configure with Sanitizers
+      run: cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON -B build
+
+    - name: Build with Sanitizers
+      run: cmake --build build
+
+    - name: Run tests with Sanitizers
+      run: |
+        cd build/tests
+        ./vsdf_tests
+        ./filewatcher/filewatcher_tests
+
+  fuzzing-build:
+    name: Build Fuzzing Targets
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential clang libglfw3-dev libvulkan-dev glslang-tools libspdlog-dev libglm-dev libgtest-dev vulkan-validationlayers-dev spirv-tools
+
+    - name: Configure for Fuzzing
+      run: cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DENABLE_FUZZING=ON -B build
+
+    - name: Build Fuzzing Targets
+      run: cmake --build build
+
+    - name: Run Fuzzing (short test)
+      run: |
+        mkdir -p fuzz_corpus
+        echo "#version 450" > fuzz_corpus/valid1.frag
+        echo "void main() {}" >> fuzz_corpus/valid1.frag
+        echo "precision highp float;" > fuzz_corpus/valid2.frag
+        echo "void main() { gl_FragColor = vec4(1.0); }" >> fuzz_corpus/valid2.frag
+        ./build/fuzz_shader fuzz_corpus -max_total_time=60 -max_len=10000

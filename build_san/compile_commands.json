@@ -1,0 +1,50 @@
+[
+{
+  "directory": "/home/runner/work/vsdf/vsdf/build_san",
+  "command": "/usr/bin/clang++ -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/runner/work/vsdf/vsdf/vsdf -I/home/runner/work/vsdf/vsdf/PRIVATE -I/home/runner/work/vsdf/vsdf/include -std=gnu++20 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wnon-virtual-dtor -Wcast-align -Woverloaded-virtual -Wconversion -Wsign-conversion -Wmisleading-indentation -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-missing-field-initializers -Wno-shadow -o CMakeFiles/vsdf.dir/src/main.cpp.o -c /home/runner/work/vsdf/vsdf/src/main.cpp",
+  "file": "/home/runner/work/vsdf/vsdf/src/main.cpp",
+  "output": "CMakeFiles/vsdf.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/runner/work/vsdf/vsdf/build_san",
+  "command": "/usr/bin/clang++ -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/runner/work/vsdf/vsdf/vsdf -I/home/runner/work/vsdf/vsdf/PRIVATE -I/home/runner/work/vsdf/vsdf/include -std=gnu++20 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wnon-virtual-dtor -Wcast-align -Woverloaded-virtual -Wconversion -Wsign-conversion -Wmisleading-indentation -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-missing-field-initializers -Wno-shadow -o CMakeFiles/vsdf.dir/src/shader_utils.cpp.o -c /home/runner/work/vsdf/vsdf/src/shader_utils.cpp",
+  "file": "/home/runner/work/vsdf/vsdf/src/shader_utils.cpp",
+  "output": "CMakeFiles/vsdf.dir/src/shader_utils.cpp.o"
+},
+{
+  "directory": "/home/runner/work/vsdf/vsdf/build_san",
+  "command": "/usr/bin/clang++ -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/runner/work/vsdf/vsdf/vsdf -I/home/runner/work/vsdf/vsdf/PRIVATE -I/home/runner/work/vsdf/vsdf/include -std=gnu++20 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wnon-virtual-dtor -Wcast-align -Woverloaded-virtual -Wconversion -Wsign-conversion -Wmisleading-indentation -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-missing-field-initializers -Wno-shadow -o CMakeFiles/vsdf.dir/src/sdf_renderer.cpp.o -c /home/runner/work/vsdf/vsdf/src/sdf_renderer.cpp",
+  "file": "/home/runner/work/vsdf/vsdf/src/sdf_renderer.cpp",
+  "output": "CMakeFiles/vsdf.dir/src/sdf_renderer.cpp.o"
+},
+{
+  "directory": "/home/runner/work/vsdf/vsdf/build_san",
+  "command": "/usr/bin/clang++ -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/runner/work/vsdf/vsdf/vsdf -I/home/runner/work/vsdf/vsdf/PRIVATE -I/home/runner/work/vsdf/vsdf/include -std=gnu++20 -Wall -Wextra -Wpedantic -Werror -Wshadow -Wnon-virtual-dtor -Wcast-align -Woverloaded-virtual -Wconversion -Wsign-conversion -Wmisleading-indentation -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-missing-field-initializers -Wno-shadow -o CMakeFiles/vsdf.dir/src/filewatcher/linux_filewatcher.cpp.o -c /home/runner/work/vsdf/vsdf/src/filewatcher/linux_filewatcher.cpp",
+  "file": "/home/runner/work/vsdf/vsdf/src/filewatcher/linux_filewatcher.cpp",
+  "output": "CMakeFiles/vsdf.dir/src/filewatcher/linux_filewatcher.cpp.o"
+},
+{
+  "directory": "/home/runner/work/vsdf/vsdf/build_san/tests",
+  "command": "/usr/bin/clang++ -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/runner/work/vsdf/vsdf/vsdf -I/home/runner/work/vsdf/vsdf/PRIVATE -I/home/runner/work/vsdf/vsdf/include -std=gnu++20 -DGTEST_HAS_PTHREAD=1 -o CMakeFiles/vsdf_tests.dir/__/src/shader_utils.cpp.o -c /home/runner/work/vsdf/vsdf/src/shader_utils.cpp",
+  "file": "/home/runner/work/vsdf/vsdf/src/shader_utils.cpp",
+  "output": "tests/CMakeFiles/vsdf_tests.dir/__/src/shader_utils.cpp.o"
+},
+{
+  "directory": "/home/runner/work/vsdf/vsdf/build_san/tests",
+  "command": "/usr/bin/clang++ -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/runner/work/vsdf/vsdf/vsdf -I/home/runner/work/vsdf/vsdf/PRIVATE -I/home/runner/work/vsdf/vsdf/include -std=gnu++20 -DGTEST_HAS_PTHREAD=1 -o CMakeFiles/vsdf_tests.dir/test_shader_comp.cpp.o -c /home/runner/work/vsdf/vsdf/tests/test_shader_comp.cpp",
+  "file": "/home/runner/work/vsdf/vsdf/tests/test_shader_comp.cpp",
+  "output": "tests/CMakeFiles/vsdf_tests.dir/test_shader_comp.cpp.o"
+},
+{
+  "directory": "/home/runner/work/vsdf/vsdf/build_san/tests/filewatcher",
+  "command": "/usr/bin/clang++ -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/runner/work/vsdf/vsdf/vsdf -I/home/runner/work/vsdf/vsdf/PRIVATE -I/home/runner/work/vsdf/vsdf/include -I/home/runner/work/vsdf/vsdf/tests/filewatcher/include -std=gnu++20 -DGTEST_HAS_PTHREAD=1 -o CMakeFiles/filewatcher_tests.dir/test_filewatcher.cpp.o -c /home/runner/work/vsdf/vsdf/tests/filewatcher/test_filewatcher.cpp",
+  "file": "/home/runner/work/vsdf/vsdf/tests/filewatcher/test_filewatcher.cpp",
+  "output": "tests/filewatcher/CMakeFiles/filewatcher_tests.dir/test_filewatcher.cpp.o"
+},
+{
+  "directory": "/home/runner/work/vsdf/vsdf/build_san/tests/filewatcher",
+  "command": "/usr/bin/clang++ -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/runner/work/vsdf/vsdf/vsdf -I/home/runner/work/vsdf/vsdf/PRIVATE -I/home/runner/work/vsdf/vsdf/include -I/home/runner/work/vsdf/vsdf/tests/filewatcher/include -std=gnu++20 -DGTEST_HAS_PTHREAD=1 -o CMakeFiles/filewatcher_tests.dir/__/__/src/filewatcher/linux_filewatcher.cpp.o -c /home/runner/work/vsdf/vsdf/src/filewatcher/linux_filewatcher.cpp",
+  "file": "/home/runner/work/vsdf/vsdf/src/filewatcher/linux_filewatcher.cpp",
+  "output": "tests/filewatcher/CMakeFiles/filewatcher_tests.dir/__/__/src/filewatcher/linux_filewatcher.cpp.o"
+}
+]

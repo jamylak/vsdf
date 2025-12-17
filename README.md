@@ -119,6 +119,35 @@ cmake --build build --config Debug
 .\build\tests\filewatcher\Debug\filewatcher_tests.exe
 ```
 
+## Sanitizers and Fuzzing
+
+### Build with Sanitizers (Address and Undefined Behavior)
+Sanitizers help detect memory errors, undefined behavior, and other bugs at runtime:
+
+```sh
+# Linux/macOS (requires Clang)
+cmake -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON
+cmake --build build
+./build/tests/vsdf_tests
+```
+
+Note: Debug builds automatically include AddressSanitizer on non-MSVC platforms.
+
+### Fuzzing
+Fuzz testing generates random inputs to find crashes and edge cases in shader compilation:
+
+```sh
+# Requires Clang compiler
+cmake -B build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DENABLE_FUZZING=ON
+cmake --build build
+
+# Run fuzzing for 60 seconds
+mkdir -p fuzz_corpus
+./build/fuzz_shader fuzz_corpus -max_total_time=60
+```
+
+The fuzzer tests the shader compilation pipeline with various malformed and valid GLSL inputs to ensure robustness.
+
 ## Nix Develop Shell
 ```sh
 nix develop

@@ -22,8 +22,11 @@
 #define VK_CHECK(x)                                                            \
     do {                                                                       \
         VkResult err = x;                                                      \
-        if (err)                                                               \
-            throw std::logic_error("Got a runtime_error");                     \
+        if (err) {                                                             \
+            spdlog::error("Vulkan error in {}: {} (error code: {})",          \
+                         #x, err, static_cast<int>(err));                      \
+            throw std::runtime_error("Vulkan operation failed: " #x);         \
+        }                                                                      \
     } while (0);
 
 inline constexpr size_t MAX_SWAPCHAIN_IMAGES = 10;

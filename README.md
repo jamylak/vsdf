@@ -32,7 +32,7 @@ Then follow the steps to do `sudo ./install_vulkan.py` in *SDK System Paths* sec
    ```
 2. Install dependencies using vcpkg (includes Vulkan):
    ```powershell
-   vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
+   vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows ffmpeg:x64-windows
    vcpkg integrate install
    ```
 
@@ -99,7 +99,20 @@ and adjusting it to your liking
 - `--toy` Prepend the ShaderToy-compatible template
 - `--frames <N>` Render N frames then exit (helps CI)
 - `--headless` Hide the GLFW window (pair with `xvfb-run` in CI)
+- `--output <path>` Render directly to video file via FFmpeg (e.g., `output.mp4`)
 - `--log-level <trace|debug|info|warn|error|critical|off>` Set spdlog verbosity (default: info)
+
+### Render to Video
+You can render your SDF directly to a video file using direct FFmpeg library integration:
+```sh
+# Render 300 frames (10 seconds at 30fps) to video
+./build/vsdf --toy shaders/testtoyshader.frag --frames 300 --output output.mp4
+
+# Render in headless mode (no window)
+./build/vsdf --toy shaders/testtoyshader.frag --frames 300 --headless --output my_animation.mp4
+```
+
+This uses direct FFmpeg library integration (libavcodec, libavformat, libavutil, libswscale) to encode H.264 video, not shell command piping.
 
 ## Test Build
 
@@ -109,6 +122,7 @@ cmake -B build -DBUILD_TESTS=ON -DDEBUG=ON
 cmake --build build
 ./build/tests/vsdf_tests
 ./build/tests/filewatcher/filewatcher_tests
+./build/tests/ffmpeg_encoder_tests
 ```
 
 ### Windows
@@ -117,6 +131,7 @@ cmake -B build -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=
 cmake --build build --config Debug
 .\build\tests\vsdf_tests\Debug\vsdf_tests.exe
 .\build\tests\filewatcher\Debug\filewatcher_tests.exe
+.\build\tests\ffmpeg_encoder_tests\Debug\ffmpeg_encoder_tests.exe
 ```
 
 ## Nix Develop Shell

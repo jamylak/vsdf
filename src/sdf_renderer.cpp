@@ -17,9 +17,11 @@ void framebufferResizeCallback(GLFWwindow *window, int width,
 
 SDFRenderer::SDFRenderer(const std::string &fragShaderPath,
                          bool useToyTemplate,
-                         std::optional<uint32_t> maxFrames, bool headless)
+                         std::optional<uint32_t> maxFrames, bool headless,
+                         std::optional<std::string> videoOutputPath)
     : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
-      maxFrames(maxFrames), headless(headless) {}
+      maxFrames(maxFrames), headless(headless), 
+      videoOutputPath(videoOutputPath) {}
 
 void SDFRenderer::setup() {
     glfwSetup();
@@ -27,6 +29,10 @@ void SDFRenderer::setup() {
     setupRenderContext();
     createPipeline();
     createCommandBuffers();
+    if (videoOutputPath) {
+        setupVideoEncoder();
+        setupReadbackResources();
+    }
 }
 
 void SDFRenderer::glfwSetup() {
@@ -113,6 +119,174 @@ void SDFRenderer::createPipeline() {
 void SDFRenderer::createCommandBuffers() {
     commandBuffers = vkutils::createCommandBuffers(logicalDevice, commandPool,
                                                    swapchainImages.count);
+}
+
+void SDFRenderer::setupVideoEncoder() {
+    if (!videoOutputPath) {
+        return;
+    }
+    
+    spdlog::info("Setting up video encoder for output: {}", *videoOutputPath);
+    videoEncoder = std::make_unique<FFmpegEncoder>(
+        *videoOutputPath, swapchainSize.width, swapchainSize.height, 30);
+    videoEncoder->initialize();
+}
+
+void SDFRenderer::setupReadbackResources() {
+    if (!videoOutputPath) {
+        return;
+    }
+
+    // Allocate readback buffer for copying image data from GPU to CPU
+    VkDeviceSize bufferSize = static_cast<VkDeviceSize>(swapchainSize.width) * 
+                              swapchainSize.height * 4; // RGBA
+
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = bufferSize;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VK_CHECK(vkCreateBuffer(logicalDevice, &bufferInfo, nullptr, &readbackBuffer));
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(logicalDevice, readbackBuffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+
+    // Find memory type that is host visible and host coherent
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+    uint32_t memoryTypeIndex = UINT32_MAX;
+    VkMemoryPropertyFlags requiredProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
+                                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        if ((memRequirements.memoryTypeBits & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & requiredProperties) == requiredProperties) {
+            memoryTypeIndex = i;
+            break;
+        }
+    }
+
+    if (memoryTypeIndex == UINT32_MAX) {
+        throw std::runtime_error("Failed to find suitable memory type for readback buffer");
+    }
+
+    allocInfo.memoryTypeIndex = memoryTypeIndex;
+    VK_CHECK(vkAllocateMemory(logicalDevice, &allocInfo, nullptr, &readbackBufferMemory));
+    VK_CHECK(vkBindBufferMemory(logicalDevice, readbackBuffer, readbackBufferMemory, 0));
+
+    pixelData.resize(bufferSize);
+    spdlog::info("Readback resources setup complete");
+}
+
+void SDFRenderer::destroyReadbackResources() {
+    if (readbackBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(logicalDevice, readbackBuffer, nullptr);
+        readbackBuffer = VK_NULL_HANDLE;
+    }
+    if (readbackBufferMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(logicalDevice, readbackBufferMemory, nullptr);
+        readbackBufferMemory = VK_NULL_HANDLE;
+    }
+}
+
+void SDFRenderer::captureFrameToVideo(uint32_t imageIndex) {
+    if (!videoEncoder || !videoEncoder->isInitialized()) {
+        return;
+    }
+
+    // Create a command buffer for the copy operation
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer copyCommandBuffer;
+    vkAllocateCommandBuffers(logicalDevice, &allocInfo, &copyCommandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(copyCommandBuffer, &beginInfo);
+
+    // Transition swapchain image to transfer source layout
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = swapchainImages.images[imageIndex];
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+    vkCmdPipelineBarrier(copyCommandBuffer,
+                        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    // Copy image to buffer
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {swapchainSize.width, swapchainSize.height, 1};
+
+    vkCmdCopyImageToBuffer(copyCommandBuffer,
+                          swapchainImages.images[imageIndex],
+                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                          readbackBuffer,
+                          1, &region);
+
+    // Transition back to present layout
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+
+    vkCmdPipelineBarrier(copyCommandBuffer,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                        0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    vkEndCommandBuffer(copyCommandBuffer);
+
+    // Submit and wait
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &copyCommandBuffer;
+
+    vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(queue);
+
+    // Map memory and copy to pixel data
+    void* data;
+    vkMapMemory(logicalDevice, readbackBufferMemory, 0, pixelData.size(), 0, &data);
+    std::memcpy(pixelData.data(), data, pixelData.size());
+    vkUnmapMemory(logicalDevice, readbackBufferMemory);
+
+    // Encode frame
+    videoEncoder->encodeFrame(pixelData.data());
+
+    // Free the command buffer
+    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &copyCommandBuffer);
 }
 
 void SDFRenderer::destroyPipeline() {
@@ -220,6 +394,12 @@ void SDFRenderer::gameLoop() {
         vkutils::presentImage(queue, swapchain,
                               renderFinishedSemaphores.semaphores[frameIndex],
                               imageIndex);
+        
+        // Capture frame to video if recording
+        if (videoOutputPath) {
+            captureFrameToVideo(imageIndex);
+        }
+        
         frameIndex = (frameIndex + 1) % swapchainImages.count;
         currentFrame++;
         cpuEndFrame = std::chrono::high_resolution_clock::now();
@@ -227,12 +407,19 @@ void SDFRenderer::gameLoop() {
     }
 
     filewatcher->stopWatching();
+    
+    // Finalize video encoder if recording
+    if (videoEncoder) {
+        videoEncoder->finalize();
+    }
+    
     spdlog::info("Done!");
     destroy();
 }
 
 void SDFRenderer::destroy() {
     VK_CHECK(vkDeviceWaitIdle(logicalDevice));
+    destroyReadbackResources();
     vkutils::destroySemaphores(logicalDevice, imageAvailableSemaphores);
     vkutils::destroySemaphores(logicalDevice, renderFinishedSemaphores);
     vkutils::destroyFences(logicalDevice, fences);

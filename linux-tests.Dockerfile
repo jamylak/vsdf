@@ -16,7 +16,12 @@ RUN apt-get update && \
     libvulkan-dev \
     glslang-tools \
     glslang-dev \
-    libglm-dev
+    libglm-dev \
+    pkg-config \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev
     # && rm -rf /var/lib/apt/lists/*
 
 COPY . /app
@@ -26,4 +31,4 @@ RUN mkdir -p build && \
 
 RUN cmake --build build
 
-CMD build/tests/vsdf_tests && build/tests/filewatcher/filewatcher_tests
+CMD build/tests/vsdf_tests && build/tests/filewatcher/filewatcher_tests && build/tests/ffmpeg_encoder_tests

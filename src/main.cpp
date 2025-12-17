@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
     bool headless = false;
     auto logLevel = spdlog::level::info;
     std::filesystem::path shaderFile;
+    std::optional<std::string> videoOutput;
 
     if (argc < 2)
         throw std::runtime_error("No shader file provided.");
@@ -67,6 +68,12 @@ int main(int argc, char **argv) {
             }
             logLevel = parseLogLevel(argv[++i]);
             continue;
+        } else if (arg == "--output") {
+            if (i + 1 >= argc) {
+                throw std::runtime_error("--output requires a file path");
+            }
+            videoOutput = argv[++i];
+            continue;
         } else if (arg.substr(0, 2) != "--") {
             if (shaderFile.empty()) {
                 shaderFile = arg;
@@ -88,7 +95,7 @@ int main(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
-    SDFRenderer renderer{shaderFile.string(), useToyTemplate, maxFrames, headless};
+    SDFRenderer renderer{shaderFile.string(), useToyTemplate, maxFrames, headless, videoOutput};
     renderer.setup();
     renderer.gameLoop();
     return 0;

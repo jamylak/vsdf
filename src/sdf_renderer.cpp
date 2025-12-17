@@ -1,4 +1,5 @@
 #include "sdf_renderer.h"
+#include "ffmpeg_encoder.h"
 #include "filewatcher/filewatcher_factory.h"
 #include "glfwutils.h"
 #include "shader_utils.h"

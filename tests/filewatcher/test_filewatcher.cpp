@@ -6,6 +6,14 @@
 #include <ios>
 #include <thread>
 
+// Platform-specific headers for directory operations
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 // How long to wait for the callback to be called
 #define THREAD_WAIT_TIME_MS 50
 
@@ -149,7 +157,7 @@ TEST_F(FileWatcherTest, StopWatchingMultipleTimesIsSafe) {
     watcher->stopWatching();
     
     // Test passes if we get here without crashing
-    EXPECT_TRUE(true);
+    SUCCEED();
 }
 
 // Test rapid consecutive modifications (debouncing behavior)

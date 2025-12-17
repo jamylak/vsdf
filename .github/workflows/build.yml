@@ -94,9 +94,6 @@ jobs:
         cp -r shaders vsdf-macos-${{ matrix.arch }}/
         cp README.md vsdf-macos-${{ matrix.arch }}/
         cp LICENSE vsdf-macos-${{ matrix.arch }}/
-        # Bundle dynamic libraries
-        mkdir -p vsdf-macos-${{ matrix.arch }}/lib
-        # Copy any dynamic libraries if needed
         tar -czf vsdf-macos-${{ matrix.arch }}.tar.gz vsdf-macos-${{ matrix.arch }}/
 
     - name: Upload artifact
@@ -117,11 +114,7 @@ jobs:
     - name: Install dependencies via vcpkg
       timeout-minutes: 15
       run: |
-        vcpkg install vulkan:x64-windows --recurse
-        vcpkg install glfw3:x64-windows
-        vcpkg install glslang:x64-windows
-        vcpkg install spdlog:x64-windows
-        vcpkg install glm:x64-windows
+        vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows --recurse
         vcpkg integrate install
 
     - name: Configure
@@ -142,10 +135,17 @@ jobs:
         Copy-Item -Recurse shaders vsdf-windows-x64\
         Copy-Item README.md vsdf-windows-x64\
         Copy-Item LICENSE vsdf-windows-x64\
-        # Copy necessary DLLs from vcpkg
+        # Copy only the essential runtime DLLs from vcpkg
         $vcpkgRoot = "C:\vcpkg\installed\x64-windows\bin"
         if (Test-Path $vcpkgRoot) {
-          Get-ChildItem -Path $vcpkgRoot -Filter "*.dll" | Copy-Item -Destination vsdf-windows-x64\
+          # Copy only spdlog DLL as it's the main runtime dependency
+          $requiredDlls = @("spdlog.dll")
+          foreach ($dll in $requiredDlls) {
+            $dllPath = Join-Path $vcpkgRoot $dll
+            if (Test-Path $dllPath) {
+              Copy-Item $dllPath -Destination vsdf-windows-x64\
+            }
+          }
         }
         Compress-Archive -Path vsdf-windows-x64 -DestinationPath vsdf-windows-x64.zip
 

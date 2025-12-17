@@ -5,4 +5,5 @@ build_*
 testshaders
 shaders/*.spv
 _codeql_detected_source_root
+_codeql_build_dir
 fuzz_corpus

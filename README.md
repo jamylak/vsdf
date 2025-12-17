@@ -4,6 +4,7 @@ Vulkan SDF Renderer + Hot Reloader
 [![Continuous Integration](https://github.com/jamylak/vsdf/actions/workflows/test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/test.yml)
 [![Smoke Test](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml)
 [![Windows CI](https://github.com/jamylak/vsdf/actions/workflows/windows-test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/windows-test.yml)
+[![Build Binaries](https://github.com/jamylak/vsdf/actions/workflows/build.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/build.yml)
 
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 
@@ -12,6 +13,33 @@ That way you can use your favourite editor / LSP and also utilise git.
 
 ## Platforms
 Supports macOS, Linux, and Windows with native file watcher implementations for each platform.
+
+## Download Pre-built Binaries
+
+Pre-built binaries are available for easy installation:
+
+- **[Download Latest Release](https://github.com/jamylak/vsdf/releases/latest)** - Get binaries for your platform
+  - **Linux x64**: `vsdf-linux-x64.tar.gz`
+  - **macOS x64** (Intel): `vsdf-macos-x64.tar.gz`
+  - **macOS ARM64** (Apple Silicon): `vsdf-macos-arm64.tar.gz`
+  - **Windows x64**: `vsdf-windows-x64.zip`
+
+### Quick Start with Pre-built Binaries
+
+1. Download the appropriate binary for your platform from the releases page
+2. Extract the archive
+3. On macOS/Linux: Ensure Vulkan drivers are installed (see platform-specific setup below)
+4. On Windows: All required DLLs are included in the archive
+5. Run the binary:
+   ```sh
+   # Linux/macOS
+   ./vsdf --toy shaders/testtoyshader.frag
+   
+   # Windows
+   vsdf.exe --toy shaders/testtoyshader.frag
+   ```
+
+**Note**: You still need Vulkan drivers installed on your system. The binaries include all application dependencies but not system-level graphics drivers.
 
 ## Mac Dev Setup (with Lunar)
 

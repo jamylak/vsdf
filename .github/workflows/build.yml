@@ -1,0 +1,189 @@
+name: Build Binaries
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Build Linux (x64)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential cmake ninja-build \
+          libspdlog-dev \
+          libglfw3-dev libvulkan-dev \
+          glslang-tools glslang-dev libglm-dev
+
+    - name: Configure
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_TESTS=OFF \
+          -G Ninja \
+          .
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Package binary
+      run: |
+        mkdir -p vsdf-linux-x64
+        cp build/vsdf vsdf-linux-x64/
+        cp -r shaders vsdf-linux-x64/
+        cp README.md vsdf-linux-x64/
+        cp LICENSE vsdf-linux-x64/
+        tar -czf vsdf-linux-x64.tar.gz vsdf-linux-x64/
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vsdf-linux-x64
+        path: vsdf-linux-x64.tar.gz
+        retention-days: 30
+
+  build-macos:
+    name: Build macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-13
+          - arch: arm64
+            runner: macos-14
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install glfw glslang spdlog glm vulkan-loader vulkan-headers
+
+    - name: Configure
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_TESTS=OFF \
+          .
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Package binary
+      run: |
+        mkdir -p vsdf-macos-${{ matrix.arch }}
+        cp build/vsdf vsdf-macos-${{ matrix.arch }}/
+        cp -r shaders vsdf-macos-${{ matrix.arch }}/
+        cp README.md vsdf-macos-${{ matrix.arch }}/
+        cp LICENSE vsdf-macos-${{ matrix.arch }}/
+        # Bundle dynamic libraries
+        mkdir -p vsdf-macos-${{ matrix.arch }}/lib
+        # Copy any dynamic libraries if needed
+        tar -czf vsdf-macos-${{ matrix.arch }}.tar.gz vsdf-macos-${{ matrix.arch }}/
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vsdf-macos-${{ matrix.arch }}
+        path: vsdf-macos-${{ matrix.arch }}.tar.gz
+        retention-days: 30
+
+  build-windows:
+    name: Build Windows (x64)
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies via vcpkg
+      timeout-minutes: 15
+      run: |
+        vcpkg install vulkan:x64-windows --recurse
+        vcpkg install glfw3:x64-windows
+        vcpkg install glslang:x64-windows
+        vcpkg install spdlog:x64-windows
+        vcpkg install glm:x64-windows
+        vcpkg integrate install
+
+    - name: Configure
+      run: |
+        cmake -B build `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DBUILD_TESTS=OFF `
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+          .
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Package binary
+      run: |
+        New-Item -ItemType Directory -Force -Path vsdf-windows-x64
+        Copy-Item build\Release\vsdf.exe vsdf-windows-x64\
+        Copy-Item -Recurse shaders vsdf-windows-x64\
+        Copy-Item README.md vsdf-windows-x64\
+        Copy-Item LICENSE vsdf-windows-x64\
+        # Copy necessary DLLs from vcpkg
+        $vcpkgRoot = "C:\vcpkg\installed\x64-windows\bin"
+        if (Test-Path $vcpkgRoot) {
+          Get-ChildItem -Path $vcpkgRoot -Filter "*.dll" | Copy-Item -Destination vsdf-windows-x64\
+        }
+        Compress-Archive -Path vsdf-windows-x64 -DestinationPath vsdf-windows-x64.zip
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vsdf-windows-x64
+        path: vsdf-windows-x64.zip
+        retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Display structure of downloaded files
+      run: ls -R artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/vsdf-linux-x64/vsdf-linux-x64.tar.gz
+          artifacts/vsdf-macos-x64/vsdf-macos-x64.tar.gz
+          artifacts/vsdf-macos-arm64/vsdf-macos-arm64.tar.gz
+          artifacts/vsdf-windows-x64/vsdf-windows-x64.zip
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

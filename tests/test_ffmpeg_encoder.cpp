@@ -105,12 +105,19 @@ TEST(FFmpegEncoderTest, ValidateVideoFile) {
     int ret = avformat_open_input(&formatContext, tempVideo.filename().c_str(), nullptr, nullptr);
     ASSERT_EQ(ret, 0) << "Failed to open video file";
     
+    // Ensure cleanup happens even if assertions fail
+    struct FormatContextGuard {
+        AVFormatContext **ctx;
+        ~FormatContextGuard() { if (ctx && *ctx) avformat_close_input(ctx); }
+    };
+    FormatContextGuard guard{&formatContext};
+    
     ret = avformat_find_stream_info(formatContext, nullptr);
     ASSERT_EQ(ret, 0) << "Failed to find stream info";
     
     // Check that we have at least one video stream
     bool hasVideoStream = false;
-    for (unsigned int i = 0; i < formatContext->nb_streams; i++) {
+    for (size_t i = 0; i < formatContext->nb_streams; i++) {
         if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
             hasVideoStream = true;
             
@@ -123,8 +130,6 @@ TEST(FFmpegEncoderTest, ValidateVideoFile) {
     }
     
     ASSERT_TRUE(hasVideoStream) << "No video stream found in output file";
-    
-    avformat_close_input(&formatContext);
 }
 
 TEST(FFmpegEncoderTest, ThrowsWhenNotInitialized) {

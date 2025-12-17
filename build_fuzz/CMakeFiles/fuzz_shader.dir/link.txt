@@ -1,1 +1,0 @@
-/usr/bin/clang++ -fsanitize=fuzzer,address,undefined -Xlinker --dependency-file=CMakeFiles/fuzz_shader.dir/link.d CMakeFiles/fuzz_shader.dir/fuzz_shader.cpp.o -o fuzz_shader

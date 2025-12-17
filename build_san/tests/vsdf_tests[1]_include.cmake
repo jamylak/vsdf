@@ -1,5 +1,0 @@
-if(EXISTS "/home/runner/work/vsdf/vsdf/build_san/tests/vsdf_tests[1]_tests.cmake")
-  include("/home/runner/work/vsdf/vsdf/build_san/tests/vsdf_tests[1]_tests.cmake")
-else()
-  add_test(vsdf_tests_NOT_BUILT vsdf_tests_NOT_BUILT)
-endif()

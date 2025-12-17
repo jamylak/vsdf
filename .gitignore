@@ -1,6 +1,8 @@
 a.out
 .cache/clangd/index
 build
+build_*
 testshaders
 shaders/*.spv
 _codeql_detected_source_root
+fuzz_corpus

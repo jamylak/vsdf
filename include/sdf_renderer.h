@@ -1,11 +1,10 @@
 #ifndef SDF_RENDERER_H
 #define SDF_RENDERER_H
+#include "ffmpeg_encoder.h"
 #include "vkutils.h"
 #include <memory>
 #include <optional>
 #include <vulkan/vulkan.h>
-
-class FFmpegEncoder;
 
 inline constexpr uint32_t WINDOW_WIDTH = 800;
 inline constexpr uint32_t WINDOW_HEIGHT = 600;

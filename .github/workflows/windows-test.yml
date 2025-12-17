@@ -48,32 +48,17 @@ jobs:
       timeout-minutes: 10
       run: cmake --build build --config Release
 
-    - name: Install SwiftShader (Software Vulkan ICD)
-      timeout-minutes: 5
+    - name: Install Vulkan SDK (includes software renderer)
+      timeout-minutes: 10
       run: |
-        Write-Host "Installing SwiftShader for software Vulkan rendering..."
-        $swiftshaderUrl = "https://github.com/google/swiftshader/releases/download/2024-12-13/swiftshader-windows-x64.zip"
-        $swiftshaderZip = "swiftshader.zip"
-        $swiftshaderDir = "swiftshader"
+        Write-Host "Installing Vulkan SDK..."
+        # Install Vulkan SDK via chocolatey which provides Vulkan ICD support
+        choco install vulkan-sdk -y
         
-        Write-Host "Downloading SwiftShader from $swiftshaderUrl"
-        Invoke-WebRequest -Uri $swiftshaderUrl -OutFile $swiftshaderZip
+        # Refresh environment variables
+        refreshenv
         
-        Write-Host "Extracting SwiftShader..."
-        Expand-Archive -Path $swiftshaderZip -DestinationPath $swiftshaderDir -Force
-        
-        # Find the vk_swiftshader_icd.json file
-        $icdJsonPath = Get-ChildItem -Path $swiftshaderDir -Recurse -Filter "vk_swiftshader_icd.json" | Select-Object -First 1 -ExpandProperty FullName
-        
-        if ($icdJsonPath) {
-          Write-Host "SwiftShader ICD found at: $icdJsonPath"
-          # Set environment variable for this workflow
-          echo "VK_ICD_FILENAMES=$icdJsonPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "VK_ICD_FILENAMES set to: $icdJsonPath"
-        } else {
-          Write-Error "SwiftShader ICD JSON not found after extraction"
-          exit 1
-        }
+        Write-Host "Vulkan SDK installed successfully"
 
     - name: Run unit tests
       timeout-minutes: 5

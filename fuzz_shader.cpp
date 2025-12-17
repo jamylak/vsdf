@@ -4,6 +4,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <string>
 
 // Fuzz target for shader input validation
@@ -14,8 +15,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
         return 0;
     }
 
-    // Create a temporary shader file to test file handling
-    std::string tempFilename = "/tmp/fuzz_shader.frag";
+    // Create a temporary shader file with unique name to avoid race conditions
+    std::filesystem::path tempDir = std::filesystem::temp_directory_path();
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 999999);
+    std::filesystem::path tempFilename = tempDir / ("fuzz_shader_" + std::to_string(dis(gen)) + ".frag");
     
     try {
         std::ofstream outFile(tempFilename);
@@ -28,6 +33,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
         // Test file existence and size checks
         if (std::filesystem::exists(tempFilename)) {
             auto fileSize = std::filesystem::file_size(tempFilename);
+            
+            // Validate that the file size matches what we wrote
+            if (fileSize != Size) {
+                std::filesystem::remove(tempFilename);
+                return 0;
+            }
             
             // Test reading the file back
             std::ifstream inFile(tempFilename);
@@ -50,7 +61,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     }
 
     // Clean up temporary file
-    std::remove(tempFilename.c_str());
+    std::filesystem::remove(tempFilename);
 
     return 0;
 }

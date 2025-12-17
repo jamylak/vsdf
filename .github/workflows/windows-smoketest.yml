@@ -72,37 +72,39 @@ jobs:
       timeout-minutes: 2
       run: |
         Write-Host "Running single frame smoke test..."
-        # Windows software rendering via WARP (included with Windows 10+)
-        # WARP provides a software Vulkan implementation
-        .\build\Release\vsdf.exe --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug
-      continue-on-error: true
-      id: single-frame
+        Write-Host "VK_ICD_FILENAMES is set to: $env:VK_ICD_FILENAMES"
+        # Windows software rendering via Mesa3D lavapipe
+        # Capture both stdout and stderr, check exit code explicitly
+        try {
+          & .\build\Release\vsdf.exe --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug 2>&1 | Tee-Object -Variable output
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            Write-Host "##[error]Application exited with code $exitCode"
+            Write-Host "##[error]Single frame smoke test FAILED!"
+            exit 1
+          }
+          Write-Host "##[section]✓ Single frame test passed (exit code: $exitCode)"
+        } catch {
+          Write-Host "##[error]Exception during single frame test: $_"
+          exit 1
+        }
 
     - name: 100 frame smoke test (headless)
       timeout-minutes: 5
       run: |
         Write-Host "Running 100 frame smoke test..."
-        .\build\Release\vsdf.exe --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info
-      continue-on-error: true
-      id: hundred-frames
-
-    - name: Verify smoke test results
-      run: |
-        $singleFrameSuccess = "${{ steps.single-frame.outcome }}" -eq "success"
-        $hundredFramesSuccess = "${{ steps.hundred-frames.outcome }}" -eq "success"
-        
-        Write-Host "Single frame test: ${{ steps.single-frame.outcome }}"
-        Write-Host "100 frame test: ${{ steps.hundred-frames.outcome }}"
-        
-        if (-not $singleFrameSuccess) {
-          Write-Host "##[error]Single frame smoke test failed!"
-          Write-Host "This is a critical failure - the application should be able to render at least one frame."
+        # Windows software rendering via Mesa3D lavapipe
+        # Capture both stdout and stderr, check exit code explicitly
+        try {
+          & .\build\Release\vsdf.exe --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info 2>&1 | Tee-Object -Variable output
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            Write-Host "##[error]Application exited with code $exitCode"
+            Write-Host "##[error]100 frame smoke test FAILED!"
+            exit 1
+          }
+          Write-Host "##[section]✓ 100 frame test passed (exit code: $exitCode)"
+        } catch {
+          Write-Host "##[error]Exception during 100 frame test: $_"
           exit 1
-        } elseif (-not $hundredFramesSuccess) {
-          Write-Host "##[warning]100 frame test failed but single frame succeeded."
-          Write-Host "This may indicate performance issues or timeout problems."
-          exit 1
-        } else {
-          Write-Host "✓ All smoke tests passed successfully!"
-          exit 0
         }

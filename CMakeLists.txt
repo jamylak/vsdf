@@ -24,7 +24,7 @@ find_package(spdlog REQUIRED)
 find_package(glm REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
   add_compile_options(-fsanitize=address)
   add_link_options(-fsanitize=address)
 endif()
@@ -32,17 +32,23 @@ endif()
 add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp)
 
 # Recommended warnings and safeguards
-target_compile_options(${PROJECT_NAME} PRIVATE
-  -Wall -Wextra -Wpedantic -Werror
-  -Wshadow -Wnon-virtual-dtor
-  # -Wold-style-cast # (disabled as it complains about vulkan)
-  -Wcast-align
-  # -Wunused
-  -Woverloaded-virtual -Wconversion -Wsign-conversion -Wmisleading-indentation
-  -Wnull-dereference -Wdouble-promotion -Wformat=2
-  -Wno-missing-field-initializers
-  -Wno-shadow
-)
+if(MSVC)
+  target_compile_options(${PROJECT_NAME} PRIVATE
+    /W4
+  )
+else()
+  target_compile_options(${PROJECT_NAME} PRIVATE
+    -Wall -Wextra -Wpedantic -Werror
+    -Wshadow -Wnon-virtual-dtor
+    # -Wold-style-cast # (disabled as it complains about vulkan)
+    -Wcast-align
+    # -Wunused
+    -Woverloaded-virtual -Wconversion -Wsign-conversion -Wmisleading-indentation
+    -Wnull-dereference -Wdouble-promotion -Wformat=2
+    -Wno-missing-field-initializers
+    -Wno-shadow
+  )
+endif()
 if(APPLE)
   message("Building filewatcher for macOS")
   target_sources(${PROJECT_NAME} PRIVATE src/filewatcher/mac_filewatcher.cpp)
@@ -59,6 +65,9 @@ elseif(UNIX AND NOT APPLE)
   find_package(Threads REQUIRED)
   target_sources(${PROJECT_NAME} PRIVATE src/filewatcher/linux_filewatcher.cpp)
   target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
+elseif(WIN32)
+  message("Building filewatcher for Windows")
+  target_sources(${PROJECT_NAME} PRIVATE src/filewatcher/windows_filewatcher.cpp)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)

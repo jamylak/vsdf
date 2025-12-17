@@ -3,6 +3,7 @@ Vulkan SDF Renderer + Hot Reloader
 
 [![Continuous Integration](https://github.com/jamylak/vsdf/actions/workflows/test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/test.yml)
 [![Smoke Test](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml)
+[![Windows CI](https://github.com/jamylak/vsdf/actions/workflows/windows-test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/windows-test.yml)
 
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 
@@ -10,7 +11,7 @@ Render an SDF like ShaderToy using Vulkan and hot reload based on frag shader ch
 That way you can use your favourite editor / LSP and also utilise git.
 
 ## Platforms
-Supports Mac & Linux currently because it contains filewatcher implementations for those platforms so far but could add Windows and then the rest of the code should work on there...
+Supports macOS, Linux, and Windows with native file watcher implementations for each platform.
 
 ## Mac Dev Setup (with Lunar)
 
@@ -21,11 +22,36 @@ Then follow the steps to do `sudo ./install_vulkan.py` in *SDK System Paths* sec
 ### Example `VULKAN_SDK` Env Var
 `VULKAN_SDK $HOME/VulkanSDK/1.4.328.1/macOS`
 
+## Windows Dev Setup
+
+1. Install vcpkg (if not already installed):
+   ```powershell
+   git clone https://github.com/Microsoft/vcpkg.git
+   cd vcpkg
+   .\bootstrap-vcpkg.bat
+   ```
+2. Install dependencies using vcpkg (includes Vulkan):
+   ```powershell
+   vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
+   vcpkg integrate install
+   ```
+
+Note: vcpkg provides Vulkan headers and loader, eliminating the need for a separate Vulkan SDK installation.
+
 ## Build
+
+### Linux/macOS
 ```sh
 cmake -B build .
 cmake --build build
 ./build/vsdf {filepath}.frag
+```
+
+### Windows
+```powershell
+cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" .
+cmake --build build --config Release
+.\build\Release\vsdf.exe {filepath}.frag
 ```
 
 Headless / CI-friendly single-frame run (hide the window and exit after N frames):
@@ -76,11 +102,21 @@ and adjusting it to your liking
 - `--log-level <trace|debug|info|warn|error|critical|off>` Set spdlog verbosity (default: info)
 
 ## Test Build
+
+### Linux/macOS
 ```sh
 cmake -B build -DBUILD_TESTS=ON -DDEBUG=ON
 cmake --build build
 ./build/tests/vsdf_tests
 ./build/tests/filewatcher/filewatcher_tests
+```
+
+### Windows
+```powershell
+cmake -B build -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" .
+cmake --build build --config Debug
+.\build\tests\vsdf_tests\Debug\vsdf_tests.exe
+.\build\tests\filewatcher\Debug\filewatcher_tests.exe
 ```
 
 ## Nix Develop Shell

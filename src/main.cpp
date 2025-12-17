@@ -55,9 +55,9 @@ int main(int argc, char **argv) {
             }
             try {
                 maxFrames = static_cast<uint32_t>(std::stoul(argv[++i]));
-            } catch (const std::invalid_argument& e) {
+            } catch (const std::invalid_argument&) {
                 throw std::runtime_error("--frames requires a valid positive integer value");
-            } catch (const std::out_of_range& e) {
+            } catch (const std::out_of_range&) {
                 throw std::runtime_error("--frames value is out of range for a positive integer");
             }
             continue;
@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
-    SDFRenderer renderer{shaderFile, useToyTemplate, maxFrames, headless};
+    SDFRenderer renderer{shaderFile.string(), useToyTemplate, maxFrames, headless};
     renderer.setup();
     renderer.gameLoop();
     return 0;

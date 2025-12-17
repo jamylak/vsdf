@@ -1,0 +1,71 @@
+name: Windows CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test-windows:
+    name: Build and Test on Windows
+    runs-on: windows-latest
+    
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies via vcpkg
+      timeout-minutes: 15
+      run: |
+        Write-Host "Installing dependencies via vcpkg (faster and more reliable for CI)..."
+        # vcpkg provides Vulkan headers/loader without needing full SDK installation
+        vcpkg install vulkan:x64-windows --recurse
+        vcpkg install glfw3:x64-windows
+        vcpkg install glslang:x64-windows
+        vcpkg install spdlog:x64-windows
+        vcpkg install glm:x64-windows
+        vcpkg install gtest:x64-windows
+        vcpkg integrate install
+        Write-Host "All dependencies installed successfully"
+
+    - name: Configure CMake
+      timeout-minutes: 5
+      run: |
+        cmake -B build `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DBUILD_TESTS=ON `
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+          .
+
+    - name: Build
+      timeout-minutes: 10
+      run: cmake --build build --config Release
+
+    - name: Run unit tests
+      timeout-minutes: 5
+      run: |
+        # Run vsdf_tests
+        $vsdfTestPath = ".\build\tests\Release\vsdf_tests.exe"
+        if (Test-Path $vsdfTestPath) {
+          Write-Host "Running vsdf_tests..."
+          & $vsdfTestPath
+        } else {
+          Write-Error "vsdf_tests not found at $vsdfTestPath"
+          exit 1
+        }
+        # Run filewatcher_tests
+        $filewatcherTestPath = ".\build\tests\filewatcher\Release\filewatcher_tests.exe"
+        if (Test-Path $filewatcherTestPath) {
+          Write-Host "Running filewatcher_tests..."
+          & $filewatcherTestPath
+        } else {
+          Write-Error "filewatcher_tests not found at $filewatcherTestPath"
+          exit 1
+        }

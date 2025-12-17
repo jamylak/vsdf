@@ -23,13 +23,22 @@ find_package(glslang REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glm REQUIRED)
 
+# Find FFmpeg libraries for video encoding
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED
+    libavcodec
+    libavformat
+    libavutil
+    libswscale
+)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
   add_compile_options(-fsanitize=address)
   add_link_options(-fsanitize=address)
 endif()
 
-add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp src/ffmpeg_encoder.cpp)
 
 # Recommended warnings and safeguards
 if(MSVC)
@@ -70,8 +79,8 @@ elseif(WIN32)
   target_sources(${PROJECT_NAME} PRIVATE src/filewatcher/windows_filewatcher.cpp)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
-include_directories(${PROJECT_NAME} PRIVATE include ${GLM_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV ${FFMPEG_LIBRARIES})
+include_directories(${PROJECT_NAME} PRIVATE include ${GLM_INCLUDE_DIRS} ${FFMPEG_INCLUDE_DIRS})
 
 # Install the executable
 install(TARGETS ${PROJECT_NAME}

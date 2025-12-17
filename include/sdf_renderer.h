@@ -1,6 +1,8 @@
 #ifndef SDF_RENDERER_H
 #define SDF_RENDERER_H
+#include "ffmpeg_encoder.h"
 #include "vkutils.h"
+#include <memory>
 #include <optional>
 #include <vulkan/vulkan.h>
 
@@ -57,6 +59,17 @@ class SDFRenderer {
     // Runtime configuration
     std::optional<uint32_t> maxFrames;
     bool headless = false;
+    std::optional<std::string> videoOutputPath;
+
+    // FFmpeg encoder for video output
+    std::unique_ptr<FFmpegEncoder> videoEncoder;
+    
+    // Vulkan resources for reading back framebuffer
+    VkImage readbackImage = VK_NULL_HANDLE;
+    VkDeviceMemory readbackMemory = VK_NULL_HANDLE;
+    VkBuffer readbackBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory readbackBufferMemory = VK_NULL_HANDLE;
+    std::vector<uint8_t> pixelData;
 
     // Timing
     std::chrono::time_point<std::chrono::high_resolution_clock> cpuStartFrame,
@@ -71,6 +84,10 @@ class SDFRenderer {
     void destroyRenderContext();
     void destroyPipeline();
     void destroy();
+    void setupVideoEncoder();
+    void captureFrameToVideo(uint32_t imageIndex);
+    void setupReadbackResources();
+    void destroyReadbackResources();
 
     [[nodiscard]] vkutils::PushConstants
     getPushConstants(uint32_t currentFrame) noexcept;
@@ -80,7 +97,8 @@ class SDFRenderer {
     SDFRenderer &operator=(const SDFRenderer &) = delete;
     SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false,
                 std::optional<uint32_t> maxFrames = std::nullopt,
-                bool headless = false);
+                bool headless = false,
+                std::optional<std::string> videoOutputPath = std::nullopt);
     void setup();
     void gameLoop();
 };

@@ -69,3 +69,37 @@ jobs:
           Write-Error "filewatcher_tests not found at $filewatcherTestPath"
           exit 1
         }
+
+    - name: Vulkan single frame smoke test
+      timeout-minutes: 5
+      run: |
+        $vsdfPath = ".\build\Release\vsdf.exe"
+        if (Test-Path $vsdfPath) {
+          Write-Host "Running single frame smoke test..."
+          & $vsdfPath --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Single frame smoke test failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+          Write-Host "Single frame smoke test passed"
+        } else {
+          Write-Error "vsdf.exe not found at $vsdfPath"
+          exit 1
+        }
+
+    - name: Vulkan 100 frame smoke test
+      timeout-minutes: 5
+      run: |
+        $vsdfPath = ".\build\Release\vsdf.exe"
+        if (Test-Path $vsdfPath) {
+          Write-Host "Running 100 frame smoke test..."
+          & $vsdfPath --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "100 frame smoke test failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+          Write-Host "100 frame smoke test passed"
+        } else {
+          Write-Error "vsdf.exe not found at $vsdfPath"
+          exit 1
+        }

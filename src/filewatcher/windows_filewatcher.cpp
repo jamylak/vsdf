@@ -74,19 +74,24 @@ void WindowsFileWatcher::watchFile() {
                 continue;
             }
 
+            // Interpret the raw buffer as the Windows change notification type.
             FILE_NOTIFY_INFORMATION *fni =
                 reinterpret_cast<FILE_NOTIFY_INFORMATION *>(buffer);
 
+            // Iterate through all notifications in the buffer chain.
             do {
-                // Convert wide string to UTF-8 string
+                // FileNameLength reports bytes; divide by WCHAR to get length.
                 int nameLen = fni->FileNameLength / sizeof(WCHAR);
+                // Construct a wide string view of the filename provided by WinAPI.
                 std::wstring wideFilename(fni->FileName, nameLen);
                 
-                // Use WideCharToMultiByte for proper UTF-16 to UTF-8 conversion
+                // Compute UTF-8 size to allocate the exact std::string buffer.
                 int size_needed = WideCharToMultiByte(CP_UTF8, 0, 
                     wideFilename.c_str(), static_cast<int>(wideFilename.length()),
                     NULL, 0, NULL, NULL);
+                // Allocate the UTF-8 string with the required size.
                 std::string changedFile(size_needed, 0);
+                // Perform the UTF-16 (Windows native) to UTF-8 conversion.
                 WideCharToMultiByte(CP_UTF8, 0, wideFilename.c_str(),
                     static_cast<int>(wideFilename.length()), &changedFile[0],
                     size_needed, NULL, NULL);

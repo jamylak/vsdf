@@ -4,7 +4,6 @@ on:
   push:
     branches: [main, master]
   pull_request:
-    branches: [main, master]
 
 jobs:
   windows-smoke-test:
@@ -44,9 +43,28 @@ jobs:
       timeout-minutes: 10
       run: cmake --build build --config Release
 
+    - name: Install Mesa3D WARP for software Vulkan rendering
+      run: |
+        Write-Host "Installing Mesa3D for software Vulkan support..."
+        # Download and install Mesa3D which includes WARP/lavapipe Vulkan driver
+        $url = "https://github.com/pal1000/mesa-dist-win/releases/download/24.2.7/mesa3d-24.2.7-release-msvc.7z"
+        $output = "$env:TEMP\mesa3d.7z"
+        Write-Host "Downloading Mesa3D..."
+        Invoke-WebRequest -Uri $url -OutFile $output
+        Write-Host "Extracting Mesa3D..."
+        7z x $output -o"$env:TEMP\mesa3d" -y
+        # Copy Vulkan ICD and binaries to system paths
+        Copy-Item "$env:TEMP\mesa3d\x64\lvp_icd.x86_64.json" "$env:SystemRoot\System32\" -Force
+        Copy-Item "$env:TEMP\mesa3d\x64\vulkan_lvp.dll" "$env:SystemRoot\System32\" -Force
+        # Set environment variable for Vulkan ICD
+        Write-Host "Setting VK_ICD_FILENAMES environment variable..."
+        echo "VK_ICD_FILENAMES=$env:SystemRoot\System32\lvp_icd.x86_64.json" >> $env:GITHUB_ENV
+        Write-Host "Mesa3D installed successfully"
+
     - name: Check Vulkan capabilities
       run: |
         Write-Host "Checking for available Vulkan drivers..."
+        Write-Host "VK_ICD_FILENAMES: $env:VK_ICD_FILENAMES"
         # List available GPUs and drivers (informational)
         Get-WmiObject Win32_VideoController | Select-Object Name, DriverVersion | Format-List
 
@@ -76,13 +94,15 @@ jobs:
         Write-Host "Single frame test: ${{ steps.single-frame.outcome }}"
         Write-Host "100 frame test: ${{ steps.hundred-frames.outcome }}"
         
-        if (-not $singleFrameSuccess -and -not $hundredFramesSuccess) {
-          Write-Host "##[warning]Smoke tests failed. This may indicate missing Vulkan support or driver issues on Windows runner."
-          Write-Host "Note: GitHub Actions Windows runners may not have full Vulkan support by default."
-          Write-Host "Consider installing Mesa3D WARP or using hardware-accelerated runners if persistent failures occur."
-          exit 0  # Don't fail the workflow - document the limitation
+        if (-not $singleFrameSuccess) {
+          Write-Host "##[error]Single frame smoke test failed!"
+          Write-Host "This is a critical failure - the application should be able to render at least one frame."
+          exit 1
         } elseif (-not $hundredFramesSuccess) {
-          Write-Host "##[warning]100 frame test failed but single frame succeeded. May indicate performance issues."
+          Write-Host "##[warning]100 frame test failed but single frame succeeded."
+          Write-Host "This may indicate performance issues or timeout problems."
+          exit 1
         } else {
-          Write-Host "Smoke tests passed successfully!"
+          Write-Host "✓ All smoke tests passed successfully!"
+          exit 0
         }

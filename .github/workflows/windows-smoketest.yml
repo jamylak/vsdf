@@ -43,27 +43,19 @@ jobs:
       timeout-minutes: 10
       run: cmake --build build --config Release
 
-    - name: Install Mesa3D lavapipe for software Vulkan rendering
+    - name: Install Mesa3D WARP for software Vulkan rendering
       run: |
         Write-Host "Installing Mesa3D for software Vulkan support..."
-        # Download and install Mesa3D which includes lavapipe Vulkan driver
+        # Download and install Mesa3D which includes WARP/lavapipe Vulkan driver
         $url = "https://github.com/pal1000/mesa-dist-win/releases/download/24.2.7/mesa3d-24.2.7-release-msvc.7z"
         $output = "$env:TEMP\mesa3d.7z"
         Write-Host "Downloading Mesa3D..."
         Invoke-WebRequest -Uri $url -OutFile $output
         Write-Host "Extracting Mesa3D..."
         7z x $output -o"$env:TEMP\mesa3d" -y
-        
-        # Copy ALL Mesa3D x64 DLLs to System32 (lavapipe has many dependencies)
-        Write-Host "Installing Mesa3D binaries..."
-        Get-ChildItem "$env:TEMP\mesa3d\x64\*.dll" | ForEach-Object {
-          Copy-Item $_.FullName "$env:SystemRoot\System32\" -Force
-          Write-Host "Copied $($_.Name)"
-        }
-        
-        # Copy Vulkan ICD JSON
+        # Copy Vulkan ICD and binaries to system paths
         Copy-Item "$env:TEMP\mesa3d\x64\lvp_icd.x86_64.json" "$env:SystemRoot\System32\" -Force
-        
+        Copy-Item "$env:TEMP\mesa3d\x64\vulkan_lvp.dll" "$env:SystemRoot\System32\" -Force
         # Set environment variable for Vulkan ICD
         Write-Host "Setting VK_ICD_FILENAMES environment variable..."
         echo "VK_ICD_FILENAMES=$env:SystemRoot\System32\lvp_icd.x86_64.json" >> $env:GITHUB_ENV

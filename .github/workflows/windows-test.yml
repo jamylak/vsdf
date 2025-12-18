@@ -48,17 +48,51 @@ jobs:
       timeout-minutes: 10
       run: cmake --build build --config Release
 
-    - name: Install Vulkan SDK (includes software renderer)
-      timeout-minutes: 10
+    - name: Build and Install SwiftShader (Software Vulkan ICD)
+      timeout-minutes: 20
       run: |
-        Write-Host "Installing Vulkan SDK..."
-        # Install Vulkan SDK via chocolatey which provides Vulkan ICD support
-        choco install vulkan-sdk -y
+        Write-Host "Building SwiftShader from source..."
         
-        # Refresh environment variables
-        refreshenv
+        # Clone SwiftShader repository
+        git clone --depth 1 https://github.com/google/swiftshader.git swiftshader
+        cd swiftshader
         
-        Write-Host "Vulkan SDK installed successfully"
+        # Create build directory and configure with CMake
+        Write-Host "Configuring SwiftShader build..."
+        cmake -B build `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DSWIFTSHADER_BUILD_TESTS=OFF `
+          -DSWIFTSHADER_BUILD_SAMPLES=OFF `
+          -DSWIFTSHADER_WARNINGS_AS_ERRORS=OFF `
+          .
+        
+        # Build SwiftShader (only the Vulkan ICD)
+        Write-Host "Building SwiftShader Vulkan ICD..."
+        cmake --build build --config Release --target vk_swiftshader
+        
+        # Find the built vk_swiftshader.dll and ICD JSON
+        $vkSwiftShaderDll = Get-ChildItem -Path "build" -Recurse -Filter "vk_swiftshader.dll" | Select-Object -First 1 -ExpandProperty FullName
+        $icdJson = Get-ChildItem -Path "build" -Recurse -Filter "vk_swiftshader_icd.json" | Select-Object -First 1 -ExpandProperty FullName
+        
+        if ($vkSwiftShaderDll -and $icdJson) {
+          Write-Host "SwiftShader DLL found at: $vkSwiftShaderDll"
+          Write-Host "SwiftShader ICD JSON found at: $icdJson"
+          
+          # Update the ICD JSON to point to the correct DLL path
+          $icdJsonContent = Get-Content $icdJson -Raw | ConvertFrom-Json
+          $icdJsonContent.ICD.library_path = $vkSwiftShaderDll
+          $icdJsonContent | ConvertTo-Json -Depth 10 | Set-Content $icdJson
+          
+          # Set environment variable for this workflow
+          $icdJsonPath = Resolve-Path $icdJson
+          echo "VK_ICD_FILENAMES=$icdJsonPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "VK_ICD_FILENAMES set to: $icdJsonPath"
+        } else {
+          Write-Error "SwiftShader build artifacts not found"
+          exit 1
+        }
+        
+        cd ..
 
     - name: Run unit tests
       timeout-minutes: 5

@@ -73,11 +73,8 @@ cp shaders/vulktemplate.frag shaders/myshader.frag
 ```
 
 ## Notes
-- `--toy` prepends `shaders/toytemplate.frag` to set up push constants like `iTime`.
-- Headless single-frame (CI-friendly):
-  ```sh
-  ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless
-  ```
+- `--toy` prepends `shaders/toytemplate.frag` to set up push constants in the format
+ShaderToy uses eg. `iTime` as well as `main()` etc.
 
 ## Example: save a ShaderToy and run it locally
 1. Open the ShaderToy and copy the fragment shader code:

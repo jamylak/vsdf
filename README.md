@@ -7,6 +7,8 @@ Vulkan SDF Renderer + Hot Reloader
 
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 
+Quickstart: see [QUICKSTART.md](QUICKSTART.md) for install + first shader.
+
 Render an SDF like ShaderToy using Vulkan and hot reload based on frag shader changes.
 That way you can use your favourite editor / LSP and also utilise git.
 

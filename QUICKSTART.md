@@ -47,7 +47,7 @@ cmake --build build
    ```
 3. Build:
    ```powershell
-   cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" .
+   cmake -B build -DCMAKE_TOOLCHAIN_FILE="<path-to-vcpkg>/scripts/buildsystems/vcpkg.cmake" .
    cmake --build build --config Release
    ```
 

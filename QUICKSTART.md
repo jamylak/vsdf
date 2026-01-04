@@ -16,7 +16,7 @@ cmake -B build .
 cmake --build build
 ```
 
-### Linux (Ubuntu/Debian via CI workflow)
+### Linux (Ubuntu/Debian)
 Install deps from the Linux workflow, then build:
 ```sh
 sudo apt-get update

@@ -7,20 +7,39 @@ Vulkan SDF Renderer + Hot Reloader
 
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 
+Quickstart: see [QUICKSTART.md](QUICKSTART.md) for install + first shader.
+
 Render an SDF like ShaderToy using Vulkan and hot reload based on frag shader changes.
 That way you can use your favourite editor / LSP and also utilise git.
 
 ## Platforms
 Supports macOS, Linux, and Windows with native file watcher implementations for each platform.
 
-## Mac Dev Setup (with Lunar)
+## Mac Dev Setup (Homebrew)
+Install Vulkan + deps with Homebrew (Quickstart + macOS CI):
+```sh
+brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools googletest
+```
+
+### Mac Lunar Setup (Optional)
 
 https://vulkan.lunarg.com/sdk/home
 
 Then follow the steps to do `sudo ./install_vulkan.py` in *SDK System Paths* section
 
-### Example `VULKAN_SDK` Env Var
+#### Example `VULKAN_SDK` Env Var
 `VULKAN_SDK $HOME/VulkanSDK/1.4.328.1/macOS`
+
+## Linux Dev Setup (Ubuntu/Debian)
+Install dependencies:
+```sh
+sudo apt-get update
+sudo apt-get install -y \
+  build-essential cmake ninja-build \
+  libgtest-dev libspdlog-dev \
+  libglfw3 libglfw3-dev libvulkan-dev \
+  glslang-tools glslang-dev libglm-dev \
+```
 
 ## Windows Dev Setup
 

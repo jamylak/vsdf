@@ -25,7 +25,6 @@ sudo apt-get install -y \
   libgtest-dev libspdlog-dev \
   libglfw3 libglfw3-dev libvulkan-dev \
   glslang-tools glslang-dev libglm-dev \
-  mesa-vulkan-drivers xvfb
 ```
 
 Build:

@@ -30,6 +30,18 @@ Then follow the steps to do `sudo ./install_vulkan.py` in *SDK System Paths* sec
 #### Example `VULKAN_SDK` Env Var
 `VULKAN_SDK $HOME/VulkanSDK/1.4.328.1/macOS`
 
+## Linux Dev Setup (Ubuntu/Debian)
+Install dependencies:
+```sh
+sudo apt-get update
+sudo apt-get install -y \
+  build-essential cmake ninja-build \
+  libgtest-dev libspdlog-dev \
+  libglfw3 libglfw3-dev libvulkan-dev \
+  glslang-tools glslang-dev libglm-dev \
+  mesa-vulkan-drivers
+```
+
 ## Windows Dev Setup
 
 1. Install vcpkg (if not already installed):

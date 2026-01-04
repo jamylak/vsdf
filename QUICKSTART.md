@@ -7,7 +7,7 @@ Go from zero to your first shader in minutes.
 ### macOS (Homebrew)
 Install Vulkan + deps with Homebrew:
 ```sh
-brew install molten-vk vulkan-loader glslang glfw glm spdlog
+brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools
 ```
 
 Build:

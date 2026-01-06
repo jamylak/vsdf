@@ -132,10 +132,11 @@ struct FrameBuffers {
         }
     }
 
-    spdlog::debug("Enabling validation layers:");
+    spdlog::debug("Enabling the following validation layers:");
     for (const auto &layer : enabledLayers) {
         spdlog::debug("- {}", layer);
     }
+    spdlog::debug("End list of validation layers to enable.");
 
     VkInstanceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -154,7 +155,9 @@ struct FrameBuffers {
     };
 
     VkInstance instance;
+    spdlog::debug("Creating Vulkan instance...");
     VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance));
+    spdlog::debug("Created Vulkan instance...");
     return instance;
 }
 

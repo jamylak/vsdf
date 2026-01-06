@@ -49,10 +49,34 @@ void MacFileWatcher::startWatching(const std::string &path,
     this->callback = cb;
     running = true;
     std::filesystem::path abspath(std::filesystem::absolute(path));
-    // So /tmp -> /private/tmp and matchs with the fseventstream paths
-    std::filesystem::path canonicalPath = std::filesystem::canonical(abspath);
-    std::string dirPath = canonicalPath.parent_path();
-    filename = canonicalPath.string();
+    
+    // Use canonical path if file exists to resolve symlinks (e.g., /tmp -> /private/tmp)
+    // Otherwise use absolute path to support watching files that don't exist yet
+    std::filesystem::path resolvedPath;
+    std::error_code ec;
+    if (std::filesystem::exists(abspath, ec)) {
+        resolvedPath = std::filesystem::canonical(abspath, ec);
+        if (ec) {
+            // If canonical fails, fall back to absolute
+            resolvedPath = abspath;
+        }
+    } else {
+        // File doesn't exist yet, use absolute and try to canonicalize parent
+        auto parentPath = abspath.parent_path();
+        if (std::filesystem::exists(parentPath, ec)) {
+            auto canonicalParent = std::filesystem::canonical(parentPath, ec);
+            if (!ec) {
+                resolvedPath = canonicalParent / abspath.filename();
+            } else {
+                resolvedPath = abspath;
+            }
+        } else {
+            resolvedPath = abspath;
+        }
+    }
+    
+    std::string dirPath = resolvedPath.parent_path();
+    filename = resolvedPath.string();
     watchThread = std::thread([this, dirPath]() {
         spdlog::info("Watching file: {}", dirPath);
         CFStringRef pathToWatch = CFStringCreateWithCString(

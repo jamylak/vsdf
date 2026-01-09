@@ -1,5 +1,6 @@
 option(ENABLE_SANITIZERS "Build with sanitizers" OFF)
 option(ENABLE_FUZZING "Build fuzz targets" OFF)
+option(VSDF_ENABLE_FFMPEG "Enable FFmpeg recording" ON)
 
 if (ENABLE_SANITIZERS)
   add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
@@ -72,6 +73,15 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
 include_directories(${PROJECT_NAME} PRIVATE include ${GLM_INCLUDE_DIRS})
+
+# Optional FFmpeg integration (build plumbing only)
+if (VSDF_ENABLE_FFMPEG)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+    libavformat libavcodec libavutil libswscale)
+  target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFMPEG)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE VSDF_ENABLE_FFMPEG=1)
+endif()
 
 # Install the executable
 install(TARGETS ${PROJECT_NAME}

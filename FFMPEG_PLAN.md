@@ -1,11 +1,12 @@
 # FFMPEG Integration Plan (Iterative + Testable)
 
-Goal: integrate libav* (libavformat/libavcodec/libswscale/libavutil) directly into VSDF for recording frames to a video file, with small, testable steps. Each step adds one unit, can be tested, and then composed into the final pipeline.
+Goal: integrate libav* (libavformat/libavcodec/libswscale/libavutil) directly into VSDF for recording frames to a video file, with small, testable steps. Each step adds one unit, can be tested, and then composed into the final pipeline. This plan targets offscreen rendering (no swapchain/window).
 
 Assumptions:
 - Recording is a separate mode (no shader hot reload while recording, unless explicitly re-enabled later).
 - Integration uses FFmpeg libraries, not shelling out to `ffmpeg`.
-- Rendering still uses Vulkan; we will read back frame pixels into CPU memory and encode them.
+- Rendering still uses Vulkan; we render to an offscreen color image and read back frame pixels into CPU memory for encoding.
+- Recording can optionally enable a preview window, but capture remains offscreen.
 
 ---
 
@@ -93,8 +94,36 @@ Compose later:
 
 ---
 
-## Step 4: Vulkan readback helper (single frame, blocking)
-**Change**: implement a one-shot readback from the swapchain image into `Frame`.
+## Step 4: Offscreen render target (no swapchain)
+**Change**: add an offscreen color `VkImage` + framebuffer + render pass used for recording mode.
+
+Files:
+- `include/vkutils.h` (add helper declarations)
+- `src/sdf_renderer.cpp` (create offscreen target when recording)
+
+Snippet:
+```cpp
+struct OffscreenTarget {
+  VkImage image;
+  VkDeviceMemory memory;
+  VkImageView view;
+  VkFramebuffer framebuffer;
+};
+```
+
+Test:
+- Add a debug-only path to render one frame offscreen and verify that the render pass completes without errors.
+
+Local try:
+- Run `./build/vsdf --frames 1 --headless` and verify logs show offscreen path selected.
+
+Compose later:
+- The offscreen target will be used as the source for readback in Step 5.
+
+---
+
+## Step 5: Vulkan readback helper (single frame, blocking)
+**Change**: implement a one-shot readback from the offscreen image into `Frame`.
 
 Files:
 - `include/vkutils.h` (add helper declarations)
@@ -102,7 +131,7 @@ Files:
 
 Snippet:
 ```cpp
-Frame vkutils::readbackSwapchainImage(
+Frame vkutils::readbackOffscreenImage(
     VkDevice device, VkPhysicalDevice phys, VkQueue queue,
     VkCommandPool pool, VkImage srcImage, VkExtent2D extent);
 ```
@@ -114,11 +143,11 @@ Local try:
 - Run `./build/vsdf --frames 1 --headless` and verify the checksum log.
 
 Compose later:
-- The readback helper will be reused by the recorder (Step 6+).
+- The readback helper will be reused by the recorder (Step 7+).
 
 ---
 
-## Step 5: Add a basic image dump (PPM)
+## Step 6: Add a basic image dump (PPM)
 **Change**: convert `Frame` into a simple PPM file (for pixel correctness).
 
 Files:
@@ -131,7 +160,7 @@ void writePPM(const Frame& frame, const std::string& path);
 ```
 
 Test:
-- Use the readback frame from Step 4 and dump to `out.ppm`.
+- Use the readback frame from Step 5 and dump to `out.ppm`.
 
 Local try:
 - `./build/vsdf --frames 1 --headless --dump-ppm out.ppm`
@@ -142,7 +171,7 @@ Compose later:
 
 ---
 
-## Step 6: Add a minimal FFmpeg encoder wrapper (no Vulkan yet)
+## Step 7: Add a minimal FFmpeg encoder wrapper (no Vulkan yet)
 **Change**: implement an `FFmpegRecorder` that accepts raw RGBA frames and writes a file.
 
 Files:
@@ -167,12 +196,12 @@ Local try:
 - Use `ffprobe` externally to validate duration and frames.
 
 Compose later:
-- This encoder will be fed by real frames in Step 7.
+- This encoder will be fed by real frames in Step 8.
 
 ---
 
-## Step 7: Wire Vulkan readback into FFmpeg (single frame)
-**Change**: take the `Frame` from Step 4 and feed into `FFmpegRecorder` once.
+## Step 8: Wire Vulkan readback into FFmpeg (single frame)
+**Change**: take the `Frame` from Step 5 and feed into `FFmpegRecorder` once.
 
 Files:
 - `src/sdf_renderer.cpp`
@@ -180,7 +209,7 @@ Files:
 Snippet:
 ```cpp
 if (recordOnce) {
-  Frame frame = vkutils::readbackSwapchainImage(...);
+  Frame frame = vkutils::readbackOffscreenImage(...);
   recorder.writeFrame(frame.rgba.data(), frame.rgba.size());
 }
 ```
@@ -196,7 +225,7 @@ Compose later:
 
 ---
 
-## Step 8: Add a record mode with fixed duration
+## Step 9: Add a record mode with fixed duration
 **Change**: add CLI flag `--record <path>` and `--record-frames N`.
 
 Files:
@@ -224,7 +253,32 @@ Compose later:
 
 ---
 
-## Step 9: Add a “record + no hot reload” policy
+## Step 9a: Optional preview window (non-capturing)
+**Change**: allow an optional swapchain path for on-screen preview while capture stays offscreen.
+
+Files:
+- `src/sdf_renderer.cpp`
+- `src/main.cpp`
+
+Snippet:
+```cpp
+if (previewEnabled) {
+  // render same scene to swapchain for display only
+}
+```
+
+Test:
+- Run with `--record out.mp4 --preview` and verify video encodes while window updates.
+
+Local try:
+- `./build/vsdf --toy shaders/testtoyshader.frag --record out.mp4 --record-frames 120 --preview`
+
+Compose later:
+- Preview stays optional; offscreen capture remains the source of truth.
+
+---
+
+## Step 10: Add a “record + no hot reload” policy
 **Change**: disable filewatcher and pipeline updates while recording.
 
 Files:
@@ -248,7 +302,7 @@ Compose later:
 
 ---
 
-## Step 10: Optional perf improvements (async readback)
+## Step 11: Optional perf improvements (async readback)
 **Change**: add a ring of staging buffers to overlap GPU/CPU work.
 
 Files:
@@ -274,7 +328,7 @@ Compose later:
 
 ---
 
-## Step 11: Polish + cleanup
+## Step 12: Polish + cleanup
 **Change**: finalize CLI flags, docs, and error messages.
 
 Files:
@@ -296,4 +350,3 @@ Compose later:
 - libav* API names often change; pin headers carefully and keep the wrapper minimal.
 - If cross-platform discovery is tricky, we can add a fallback `VSDF_FFMPEG_ROOT` hint in CMake.
 - Pixel format: prefer converting RGBA to YUV420P in `libswscale`.
-

@@ -19,6 +19,15 @@ else()
   target_link_libraries(${PROJECT_NAME} ${COMMON_LIBS})
 endif()
 
+# Optional FFmpeg tests (only when FFmpeg is enabled)
+if (VSDF_ENABLE_FFMPEG)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+    libavformat libavcodec libavutil libswscale)
+  target_sources(${PROJECT_NAME} PRIVATE ../src/ffmpeg_utils.cpp test_ffmpeg_utils.cpp)
+  target_link_libraries(${PROJECT_NAME} PkgConfig::FFMPEG)
+endif()
+
 # Discover and run tests
 include(GoogleTest)
 add_subdirectory(filewatcher)

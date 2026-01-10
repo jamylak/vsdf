@@ -614,6 +614,38 @@ findMemoryTypeIndex(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
     throw std::runtime_error("Failed to find suitable memory type");
 }
 
+[[nodiscard]] static ReadbackBuffer
+createReadbackBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
+                     VkDeviceSize size, VkBufferUsageFlags usage,
+                     VkMemoryPropertyFlags properties) {
+    ReadbackBuffer buffer{
+        .size = size,
+    };
+    VkBufferCreateInfo bufferInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+
+    VK_CHECK(vkCreateBuffer(device, &bufferInfo, nullptr, &buffer.buffer));
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(device, buffer.buffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memRequirements.size,
+        .memoryTypeIndex = findMemoryTypeIndex(
+            physicalDevice, memRequirements.memoryTypeBits, properties),
+    };
+
+    VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &buffer.memory));
+    VK_CHECK(vkBindBufferMemory(device, buffer.buffer, buffer.memory, 0));
+
+    return buffer;
+}
+
 [[nodiscard]] static VkDescriptorSetLayout
 createDescriptorSetLayout(VkDevice device) {
     VkDescriptorSetLayoutBinding layoutBinding{

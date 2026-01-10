@@ -100,10 +100,11 @@ and adjusting it to your liking
 - `--frames <N>` Render N frames then exit (helps CI)
 - `--headless` Hide the GLFW window (pair with `xvfb-run` in CI)
 - `--log-level <trace|debug|info|warn|error|critical|off>` Set spdlog verbosity (default: info)
+- `--debug-dump-ppm <dir>` Copy the swapchain image before present (adds a stall); mainly for smoke tests or debugging
 
 ### Test Dumping 1 frame
 ```sh
-./build/vsdf shaders/debug_quadrants.frag --toy --headless --frames 1 --dump-ppm out_ppm
+./build/vsdf shaders/debug_quadrants.frag --toy --headless --frames 1 --debug-dump-ppm out_ppm
 ```
 
 Now in `out_ppm/` you should see an image with 4 quadrants:

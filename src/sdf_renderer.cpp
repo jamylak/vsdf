@@ -1,6 +1,7 @@
 #include "sdf_renderer.h"
 #include "filewatcher/filewatcher_factory.h"
 #include "glfwutils.h"
+#include "image_dump.h"
 #include "shader_utils.h"
 #include "vkutils.h"
 #include <cstdint>
@@ -14,11 +15,11 @@ void framebufferResizeCallback(GLFWwindow *window, int width,
     spdlog::info("Framebuffer resized to {}x{}", width, height);
 };
 
-SDFRenderer::SDFRenderer(const std::string &fragShaderPath,
-                         bool useToyTemplate,
-                         std::optional<uint32_t> maxFrames, bool headless)
+SDFRenderer::SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
+                         std::optional<uint32_t> maxFrames, bool headless,
+                         std::optional<std::filesystem::path> debugDumpPPMDir)
     : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
-      maxFrames(maxFrames), headless(headless) {}
+      maxFrames(maxFrames), headless(headless), debugDumpPPMDir(debugDumpPPMDir) {}
 
 void SDFRenderer::setup() {
     glfwSetup();
@@ -68,9 +69,16 @@ void SDFRenderer::setupRenderContext() {
         vkutils::getSurfaceCapabilities(physicalDevice, surface);
     swapchainSize = vkutils::getSwapchainSize(window, surfaceCapabilities);
     auto oldSwapchain = swapchain;
-    swapchain = vkutils::createSwapchain(physicalDevice, logicalDevice, surface,
-                                         surfaceCapabilities, swapchainSize,
-                                         swapchainFormat, oldSwapchain);
+    vkutils::SwapchainConfig swapchainConfig{
+        .surface = surface,
+        .surfaceCapabilities = surfaceCapabilities,
+        .extent = swapchainSize,
+        .surfaceFormat = swapchainFormat,
+        .oldSwapchain = oldSwapchain,
+        .enableReadback = debugDumpPPMDir.has_value(),
+    };
+    swapchain = vkutils::createSwapchain(physicalDevice, logicalDevice,
+                                         swapchainConfig);
     if (oldSwapchain != VK_NULL_HANDLE)
         vkDestroySwapchainKHR(logicalDevice, oldSwapchain, nullptr);
     swapchainImages = vkutils::getSwapchainImages(logicalDevice, swapchain);
@@ -95,7 +103,7 @@ void SDFRenderer::createPipeline() {
     std::filesystem::path fragSpirvPath;
     try {
         fragSpirvPath = shader_utils::compile(fragShaderPath, useToyTemplate);
-    } catch (const std::runtime_error&) {
+    } catch (const std::runtime_error &) {
         // An error occured while compiling the shader
         // This can happen while doing live edits
         // Just try find the old one until the error is fixed
@@ -133,7 +141,8 @@ SDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
     vkutils::PushConstants pushConstants;
     pushConstants.iTime = static_cast<float>(glfwGetTime());
     pushConstants.iFrame = currentFrame;
-    pushConstants.iResolution = glm::vec2(swapchainSize.width, swapchainSize.height);
+    pushConstants.iResolution =
+        glm::vec2(swapchainSize.width, swapchainSize.height);
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
@@ -216,6 +225,26 @@ void SDFRenderer::gameLoop() {
             imageAvailableSemaphores.semaphores[imageIndex],
             renderFinishedSemaphores.semaphores[imageIndex],
             fences.fences[frameIndex]);
+        if (debugDumpPPMDir) {
+            // Debug-only: copy the swapchain image before present, which stalls.
+            // Mainly useful for smoke tests or debugging.
+            VK_CHECK(vkWaitForFences(logicalDevice, 1,
+                                     &fences.fences[frameIndex], VK_TRUE,
+                                     UINT64_MAX));
+            vkutils::ReadbackContext readbackContext{};
+            readbackContext.device = logicalDevice;
+            readbackContext.physicalDevice = physicalDevice;
+            readbackContext.commandPool = commandPool;
+            readbackContext.queue = queue;
+            ReadbackFrame frame = vkutils::readbackSwapchainImage(
+                readbackContext, swapchainImages.images[imageIndex],
+                swapchainFormat.format, swapchainSize);
+            std::filesystem::create_directories(*debugDumpPPMDir);
+            std::filesystem::path outPath =
+                *debugDumpPPMDir / fmt::format("frame_{:04}.ppm", dumpedFrames);
+            image_dump::writePPM(frame, outPath);
+            dumpedFrames++;
+        }
         vkutils::presentImage(queue, swapchain,
                               renderFinishedSemaphores.semaphores[frameIndex],
                               imageIndex);

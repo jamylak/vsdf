@@ -5,7 +5,7 @@ find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
 
 # Add test executable
-add_executable(${PROJECT_NAME} ../src/shader_utils.cpp test_shader_comp.cpp)
+add_executable(${PROJECT_NAME} ../src/shader_utils.cpp test_shader_comp.cpp test_frame.cpp test_ppm_dump.cpp)
 
 # Common libraries for all platforms
 set(COMMON_LIBS ${GTEST_BOTH_LIBRARIES} spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
@@ -17,6 +17,20 @@ if(UNIX)
 else()
   # Windows doesn't need explicit pthread library
   target_link_libraries(${PROJECT_NAME} ${COMMON_LIBS})
+endif()
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+  VSDF_BINARY_PATH="${CMAKE_BINARY_DIR}/vsdf"
+  VSDF_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+
+# Optional FFmpeg tests (only when FFmpeg is enabled)
+if (VSDF_ENABLE_FFMPEG)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+    libavformat libavcodec libavutil libswscale)
+  target_sources(${PROJECT_NAME} PRIVATE ../src/ffmpeg_utils.cpp test_ffmpeg.cpp)
+  target_link_libraries(${PROJECT_NAME} PkgConfig::FFMPEG)
 endif()
 
 # Discover and run tests

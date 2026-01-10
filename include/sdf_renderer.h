@@ -2,6 +2,7 @@
 #define SDF_RENDERER_H
 #include "vkutils.h"
 #include <optional>
+#include <filesystem>
 #include <vulkan/vulkan.h>
 
 inline constexpr uint32_t WINDOW_WIDTH = 800;
@@ -58,6 +59,11 @@ class SDFRenderer {
     std::optional<uint32_t> maxFrames;
     bool headless = false;
 
+    // Debug-only: copies the swapchain image before present, which stalls.
+    // Mainly useful for smoke tests or debugging.
+    std::optional<std::filesystem::path> debugDumpPPMDir;
+    uint32_t dumpedFrames = 0;
+
     // Timing
     std::chrono::time_point<std::chrono::high_resolution_clock> cpuStartFrame,
         cpuEndFrame;
@@ -80,7 +86,8 @@ class SDFRenderer {
     SDFRenderer &operator=(const SDFRenderer &) = delete;
     SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false,
                 std::optional<uint32_t> maxFrames = std::nullopt,
-                bool headless = false);
+                bool headless = false,
+                std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt);
     void setup();
     void gameLoop();
 };

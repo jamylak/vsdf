@@ -1,5 +1,7 @@
 option(ENABLE_SANITIZERS "Build with sanitizers" OFF)
 option(ENABLE_FUZZING "Build fuzz targets" OFF)
+# (WIP) FFmpeg recording support. Not yet implemented.
+option(VSDF_ENABLE_FFMPEG "Enable FFmpeg recording" OFF)
 
 if (ENABLE_SANITIZERS)
   add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
@@ -29,7 +31,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
   add_link_options(-fsanitize=address)
 endif()
 
-add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp src/image_dump.cpp)
 
 # Recommended warnings and safeguards
 if(MSVC)
@@ -72,6 +74,16 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
 include_directories(${PROJECT_NAME} PRIVATE include ${GLM_INCLUDE_DIRS})
+
+# Optional FFmpeg integration (build plumbing only)
+if (VSDF_ENABLE_FFMPEG)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+    libavformat libavcodec libavutil libswscale)
+  target_sources(${PROJECT_NAME} PRIVATE src/ffmpeg_utils.cpp)
+  target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFMPEG)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE VSDF_ENABLE_FFMPEG=1)
+endif()
 
 # Install the executable
 install(TARGETS ${PROJECT_NAME}

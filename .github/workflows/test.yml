@@ -21,7 +21,7 @@ jobs:
       run: docker build -t linux-tests -f linux-tests.Dockerfile .
       
     - name: Test with Docker
-      run: docker run linux-tests
+      run: docker run -e CI=true linux-tests
 
   build-and-test-macos:
     name: Build and Test on macOS

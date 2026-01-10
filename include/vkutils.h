@@ -329,8 +329,8 @@ getSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
 
 [[nodiscard]] consteval auto getPreferredFormats() {
     return std::to_array({
-        VK_FORMAT_R8G8B8_SRGB,
-        VK_FORMAT_R8G8B8_UNORM,
+        VK_FORMAT_B8G8R8A8_SRGB,
+        VK_FORMAT_B8G8R8A8_UNORM,
     });
 }
 
@@ -355,8 +355,8 @@ selectSwapchainFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
     if (surfaceFormatCount == 1 &&
         surfaceFormats[0].format == VK_FORMAT_UNDEFINED) {
         spdlog::info("Surface format is undefined, selecting "
-                     "VK_FORMAT_R8G8B8A8_SRGB as default.");
-        return {VK_FORMAT_R8G8B8A8_SRGB, surfaceFormats[0].colorSpace};
+                     "VK_FORMAT_B8G8R8A8_SRGB as default.");
+        return {VK_FORMAT_B8G8R8A8_SRGB, surfaceFormats[0].colorSpace};
     }
 
     static constexpr auto preferredFormatArray = getPreferredFormats();

@@ -1070,6 +1070,13 @@ static void submitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer,
     VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence));
 }
 
+struct ReadbackContext {
+    VkDevice device = VK_NULL_HANDLE;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+    VkQueue queue = VK_NULL_HANDLE;
+};
+
 static void presentImage(VkQueue queue, VkSwapchainKHR swapchain,
                          VkSemaphore renderFinishedSemaphore,
                          uint32_t imageIndex) {

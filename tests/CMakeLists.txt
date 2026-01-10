@@ -8,7 +8,7 @@ include_directories(${GTEST_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME} ../src/shader_utils.cpp test_shader_comp.cpp test_frame.cpp test_ppm_dump.cpp test_offline_ppm_dump.cpp test_offline_utils.cpp)
 
 # Common libraries for all platforms
-set(COMMON_LIBS ${GTEST_BOTH_LIBRARIES} spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
+set(COMMON_LIBS ${GTEST_BOTH_LIBRARIES} spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glfw Vulkan::Vulkan)
 
 # Platform-specific threading library
 if(UNIX)

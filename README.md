@@ -15,6 +15,12 @@ That way you can use your favourite editor / LSP and also utilise git.
 ## Platforms
 Supports macOS, Linux, and Windows with native file watcher implementations for each platform.
 
+| OS | Support |
+| --- | --- |
+| Windows | ✅ Supported |
+| Linux | ✅ Supported |
+| macOS | ✅ Supported |
+
 ## Mac Dev Setup (Homebrew)
 Install Vulkan + deps with Homebrew (Quickstart + macOS CI):
 ```sh

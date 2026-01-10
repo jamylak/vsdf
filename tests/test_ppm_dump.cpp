@@ -92,14 +92,14 @@ void skipWhitespaceAndComments(std::istream &in) {
 } // namespace
 
 TEST(PPMDump, DebugQuadrants) {
-    auto outDir =
+    const auto outDir =
         std::filesystem::current_path() / "ppm_test_output";
     std::filesystem::create_directories(outDir);
 
-    auto shaderPath =
+    const auto shaderPath =
         std::filesystem::path(VSDF_SOURCE_DIR) / "shaders" /
         "debug_quadrants.frag";
-    auto oldCwd = std::filesystem::current_path();
+    const auto oldCwd = std::filesystem::current_path();
 
     // Move to the current dir to resolve shaders correctly
     std::filesystem::current_path(VSDF_SOURCE_DIR);
@@ -111,11 +111,11 @@ TEST(PPMDump, DebugQuadrants) {
     std::filesystem::current_path(oldCwd);
     ASSERT_EQ(rc, 0);
 
-    std::filesystem::path ppmPath = outDir / "frame_0000.ppm";
+    const std::filesystem::path ppmPath = outDir / kPpmFrame0Name;
     ASSERT_TRUE(std::filesystem::exists(ppmPath));
 
     // Just as a sanity check, make sure it did only 1 frame
-    std::filesystem::path ppmPathNext = outDir / "frame_0001.ppm";
+    const std::filesystem::path ppmPathNext = outDir / kPpmFrame1Name;
     ASSERT_FALSE(std::filesystem::exists(ppmPathNext));
 
     PPMImage img = readPPM(ppmPath);

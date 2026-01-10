@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <vector>
 #include <vulkan/vulkan.h>
+#include "readback_frame.h"
 #define GLFW_INCLUDE_VULKAN
 #include "fileutils.h"
 #include <GLFW/glfw3.h>
@@ -68,6 +69,17 @@ struct Semaphores {
 struct FrameBuffers {
     std::array<VkFramebuffer, MAX_SWAPCHAIN_IMAGES> framebuffers{};
     uint32_t count = 0;
+};
+
+/*
+ * Used to readback a buffer from GPU -> CPU.
+ * eg. to dump a frame as part of testing
+ *     or to encode frames in CPU with ffmpeg
+ */
+struct ReadbackBuffer {
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    VkDeviceSize size = 0;
 };
 
 [[nodiscard]] static VkInstance setupVulkanInstance() {

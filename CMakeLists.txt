@@ -31,7 +31,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
   add_link_options(-fsanitize=address)
 endif()
 
-add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp src/image_dump.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp src/online_sdf_renderer.cpp src/offline_sdf_renderer.cpp src/image_dump.cpp)
 
 # Recommended warnings and safeguards
 if(MSVC)

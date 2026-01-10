@@ -1,4 +1,5 @@
-#include "sdf_renderer.h"
+#include "offline_sdf_renderer.h"
+#include "online_sdf_renderer.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -34,6 +35,7 @@ int main(int argc, char **argv) {
     bool useToyTemplate = false;
     std::optional<uint32_t> maxFrames;
     bool headless = false;
+    bool offline = false;
     std::optional<std::filesystem::path> debugDumpPPMDir;
     auto logLevel = spdlog::level::info;
     std::filesystem::path shaderFile;
@@ -46,6 +48,9 @@ int main(int argc, char **argv) {
         arg = argv[i];
         if (arg == "--toy") {
             useToyTemplate = true;
+            continue;
+        } else if (arg == "--offline") {
+            offline = true;
             continue;
         } else if (arg == "--headless") {
             headless = true;
@@ -95,9 +100,16 @@ int main(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
-    SDFRenderer renderer{shaderFile.string(), useToyTemplate, maxFrames, headless,
-                         debugDumpPPMDir};
-    renderer.setup();
-    renderer.gameLoop();
+    if (offline) {
+        OfflineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
+                                    maxFrames, debugDumpPPMDir};
+        renderer.setup();
+        renderer.renderFrames();
+    } else {
+        OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
+                                   maxFrames, headless, debugDumpPPMDir};
+        renderer.setup();
+        renderer.gameLoop();
+    }
     return 0;
 }

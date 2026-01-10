@@ -82,7 +82,23 @@ struct ReadbackBuffer {
     VkDeviceSize size = 0;
 };
 
-[[nodiscard]] static VkInstance setupVulkanInstance() {
+struct ReadbackFormatInfo {
+    uint32_t bytesPerPixel = 0;
+    bool swapRB = false;
+};
+
+[[nodiscard]] inline ReadbackFormatInfo getReadbackFormatInfo(VkFormat format) {
+    switch (format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_SRGB:
+        return {4, true};
+    default:
+        throw std::runtime_error(
+            "Unsupported format for readback; expected BGRA8");
+    }
+}
+
+[[nodiscard]] static VkInstance setupVulkanInstance(bool offline = false) {
     const VkApplicationInfo appInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = nullptr,
@@ -94,13 +110,16 @@ struct ReadbackBuffer {
     };
     spdlog::info("Size of push constants {}", sizeof(PushConstants));
 
-    uint32_t extensionCount = 0;
-    const char **glfwExtensions =
-        glfwGetRequiredInstanceExtensions(&extensionCount);
-
-    // Use vector for convenience here, this is only run once at startup
-    std::vector<const char *> extensions(glfwExtensions,
-                                         glfwExtensions + extensionCount);
+    std::vector<const char *> extensions;
+    if (!offline) {
+        // Offline renders on GPU to an offscreen image for readback (future
+        // ffmpeg encoding), so it has no GLFW surface and doesn't need
+        // GLFW-provided instance extensions.
+        uint32_t extensionCount = 0;
+        const char **glfwExtensions =
+            glfwGetRequiredInstanceExtensions(&extensionCount);
+        extensions.assign(glfwExtensions, glfwExtensions + extensionCount);
+    }
 
 #ifdef __APPLE__
     extensions.push_back("VK_KHR_portability_enumeration");
@@ -239,8 +258,8 @@ getDeviceProperties(VkPhysicalDevice physicalDevice) {
 }
 
 [[nodiscard]] static uint32_t
-getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
-                            VkSurfaceKHR surface) {
+getVulkanGraphicsQueueIndexImpl(VkPhysicalDevice physicalDevice,
+                                VkSurfaceKHR surface, bool requirePresent) {
     uint32_t queueFamilyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount,
                                              nullptr);
@@ -270,23 +289,40 @@ getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
         spdlog::debug("Queue family {} supports protected: {} ", i,
                       queueFamilies[i].queueFlags & VK_QUEUE_PROTECTED_BIT);
 
-        VkBool32 supportsPresent;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface,
-                                             &supportsPresent);
-        spdlog::debug("Queue family {} supports present: {} ", i,
-                      supportsPresent);
-
-        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT &&
-            supportsPresent)
+        if (requirePresent) {
+            VkBool32 supportsPresent;
+            vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface,
+                                                 &supportsPresent);
+            spdlog::debug("Queue family {} supports present: {} ", i,
+                          supportsPresent);
+            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT &&
+                supportsPresent)
+                return i;
+        } else if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             return i;
+        }
     }
 
     throw std::runtime_error("Failed to find graphics queue");
 }
 
+[[nodiscard]] static uint32_t
+getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice) {
+    // For when present is not needed eg. for offline rendering of SDF
+    // to encode with FFMPEG
+    return getVulkanGraphicsQueueIndexImpl(physicalDevice, VK_NULL_HANDLE,
+                                           false);
+}
+
+[[nodiscard]] static uint32_t
+getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
+                            VkSurfaceKHR surface) {
+    return getVulkanGraphicsQueueIndexImpl(physicalDevice, surface, true);
+}
+
 [[nodiscard]] static VkDevice
 createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
-                          uint32_t graphicsQueueIndex) {
+                          uint32_t graphicsQueueIndex, bool offline = false) {
     float queuePriority = 1.0f;
 
     spdlog::debug("Create a queue...");
@@ -297,12 +333,13 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
         .pQueuePriorities = &queuePriority,
     };
 
-    static const char *requiredExtensions[] = {
-        "VK_KHR_swapchain",
+    std::vector<const char *> requiredExtensions;
+    if (!offline) {
+        requiredExtensions.push_back("VK_KHR_swapchain");
+    }
 #ifdef __APPLE__
-        "VK_KHR_portability_subset",
+    requiredExtensions.push_back("VK_KHR_portability_subset");
 #endif
-    };
 
     spdlog::debug("Create a logical device...");
     VkDevice device;
@@ -318,13 +355,15 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
         .pNext = &dynamicRenderingFeatures,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueInfo,
-        .enabledExtensionCount = std::size(requiredExtensions),
-        .ppEnabledExtensionNames = requiredExtensions,
+        .enabledExtensionCount =
+            static_cast<uint32_t>(requiredExtensions.size()),
+        .ppEnabledExtensionNames =
+            requiredExtensions.empty() ? nullptr : requiredExtensions.data(),
     };
 
     VK_CHECK(
         vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
-    spdlog::debug("Created logical device");
+    spdlog::debug("Created logical device (offline = {})", offline);
 
     return device;
 }
@@ -763,8 +802,8 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
     return semaphores;
 }
 
-[[nodiscard]] static VkRenderPass createRenderPass(VkDevice device,
-                                                   VkFormat format) {
+[[nodiscard]] static VkRenderPass
+createRenderPass(VkDevice device, VkFormat format, bool offline = false) {
     spdlog::debug("Create render pass");
     VkAttachmentDescription colorAttachment{
         .format = format,
@@ -773,8 +812,13 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        // Offline keeps the image in COLOR_ATTACHMENT_OPTIMAL between passes,
+        // transitioning to TRANSFER_SRC_OPTIMAL only for readback.
+        // Swapchain rendering discards old contents and transitions to PRESENT.
+        .initialLayout = offline ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                 : VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = offline ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                               : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
     };
 
     VkAttachmentReference colorAttachmentRef{
@@ -1080,31 +1124,20 @@ struct ReadbackContext {
 [[nodiscard]] static ReadbackFrame
 readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
                        VkFormat format, VkExtent2D extent) {
-    // Intended for quick validation/smoke tests of the presented swapchain path.
-    // You'd want to avoid swapchain if you just wanted to only encode video
-    // for example, to save time
-    uint32_t bytesPerPixel = 0;
-    bool swapRB = false;
-    switch (format) {
-    case VK_FORMAT_B8G8R8A8_UNORM:
-    case VK_FORMAT_B8G8R8A8_SRGB:
-        bytesPerPixel = 4;
-        swapRB = true;
-        break;
-    default:
-        throw std::runtime_error(
-            "Unsupported swapchain format for readback; expected BGRA8");
-    }
+    // Intended for quick validation/smoke tests of the presented swapchain
+    // path. You'd want to avoid swapchain if you just wanted to only encode
+    // video for example, to save time
+    const ReadbackFormatInfo formatInfo = getReadbackFormatInfo(format);
 
     VkDeviceSize imageSize = static_cast<VkDeviceSize>(extent.width) *
                              static_cast<VkDeviceSize>(extent.height) *
-                             bytesPerPixel;
+                             formatInfo.bytesPerPixel;
 
-    ReadbackBuffer stagingBuffer = createReadbackBuffer(
-        context.device, context.physicalDevice, imageSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    ReadbackBuffer stagingBuffer =
+        createReadbackBuffer(context.device, context.physicalDevice, imageSize,
+                             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkCommandBufferAllocateInfo allocInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1168,9 +1201,9 @@ readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
                            stagingBuffer.buffer, 1, &region);
 
     // This is the “undo” barrier after the copy.
-    // It transitions the swapchain image back to PRESENT_SRC_KHR so the presentation engine can
-    // display it.
-    // After the copy, you must move it back to present layout for vkQueuePresentKHR.
+    // It transitions the swapchain image back to PRESENT_SRC_KHR so the
+    // presentation engine can display it. After the copy, you must move it back
+    // to present layout for vkQueuePresentKHR.
     VkImageMemoryBarrier barrierToPresent{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
@@ -1215,12 +1248,12 @@ readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
     const size_t pixelCount =
         static_cast<size_t>(extent.width) * static_cast<size_t>(extent.height);
     for (size_t i = 0; i < pixelCount; ++i) {
-        const size_t srcOffset = i * bytesPerPixel;
+        const size_t srcOffset = i * formatInfo.bytesPerPixel;
         const size_t dstOffset = i * 3;
         uint8_t r = 0;
         uint8_t g = 0;
         uint8_t b = 0;
-        if (swapRB) {
+        if (formatInfo.swapRB) {
             r = src[srcOffset + 2];
             g = src[srcOffset + 1];
             b = src[srcOffset + 0];

@@ -1,7 +1,6 @@
 #include "online_sdf_renderer.h"
 #include "filewatcher/filewatcher_factory.h"
 #include "glfwutils.h"
-#include "image_dump.h"
 #include "shader_utils.h"
 #include "vkutils.h"
 #include <cstdint>
@@ -19,8 +18,8 @@ OnlineSDFRenderer::OnlineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
     std::optional<uint32_t> maxFrames, bool headless,
     std::optional<std::filesystem::path> debugDumpPPMDir)
-    : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
-      maxFrames(maxFrames), headless(headless), debugDumpPPMDir(debugDumpPPMDir) {}
+    : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
+      headless(headless) {}
 
 void OnlineSDFRenderer::setup() {
     glfwSetup();
@@ -44,15 +43,14 @@ void OnlineSDFRenderer::vulkanSetup() {
     instance = vkutils::setupVulkanInstance();
     physicalDevice = vkutils::findGPU(instance);
     deviceProperties = vkutils::getDeviceProperties(physicalDevice);
-    spdlog::info("Device limits {:.3f}",
-                 deviceProperties.limits.timestampPeriod);
+    logDeviceLimits();
     surface = vkutils::createVulkanSurface(instance, window);
     graphicsQueueIndex =
         vkutils::getVulkanGraphicsQueueIndex(physicalDevice, surface);
     logicalDevice =
         vkutils::createVulkanLogicalDevice(physicalDevice, graphicsQueueIndex);
     queue = VK_NULL_HANDLE;
-    vkGetDeviceQueue(logicalDevice, graphicsQueueIndex, 0, &queue);
+    initDeviceQueue();
     swapchainFormat = vkutils::selectSwapchainFormat(physicalDevice, surface);
     renderPass =
         vkutils::createRenderPass(logicalDevice, swapchainFormat.format);
@@ -100,7 +98,7 @@ void OnlineSDFRenderer::setupRenderContext() {
 }
 
 void OnlineSDFRenderer::createPipeline() {
-    pipelineLayout = vkutils::createPipelineLayout(logicalDevice);
+    createPipelineLayoutCommon();
     std::filesystem::path fragSpirvPath;
     try {
         fragSpirvPath = shader_utils::compile(fragShaderPath, useToyTemplate);
@@ -240,11 +238,7 @@ void OnlineSDFRenderer::gameLoop() {
             ReadbackFrame frame = vkutils::readbackSwapchainImage(
                 readbackContext, swapchainImages.images[imageIndex],
                 swapchainFormat.format, swapchainSize);
-            std::filesystem::create_directories(*debugDumpPPMDir);
-            std::filesystem::path outPath =
-                *debugDumpPPMDir / fmt::format("frame_{:04}.ppm", dumpedFrames);
-            image_dump::writePPM(frame, outPath);
-            dumpedFrames++;
+            dumpDebugFrame(frame);
         }
         vkutils::presentImage(queue, swapchain,
                               renderFinishedSemaphores.semaphores[frameIndex],

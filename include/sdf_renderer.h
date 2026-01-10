@@ -9,6 +9,16 @@
 
 class SDFRenderer {
   protected:
+    SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
+                std::optional<uint32_t> maxFrames,
+                std::optional<std::filesystem::path> debugDumpPPMDir);
+
+    void logDeviceLimits() const;
+    void initDeviceQueue();
+    void createPipelineLayoutCommon();
+    void dumpDebugFrame(const ReadbackFrame &frame);
+    void destroyPipelineCommon() noexcept;
+
     // Vulkan Setup
     VkInstance instance = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;

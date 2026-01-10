@@ -1,9 +1,7 @@
 #include "offline_sdf_renderer.h"
-#include "image_dump.h"
 #include "shader_utils.h"
 #include "vkutils.h"
 #include <cstdint>
-#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 namespace {
@@ -49,9 +47,8 @@ OfflineSDFRenderer::OfflineSDFRenderer(
     std::optional<uint32_t> maxFrames,
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
     uint32_t height)
-    : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
-      imageSize({width, height}), maxFrames(maxFrames),
-      debugDumpPPMDir(debugDumpPPMDir) {}
+    : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
+      imageSize({width, height}) {}
 
 void OfflineSDFRenderer::setup() {
     vulkanSetup();
@@ -65,12 +62,11 @@ void OfflineSDFRenderer::vulkanSetup() {
     instance = vkutils::setupVulkanInstance(true);
     physicalDevice = vkutils::findGPU(instance);
     deviceProperties = vkutils::getDeviceProperties(physicalDevice);
-    spdlog::info("Device limits {:.3f}",
-                 deviceProperties.limits.timestampPeriod);
+    logDeviceLimits();
     graphicsQueueIndex = vkutils::getVulkanGraphicsQueueIndex(physicalDevice);
     logicalDevice = vkutils::createVulkanLogicalDevice(
         physicalDevice, graphicsQueueIndex, true);
-    vkGetDeviceQueue(logicalDevice, graphicsQueueIndex, 0, &queue);
+    initDeviceQueue();
     renderPass = createOffscreenRenderPass(logicalDevice, imageFormat);
     commandPool = vkutils::createCommandPool(logicalDevice, graphicsQueueIndex);
 
@@ -159,7 +155,7 @@ void OfflineSDFRenderer::setupRenderContext() {
 }
 
 void OfflineSDFRenderer::createPipeline() {
-    pipelineLayout = vkutils::createPipelineLayout(logicalDevice);
+    createPipelineLayoutCommon();
     std::filesystem::path fragSpirvPath =
         shader_utils::compile(fragShaderPath, useToyTemplate);
     fragShaderModule =
@@ -415,11 +411,7 @@ void OfflineSDFRenderer::renderFrames() {
 
         if (debugDumpPPMDir) {
             ReadbackFrame frame = readbackOffscreenImage();
-            std::filesystem::create_directories(*debugDumpPPMDir);
-            std::filesystem::path outPath =
-                *debugDumpPPMDir / fmt::format("frame_{:04}.ppm", dumpedFrames);
-            image_dump::writePPM(frame, outPath);
-            dumpedFrames++;
+            dumpDebugFrame(frame);
         }
     }
 

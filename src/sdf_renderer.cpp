@@ -39,3 +39,14 @@ void SDFRenderer::destroyPipelineCommon() noexcept {
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
     vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
 }
+
+vkutils::PushConstants
+SDFRenderer::buildPushConstants(float timeSeconds, uint32_t currentFrame,
+                                const glm::vec2 &resolution) const noexcept {
+    vkutils::PushConstants pushConstants;
+    pushConstants.iTime = timeSeconds;
+    pushConstants.iFrame = currentFrame;
+    pushConstants.iResolution = resolution;
+    pushConstants.iMouse = glm::vec2{-1000, -1000};
+    return pushConstants;
+}

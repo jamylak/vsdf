@@ -18,6 +18,9 @@ class SDFRenderer {
     void createPipelineLayoutCommon();
     void dumpDebugFrame(const ReadbackFrame &frame);
     void destroyPipelineCommon() noexcept;
+    [[nodiscard]] vkutils::PushConstants
+    buildPushConstants(float timeSeconds, uint32_t currentFrame,
+                       const glm::vec2 &resolution) const noexcept;
 
     // Vulkan Setup
     VkInstance instance = VK_NULL_HANDLE;

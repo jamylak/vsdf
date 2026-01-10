@@ -137,17 +137,13 @@ void OnlineSDFRenderer::destroyRenderContext() {
 
 [[nodiscard]] vkutils::PushConstants
 OnlineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
-    vkutils::PushConstants pushConstants;
-    pushConstants.iTime = static_cast<float>(glfwGetTime());
-    pushConstants.iFrame = currentFrame;
-    pushConstants.iResolution =
-        glm::vec2(swapchainSize.width, swapchainSize.height);
+    vkutils::PushConstants pushConstants = buildPushConstants(
+        static_cast<float>(glfwGetTime()), currentFrame,
+        glm::vec2(swapchainSize.width, swapchainSize.height));
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
         pushConstants.iMouse = glm::vec2{xpos, ypos};
-    } else {
-        pushConstants.iMouse = glm::vec2{-1000, -1000};
     }
     return pushConstants;
 }

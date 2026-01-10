@@ -197,14 +197,10 @@ void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
 
 vkutils::PushConstants
 OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
-    vkutils::PushConstants pushConstants;
     auto now = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration<float>(now - startTime).count();
-    pushConstants.iTime = elapsed;
-    pushConstants.iFrame = currentFrame;
-    pushConstants.iResolution = glm::vec2(imageSize.width, imageSize.height);
-    pushConstants.iMouse = glm::vec2{-1000, -1000};
-    return pushConstants;
+    return buildPushConstants(elapsed, currentFrame,
+                              glm::vec2(imageSize.width, imageSize.height));
 }
 
 ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {

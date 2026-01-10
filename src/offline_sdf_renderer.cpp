@@ -1,6 +1,6 @@
 #include "offline_sdf_renderer.h"
-#include "offline_sdf_utils.h"
 #include "image_dump.h"
+#include "offline_sdf_utils.h"
 #include "shader_utils.h"
 #include "vkutils.h"
 #include <cstdint>
@@ -69,8 +69,8 @@ void OfflineSDFRenderer::vulkanSetup() {
     spdlog::info("Device limits {:.3f}",
                  deviceProperties.limits.timestampPeriod);
     graphicsQueueIndex = vkutils::getVulkanGraphicsQueueIndex(physicalDevice);
-    logicalDevice = vkutils::createVulkanLogicalDevice(physicalDevice,
-                                                       graphicsQueueIndex, true);
+    logicalDevice = vkutils::createVulkanLogicalDevice(
+        physicalDevice, graphicsQueueIndex, true);
     vkGetDeviceQueue(logicalDevice, graphicsQueueIndex, 0, &queue);
     renderPass = createOffscreenRenderPass(logicalDevice, imageFormat);
     commandPool = vkutils::createCommandPool(logicalDevice, graphicsQueueIndex);
@@ -97,8 +97,8 @@ void OfflineSDFRenderer::setupRenderContext() {
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    VK_CHECK(
-        vkCreateImage(logicalDevice, &imageCreateInfo, nullptr, &offscreenImage));
+    VK_CHECK(vkCreateImage(logicalDevice, &imageCreateInfo, nullptr,
+                           &offscreenImage));
 
     VkMemoryRequirements memRequirements;
     vkGetImageMemoryRequirements(logicalDevice, offscreenImage,
@@ -112,9 +112,8 @@ void OfflineSDFRenderer::setupRenderContext() {
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
     };
 
-    VK_CHECK(
-        vkAllocateMemory(logicalDevice, &allocInfo, nullptr,
-                         &offscreenImageMemory));
+    VK_CHECK(vkAllocateMemory(logicalDevice, &allocInfo, nullptr,
+                              &offscreenImageMemory));
     VK_CHECK(vkBindImageMemory(logicalDevice, offscreenImage,
                                offscreenImageMemory, 0));
 
@@ -186,7 +185,8 @@ void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
     };
 
     VkCommandBuffer commandBuffer;
-    VK_CHECK(vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
+    VK_CHECK(
+        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
 
     VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -196,10 +196,10 @@ void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
 
     VkImageMemoryBarrier barrier{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .oldLayout = oldLayout,
         .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = offscreenImage,
         .subresourceRange =
             {
@@ -212,7 +212,8 @@ void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
     };
 
     VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkPipelineStageFlags dstStage =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
         newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
         barrier.srcAccessMask = 0;
@@ -241,12 +242,10 @@ vkutils::PushConstants
 OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
     vkutils::PushConstants pushConstants;
     auto now = std::chrono::high_resolution_clock::now();
-    auto elapsed =
-        std::chrono::duration<float>(now - startTime).count();
+    auto elapsed = std::chrono::duration<float>(now - startTime).count();
     pushConstants.iTime = elapsed;
     pushConstants.iFrame = currentFrame;
-    pushConstants.iResolution =
-        glm::vec2(imageSize.width, imageSize.height);
+    pushConstants.iResolution = glm::vec2(imageSize.width, imageSize.height);
     pushConstants.iMouse = glm::vec2{-1000, -1000};
     return pushConstants;
 }
@@ -258,11 +257,11 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
     VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
                               static_cast<VkDeviceSize>(imageSize.height) *
                               formatInfo.bytesPerPixel;
-    vkutils::ReadbackBuffer stagingBuffer = vkutils::createReadbackBuffer(
-        logicalDevice, physicalDevice, imageBytes,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    vkutils::ReadbackBuffer stagingBuffer =
+        vkutils::createReadbackBuffer(logicalDevice, physicalDevice, imageBytes,
+                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkCommandBufferAllocateInfo allocInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -272,7 +271,8 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
     };
 
     VkCommandBuffer commandBuffer;
-    VK_CHECK(vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
+    VK_CHECK(
+        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
 
     VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -364,9 +364,8 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
     ReadbackFrame frame;
     frame.allocateRGB(imageSize.width, imageSize.height);
     const uint8_t *src = static_cast<const uint8_t *>(data);
-    const size_t pixelCount =
-        static_cast<size_t>(imageSize.width) *
-        static_cast<size_t>(imageSize.height);
+    const size_t pixelCount = static_cast<size_t>(imageSize.width) *
+                              static_cast<size_t>(imageSize.height);
     for (size_t i = 0; i < pixelCount; ++i) {
         const size_t srcOffset = i * formatInfo.bytesPerPixel;
         const size_t dstOffset = i * 3;
@@ -396,7 +395,8 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
 
 void OfflineSDFRenderer::renderFrames() {
     uint32_t totalFrames = maxFrames.value_or(1);
-    for (uint32_t currentFrame = 0; currentFrame < totalFrames; ++currentFrame) {
+    for (uint32_t currentFrame = 0; currentFrame < totalFrames;
+         ++currentFrame) {
         VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[0], VK_TRUE,
                                  UINT64_MAX));
         VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[0]));

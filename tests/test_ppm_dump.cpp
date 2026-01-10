@@ -122,10 +122,10 @@ TEST(PPMDump, DebugQuadrants) {
     ASSERT_GT(img.width, 0u);
     ASSERT_GT(img.height, 0u);
 
-    uint32_t xLeft = img.width / 4;
-    uint32_t xRight = (img.width * 3) / 4;
-    uint32_t yTop = img.height / 4;
-    uint32_t yBottom = (img.height * 3) / 4;
+    const uint32_t xLeft = img.width / 4;
+    const uint32_t xRight = (img.width * 3) / 4;
+    const uint32_t yTop = img.height / 4;
+    const uint32_t yBottom = (img.height * 3) / 4;
 
     EXPECT_EQ(pixelAt(img, xLeft, yTop), (std::array<uint8_t, 3>{255, 0, 0}));
     EXPECT_EQ(pixelAt(img, xRight, yTop),

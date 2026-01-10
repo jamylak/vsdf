@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <spdlog/fmt/fmt.h>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -104,18 +105,19 @@ TEST(PPMDump, DebugQuadrants) {
     // Move to the current dir to resolve shaders correctly
     std::filesystem::current_path(VSDF_SOURCE_DIR);
 
-    std::string cmd = std::string("\"") + VSDF_BINARY_PATH + "\" \"" +
-                      shaderPath.string() + "\" --toy --headless --frames 1 "
-                      "--dump-ppm \"" + outDir.string() + "\"";
-    int rc = std::system(cmd.c_str());
+    const std::string cmd =
+        fmt::format("\"{}\" \"{}\" --toy --headless --frames 1 --dump-ppm \"{}\"",
+                    VSDF_BINARY_PATH, shaderPath.string(), outDir.string());
+    const int rc = std::system(cmd.c_str());
     std::filesystem::current_path(oldCwd);
     ASSERT_EQ(rc, 0);
 
-    const std::filesystem::path ppmPath = outDir / kPpmFrame0Name;
+    const std::filesystem::path ppmPath = outDir / "frame_0000.ppm";
     ASSERT_TRUE(std::filesystem::exists(ppmPath));
 
     // Just as a sanity check, make sure it did only 1 frame
-    const std::filesystem::path ppmPathNext = outDir / kPpmFrame1Name;
+    const std::filesystem::path ppmPathNext = outDir / "frame_0001.ppm";
+
     ASSERT_FALSE(std::filesystem::exists(ppmPathNext));
 
     const PPMImage img = readPPM(ppmPath);

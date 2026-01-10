@@ -4,44 +4,6 @@
 #include <cstdint>
 #include <spdlog/spdlog.h>
 
-namespace {
-VkRenderPass createOffscreenRenderPass(VkDevice device, VkFormat format) {
-    VkAttachmentDescription colorAttachment{
-        .format = format,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
-
-    VkAttachmentReference colorAttachmentRef{
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
-
-    VkSubpassDescription subpass{
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachmentRef,
-    };
-
-    VkRenderPassCreateInfo renderPassInfo{
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &colorAttachment,
-        .subpassCount = 1,
-        .pSubpasses = &subpass,
-    };
-
-    VkRenderPass renderPass;
-    VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
-    return renderPass;
-}
-} // namespace
-
 OfflineSDFRenderer::OfflineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
     std::optional<uint32_t> maxFrames,
@@ -67,7 +29,7 @@ void OfflineSDFRenderer::vulkanSetup() {
     logicalDevice = vkutils::createVulkanLogicalDevice(
         physicalDevice, graphicsQueueIndex, true);
     initDeviceQueue();
-    renderPass = createOffscreenRenderPass(logicalDevice, imageFormat);
+    renderPass = vkutils::createRenderPass(logicalDevice, imageFormat, true);
     commandPool = vkutils::createCommandPool(logicalDevice, graphicsQueueIndex);
 
     std::filesystem::path vertSpirvPath{

@@ -802,8 +802,8 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
     return semaphores;
 }
 
-[[nodiscard]] static VkRenderPass createRenderPass(VkDevice device,
-                                                   VkFormat format) {
+[[nodiscard]] static VkRenderPass
+createRenderPass(VkDevice device, VkFormat format, bool offline = false) {
     spdlog::debug("Create render pass");
     VkAttachmentDescription colorAttachment{
         .format = format,
@@ -812,8 +812,10 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .initialLayout = offline ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                 : VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = offline ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                               : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
     };
 
     VkAttachmentReference colorAttachmentRef{

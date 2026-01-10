@@ -59,9 +59,9 @@ class SDFRenderer {
     std::optional<uint32_t> maxFrames;
     bool headless = false;
 
-    // This is useful to check we produce valid output
-    // as part of smoke tests
-    std::optional<std::filesystem::path> dumpPPMDir;
+    // Debug-only: copies the swapchain image before present, which stalls.
+    // Mainly useful for smoke tests or debugging.
+    std::optional<std::filesystem::path> debugDumpPPMDir;
     uint32_t dumpedFrames = 0;
 
     // Timing
@@ -87,7 +87,7 @@ class SDFRenderer {
     SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false,
                 std::optional<uint32_t> maxFrames = std::nullopt,
                 bool headless = false,
-                std::optional<std::filesystem::path> dumpPPMDir = std::nullopt);
+                std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt);
     void setup();
     void gameLoop();
 };

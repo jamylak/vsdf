@@ -17,9 +17,9 @@ void framebufferResizeCallback(GLFWwindow *window, int width,
 
 SDFRenderer::SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
                          std::optional<uint32_t> maxFrames, bool headless,
-                         std::optional<std::filesystem::path> dumpPPMDir)
+                         std::optional<std::filesystem::path> debugDumpPPMDir)
     : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
-      maxFrames(maxFrames), headless(headless), dumpPPMDir(dumpPPMDir) {}
+      maxFrames(maxFrames), headless(headless), debugDumpPPMDir(debugDumpPPMDir) {}
 
 void SDFRenderer::setup() {
     glfwSetup();
@@ -75,7 +75,7 @@ void SDFRenderer::setupRenderContext() {
         .extent = swapchainSize,
         .surfaceFormat = swapchainFormat,
         .oldSwapchain = oldSwapchain,
-        .enableReadback = dumpPPMDir.has_value(),
+        .enableReadback = debugDumpPPMDir.has_value(),
     };
     swapchain = vkutils::createSwapchain(physicalDevice, logicalDevice,
                                          swapchainConfig);
@@ -225,11 +225,9 @@ void SDFRenderer::gameLoop() {
             imageAvailableSemaphores.semaphores[imageIndex],
             renderFinishedSemaphores.semaphores[imageIndex],
             fences.fences[frameIndex]);
-        if (dumpPPMDir) {
-            // Useful mainly just in smoke tests to make sure
-            // everything is rendered as we expect it...
-            // For encoding video offscreen image and
-            // completely avoiding swapchain should be better
+        if (debugDumpPPMDir) {
+            // Debug-only: copy the swapchain image before present, which stalls.
+            // Mainly useful for smoke tests or debugging.
             VK_CHECK(vkWaitForFences(logicalDevice, 1,
                                      &fences.fences[frameIndex], VK_TRUE,
                                      UINT64_MAX));
@@ -241,9 +239,9 @@ void SDFRenderer::gameLoop() {
             ReadbackFrame frame = vkutils::readbackSwapchainImage(
                 readbackContext, swapchainImages.images[imageIndex],
                 swapchainFormat.format, swapchainSize);
-            std::filesystem::create_directories(*dumpPPMDir);
+            std::filesystem::create_directories(*debugDumpPPMDir);
             std::filesystem::path outPath =
-                *dumpPPMDir / fmt::format("frame_{:04}.ppm", dumpedFrames);
+                *debugDumpPPMDir / fmt::format("frame_{:04}.ppm", dumpedFrames);
             image_dump::writePPM(frame, outPath);
             dumpedFrames++;
         }

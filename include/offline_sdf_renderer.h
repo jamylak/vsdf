@@ -20,6 +20,7 @@ class OfflineSDFRenderer : public SDFRenderer {
     // Render Context
     VkExtent2D imageSize{};
     VkFormat imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+    // TODO: Convert to ring buffer for better performance
     VkImage offscreenImage = VK_NULL_HANDLE;
     VkDeviceMemory offscreenImageMemory = VK_NULL_HANDLE;
     VkImageView offscreenImageView = VK_NULL_HANDLE;

@@ -242,8 +242,8 @@ getDeviceProperties(VkPhysicalDevice physicalDevice) {
 }
 
 [[nodiscard]] static uint32_t
-getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
-                            VkSurfaceKHR surface) {
+getVulkanGraphicsQueueIndexImpl(VkPhysicalDevice physicalDevice,
+                                VkSurfaceKHR surface, bool requirePresent) {
     uint32_t queueFamilyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount,
                                              nullptr);
@@ -273,18 +273,35 @@ getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
         spdlog::debug("Queue family {} supports protected: {} ", i,
                       queueFamilies[i].queueFlags & VK_QUEUE_PROTECTED_BIT);
 
-        VkBool32 supportsPresent;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface,
-                                             &supportsPresent);
-        spdlog::debug("Queue family {} supports present: {} ", i,
-                      supportsPresent);
-
-        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT &&
-            supportsPresent)
+        if (requirePresent) {
+            VkBool32 supportsPresent;
+            vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface,
+                                                 &supportsPresent);
+            spdlog::debug("Queue family {} supports present: {} ", i,
+                          supportsPresent);
+            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT &&
+                supportsPresent)
+                return i;
+        } else if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             return i;
+        }
     }
 
     throw std::runtime_error("Failed to find graphics queue");
+}
+
+[[nodiscard]] static uint32_t
+getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice) {
+    // For when present is not needed eg. for offline rendering of SDF
+    // to encode with FFMPEG
+    return getVulkanGraphicsQueueIndexImpl(physicalDevice, VK_NULL_HANDLE,
+                                           false);
+}
+
+[[nodiscard]] static uint32_t
+getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
+                            VkSurfaceKHR surface) {
+    return getVulkanGraphicsQueueIndexImpl(physicalDevice, surface, true);
 }
 
 [[nodiscard]] static VkDevice

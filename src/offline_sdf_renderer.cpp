@@ -8,27 +8,6 @@
 #include <spdlog/spdlog.h>
 
 namespace {
-uint32_t findGraphicsQueueIndex(VkPhysicalDevice physicalDevice) {
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount,
-                                             nullptr);
-    if (queueFamilyCount == 0) {
-        throw std::runtime_error("No queue families found");
-    }
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount,
-                                             queueFamilies.data());
-
-    for (uint32_t i = 0; i < queueFamilyCount; i++) {
-        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            return i;
-        }
-    }
-
-    throw std::runtime_error("Failed to find graphics queue");
-}
-
 VkRenderPass createOffscreenRenderPass(VkDevice device, VkFormat format) {
     VkAttachmentDescription colorAttachment{
         .format = format,
@@ -89,7 +68,7 @@ void OfflineSDFRenderer::vulkanSetup() {
     deviceProperties = vkutils::getDeviceProperties(physicalDevice);
     spdlog::info("Device limits {:.3f}",
                  deviceProperties.limits.timestampPeriod);
-    graphicsQueueIndex = findGraphicsQueueIndex(physicalDevice);
+    graphicsQueueIndex = vkutils::getVulkanGraphicsQueueIndex(physicalDevice);
     logicalDevice = vkutils::createVulkanLogicalDevice(physicalDevice,
                                                        graphicsQueueIndex, true);
     vkGetDeviceQueue(logicalDevice, graphicsQueueIndex, 0, &queue);

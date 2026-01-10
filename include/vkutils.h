@@ -599,6 +599,22 @@ createCommandPool(VkDevice device, uint32_t graphicsQueueIndex) {
     return commandPool;
 }
 
+[[nodiscard]] static uint32_t
+findMemoryTypeIndex(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
+                    VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        if ((typeFilter & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & properties) ==
+                properties) {
+            return i;
+        }
+    }
+    throw std::runtime_error("Failed to find suitable memory type");
+}
+
 [[nodiscard]] static VkDescriptorSetLayout
 createDescriptorSetLayout(VkDevice device) {
     VkDescriptorSetLayoutBinding layoutBinding{

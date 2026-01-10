@@ -391,20 +391,27 @@ getSwapchainSize(GLFWwindow *window,
     return swapchainSize;
 }
 
+struct SwapchainConfig {
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+    VkExtent2D extent{};
+    VkSurfaceFormatKHR surfaceFormat{};
+    VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE;
+    bool enableReadback = false;
+};
+
 [[nodiscard]] static VkSwapchainKHR
 createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
-                VkSurfaceKHR surface,
-                const VkSurfaceCapabilitiesKHR &surfaceCapabilities,
-                VkExtent2D swapchainSize, VkSurfaceFormatKHR surfaceFormat,
-                VkSwapchainKHR oldSwapchain) {
+                const SwapchainConfig &config) {
     // Determine the number of VkImage's to use in the swapchain.
     // Ideally, we desire to own 1 image at a time, the rest of the images can
     // either be rendered to and/or being queued up for display.
-    uint32_t desiredSwapchainImages = surfaceCapabilities.minImageCount + 1;
-    if ((surfaceCapabilities.maxImageCount > 0) &&
-        (desiredSwapchainImages > surfaceCapabilities.maxImageCount)) {
+    uint32_t desiredSwapchainImages =
+        config.surfaceCapabilities.minImageCount + 1;
+    if ((config.surfaceCapabilities.maxImageCount > 0) &&
+        (desiredSwapchainImages > config.surfaceCapabilities.maxImageCount)) {
         // Application must settle for fewer images than desired.
-        desiredSwapchainImages = surfaceCapabilities.maxImageCount;
+        desiredSwapchainImages = config.surfaceCapabilities.maxImageCount;
     }
     spdlog::debug("Desired swapchain images: {}", desiredSwapchainImages);
 
@@ -414,15 +421,16 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
 
     // Query available present modes
     uint32_t presentModeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface,
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, config.surface,
                                               &presentModeCount, nullptr);
 
     static constexpr uint32_t presentModeCountMax = 30; // Safe upper bound
     std::array<VkPresentModeKHR, presentModeCountMax> presentModes;
 
     // Fill only the first presentModeCount elements
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-        physicalDevice, surface, &presentModeCount, presentModes.data());
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, config.surface,
+                                              &presentModeCount,
+                                              presentModes.data());
 
     // Log only the valid entries
     spdlog::info("Available present modes:");
@@ -447,16 +455,16 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
     }
 
     VkCompositeAlphaFlagBitsKHR composite = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    if (surfaceCapabilities.supportedCompositeAlpha &
+    if (config.surfaceCapabilities.supportedCompositeAlpha &
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
         composite = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    } else if (surfaceCapabilities.supportedCompositeAlpha &
+    } else if (config.surfaceCapabilities.supportedCompositeAlpha &
                VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
         composite = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
-    } else if (surfaceCapabilities.supportedCompositeAlpha &
+    } else if (config.surfaceCapabilities.supportedCompositeAlpha &
                VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR) {
         composite = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
-    } else if (surfaceCapabilities.supportedCompositeAlpha &
+    } else if (config.surfaceCapabilities.supportedCompositeAlpha &
                VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR) {
         composite = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
     }
@@ -464,31 +472,37 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
     spdlog::debug("Composite alpha: {}", static_cast<int>(composite));
 
     spdlog::debug("Selected surface format");
-    spdlog::info("Surface format: {}", static_cast<int>(surfaceFormat.format));
-    spdlog::info("Color space: {}", static_cast<int>(surfaceFormat.colorSpace));
+    spdlog::info("Surface format: {}",
+                 static_cast<int>(config.surfaceFormat.format));
+    spdlog::info("Color space: {}",
+                 static_cast<int>(config.surfaceFormat.colorSpace));
 
     // Create a swapchain
     spdlog::debug("Create a swapchain");
+    VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if (config.enableReadback) {
+        imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    }
     VkSwapchainCreateInfoKHR swapchainCreateInfo{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .pNext = nullptr,
-        .surface = surface,
+        .surface = config.surface,
         .minImageCount = desiredSwapchainImages,
-        .imageFormat = surfaceFormat.format,
-        .imageColorSpace = surfaceFormat.colorSpace,
+        .imageFormat = config.surfaceFormat.format,
+        .imageColorSpace = config.surfaceFormat.colorSpace,
         .imageExtent =
             {
-                .width = swapchainSize.width,
-                .height = swapchainSize.height,
+                .width = config.extent.width,
+                .height = config.extent.height,
             },
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage = imageUsage,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .preTransform = preTransform,
         .compositeAlpha = composite,
         .presentMode = swapchainPresentMode,
         .clipped = VK_TRUE,
-        .oldSwapchain = oldSwapchain,
+        .oldSwapchain = config.oldSwapchain,
     };
 
     VkSwapchainKHR swapchain;

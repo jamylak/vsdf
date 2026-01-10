@@ -14,11 +14,11 @@ void framebufferResizeCallback(GLFWwindow *window, int width,
     spdlog::info("Framebuffer resized to {}x{}", width, height);
 };
 
-SDFRenderer::SDFRenderer(const std::string &fragShaderPath,
-                         bool useToyTemplate,
-                         std::optional<uint32_t> maxFrames, bool headless)
+SDFRenderer::SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
+                         std::optional<uint32_t> maxFrames, bool headless,
+                         std::optional<std::filesystem::path> dumpPPMDir)
     : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
-      maxFrames(maxFrames), headless(headless) {}
+      maxFrames(maxFrames), headless(headless), dumpPPMDir(dumpPPMDir) {}
 
 void SDFRenderer::setup() {
     glfwSetup();
@@ -68,9 +68,16 @@ void SDFRenderer::setupRenderContext() {
         vkutils::getSurfaceCapabilities(physicalDevice, surface);
     swapchainSize = vkutils::getSwapchainSize(window, surfaceCapabilities);
     auto oldSwapchain = swapchain;
-    swapchain = vkutils::createSwapchain(physicalDevice, logicalDevice, surface,
-                                         surfaceCapabilities, swapchainSize,
-                                         swapchainFormat, oldSwapchain);
+    vkutils::SwapchainConfig swapchainConfig{
+        .surface = surface,
+        .surfaceCapabilities = surfaceCapabilities,
+        .extent = swapchainSize,
+        .surfaceFormat = swapchainFormat,
+        .oldSwapchain = oldSwapchain,
+        .enableReadback = dumpPPMDir.has_value(),
+    };
+    swapchain = vkutils::createSwapchain(physicalDevice, logicalDevice,
+                                         swapchainConfig);
     if (oldSwapchain != VK_NULL_HANDLE)
         vkDestroySwapchainKHR(logicalDevice, oldSwapchain, nullptr);
     swapchainImages = vkutils::getSwapchainImages(logicalDevice, swapchain);
@@ -95,7 +102,7 @@ void SDFRenderer::createPipeline() {
     std::filesystem::path fragSpirvPath;
     try {
         fragSpirvPath = shader_utils::compile(fragShaderPath, useToyTemplate);
-    } catch (const std::runtime_error&) {
+    } catch (const std::runtime_error &) {
         // An error occured while compiling the shader
         // This can happen while doing live edits
         // Just try find the old one until the error is fixed
@@ -133,7 +140,8 @@ SDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
     vkutils::PushConstants pushConstants;
     pushConstants.iTime = static_cast<float>(glfwGetTime());
     pushConstants.iFrame = currentFrame;
-    pushConstants.iResolution = glm::vec2(swapchainSize.width, swapchainSize.height);
+    pushConstants.iResolution =
+        glm::vec2(swapchainSize.width, swapchainSize.height);
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {

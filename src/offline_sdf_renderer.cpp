@@ -214,6 +214,7 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
     VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
                               static_cast<VkDeviceSize>(imageSize.height) *
                               formatInfo.bytesPerPixel;
+    // Staging buffer for GPU->CPU readback.
     vkutils::ReadbackBuffer stagingBuffer =
         vkutils::createReadbackBuffer(logicalDevice, physicalDevice, imageBytes,
                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -228,6 +229,7 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
     };
 
     VkCommandBuffer commandBuffer;
+    // One-time command buffer to handle layout transitions + copy.
     VK_CHECK(
         vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
 
@@ -237,6 +239,8 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
     };
     VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
+    // Transition offscreen image to transfer-src layout.
+    // so we can copy from it.
     VkImageMemoryBarrier barrierToTransfer{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -280,6 +284,7 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                            stagingBuffer.buffer, 1, &region);
 
+    // Transition back to color-attachment layout for future rendering.
     VkImageMemoryBarrier barrierToColor{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
@@ -312,6 +317,7 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
     };
 
     VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+    // Wait so the CPU sees a fully populated staging buffer.
     VK_CHECK(vkQueueWaitIdle(queue));
 
     void *data = nullptr;
@@ -329,6 +335,7 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
         uint8_t r = 0;
         uint8_t g = 0;
         uint8_t b = 0;
+        // Normalize to RGB (no alpha) with optional channel swizzle.
         if (formatInfo.swapRB) {
             r = src[srcOffset + 2];
             g = src[srcOffset + 1];

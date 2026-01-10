@@ -812,6 +812,9 @@ createRenderPass(VkDevice device, VkFormat format, bool offline = false) {
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        // Offline keeps the image in COLOR_ATTACHMENT_OPTIMAL between passes,
+        // transitioning to TRANSFER_SRC_OPTIMAL only for readback.
+        // Swapchain rendering discards old contents and transitions to PRESENT.
         .initialLayout = offline ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                                  : VK_IMAGE_LAYOUT_UNDEFINED,
         .finalLayout = offline ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL

@@ -101,6 +101,19 @@ and adjusting it to your liking
 - `--headless` Hide the GLFW window (pair with `xvfb-run` in CI)
 - `--log-level <trace|debug|info|warn|error|critical|off>` Set spdlog verbosity (default: info)
 
+### Test Dumping 1 frame
+```sh
+./build/vsdf shaders/debug_quadrants.frag --toy --headless --frames 1 --dump-ppm out_ppm
+```
+
+Now in `out_ppm/` you should see an image with 4 quadrants:
+- bottom-left: black
+- bottom-right: blue
+- top-left: red
+- top-right: green
+
+Also by running the test suite it will check this automatically
+
 ## Test Build
 
 ### Linux/macOS

@@ -82,6 +82,22 @@ struct ReadbackBuffer {
     VkDeviceSize size = 0;
 };
 
+struct ReadbackFormatInfo {
+    uint32_t bytesPerPixel = 0;
+    bool swapRB = false;
+};
+
+[[nodiscard]] inline ReadbackFormatInfo getReadbackFormatInfo(VkFormat format) {
+    switch (format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_SRGB:
+        return {4, true};
+    default:
+        throw std::runtime_error(
+            "Unsupported format for readback; expected BGRA8");
+    }
+}
+
 [[nodiscard]] static VkInstance setupVulkanInstance(bool offline = false) {
     const VkApplicationInfo appInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -1106,22 +1122,11 @@ readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
     // Intended for quick validation/smoke tests of the presented swapchain path.
     // You'd want to avoid swapchain if you just wanted to only encode video
     // for example, to save time
-    uint32_t bytesPerPixel = 0;
-    bool swapRB = false;
-    switch (format) {
-    case VK_FORMAT_B8G8R8A8_UNORM:
-    case VK_FORMAT_B8G8R8A8_SRGB:
-        bytesPerPixel = 4;
-        swapRB = true;
-        break;
-    default:
-        throw std::runtime_error(
-            "Unsupported swapchain format for readback; expected BGRA8");
-    }
+    const ReadbackFormatInfo formatInfo = getReadbackFormatInfo(format);
 
     VkDeviceSize imageSize = static_cast<VkDeviceSize>(extent.width) *
                              static_cast<VkDeviceSize>(extent.height) *
-                             bytesPerPixel;
+                             formatInfo.bytesPerPixel;
 
     ReadbackBuffer stagingBuffer = createReadbackBuffer(
         context.device, context.physicalDevice, imageSize,
@@ -1238,12 +1243,12 @@ readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
     const size_t pixelCount =
         static_cast<size_t>(extent.width) * static_cast<size_t>(extent.height);
     for (size_t i = 0; i < pixelCount; ++i) {
-        const size_t srcOffset = i * bytesPerPixel;
+        const size_t srcOffset = i * formatInfo.bytesPerPixel;
         const size_t dstOffset = i * 3;
         uint8_t r = 0;
         uint8_t g = 0;
         uint8_t b = 0;
-        if (swapRB) {
+        if (formatInfo.swapRB) {
             r = src[srcOffset + 2];
             g = src[srcOffset + 1];
             b = src[srcOffset + 0];

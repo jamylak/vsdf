@@ -1,6 +1,5 @@
 #include "offline_sdf_renderer.h"
 #include "image_dump.h"
-#include "offline_sdf_utils.h"
 #include "shader_utils.h"
 #include "vkutils.h"
 #include <cstdint>
@@ -251,8 +250,7 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
 }
 
 ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
-    const auto formatInfo =
-        offline_sdf_utils::getReadbackFormatInfo(imageFormat);
+    const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
 
     VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
                               static_cast<VkDeviceSize>(imageSize.height) *

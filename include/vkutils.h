@@ -5,6 +5,7 @@
 #define VKUTILS_H
 // This is just to put the verbose vulkan stuff in its own place
 // but it will only be included once
+#include "readback_frame.h"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -12,7 +13,6 @@
 #include <sys/types.h>
 #include <vector>
 #include <vulkan/vulkan.h>
-#include "readback_frame.h"
 #define GLFW_INCLUDE_VULKAN
 #include "fileutils.h"
 #include <GLFW/glfw3.h>

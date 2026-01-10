@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
     bool useToyTemplate = false;
     std::optional<uint32_t> maxFrames;
     bool headless = false;
+    std::optional<std::filesystem::path> dumpPPMDir;
     auto logLevel = spdlog::level::info;
     std::filesystem::path shaderFile;
 
@@ -67,6 +68,12 @@ int main(int argc, char **argv) {
             }
             logLevel = parseLogLevel(argv[++i]);
             continue;
+        } else if (arg == "--dump-ppm") {
+            if (i + 1 >= argc) {
+                throw std::runtime_error("--dump-ppm requires a directory path");
+            }
+            dumpPPMDir = argv[++i];
+            continue;
         } else if (arg.substr(0, 2) != "--") {
             if (shaderFile.empty()) {
                 shaderFile = arg;
@@ -88,7 +95,8 @@ int main(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
-    SDFRenderer renderer{shaderFile.string(), useToyTemplate, maxFrames, headless};
+    SDFRenderer renderer{shaderFile.string(), useToyTemplate, maxFrames, headless,
+                         dumpPPMDir};
     renderer.setup();
     renderer.gameLoop();
     return 0;

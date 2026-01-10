@@ -118,7 +118,7 @@ TEST(PPMDump, DebugQuadrants) {
     const std::filesystem::path ppmPathNext = outDir / kPpmFrame1Name;
     ASSERT_FALSE(std::filesystem::exists(ppmPathNext));
 
-    PPMImage img = readPPM(ppmPath);
+    const PPMImage img = readPPM(ppmPath);
     ASSERT_GT(img.width, 0u);
     ASSERT_GT(img.height, 0u);
 

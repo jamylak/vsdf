@@ -15,6 +15,8 @@ struct GLFWApplication {
     bool framebufferResized = false;
 };
 
+// NOTE: Consider renaming to something like SDFOnlineRenderer once the offline
+// renderer path is established.
 class SDFRenderer {
   private:
     // GLFW Setup

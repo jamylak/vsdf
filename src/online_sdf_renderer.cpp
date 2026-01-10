@@ -1,4 +1,4 @@
-#include "sdf_renderer.h"
+#include "online_sdf_renderer.h"
 #include "filewatcher/filewatcher_factory.h"
 #include "glfwutils.h"
 #include "image_dump.h"
@@ -15,13 +15,14 @@ void framebufferResizeCallback(GLFWwindow *window, int width,
     spdlog::info("Framebuffer resized to {}x{}", width, height);
 };
 
-SDFRenderer::SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
-                         std::optional<uint32_t> maxFrames, bool headless,
-                         std::optional<std::filesystem::path> debugDumpPPMDir)
+OnlineSDFRenderer::OnlineSDFRenderer(
+    const std::string &fragShaderPath, bool useToyTemplate,
+    std::optional<uint32_t> maxFrames, bool headless,
+    std::optional<std::filesystem::path> debugDumpPPMDir)
     : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
       maxFrames(maxFrames), headless(headless), debugDumpPPMDir(debugDumpPPMDir) {}
 
-void SDFRenderer::setup() {
+void OnlineSDFRenderer::setup() {
     glfwSetup();
     vulkanSetup();
     setupRenderContext();
@@ -29,7 +30,7 @@ void SDFRenderer::setup() {
     createCommandBuffers();
 }
 
-void SDFRenderer::glfwSetup() {
+void OnlineSDFRenderer::glfwSetup() {
     // GLFW Setup
     glfwutils::initGLFW();
     glfwWindowHint(GLFW_VISIBLE, headless ? GLFW_FALSE : GLFW_TRUE);
@@ -39,7 +40,7 @@ void SDFRenderer::glfwSetup() {
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
 
-void SDFRenderer::vulkanSetup() {
+void OnlineSDFRenderer::vulkanSetup() {
     instance = vkutils::setupVulkanInstance();
     physicalDevice = vkutils::findGPU(instance);
     deviceProperties = vkutils::getDeviceProperties(physicalDevice);
@@ -63,7 +64,7 @@ void SDFRenderer::vulkanSetup() {
         vkutils::createShaderModule(logicalDevice, vertSpirvPath.string());
 }
 
-void SDFRenderer::setupRenderContext() {
+void OnlineSDFRenderer::setupRenderContext() {
     spdlog::info("Setting up render context");
     surfaceCapabilities =
         vkutils::getSurfaceCapabilities(physicalDevice, surface);
@@ -98,7 +99,7 @@ void SDFRenderer::setupRenderContext() {
         logicalDevice, renderPass, swapchainSize, swapchainImageViews);
 }
 
-void SDFRenderer::createPipeline() {
+void OnlineSDFRenderer::createPipeline() {
     pipelineLayout = vkutils::createPipelineLayout(logicalDevice);
     std::filesystem::path fragSpirvPath;
     try {
@@ -117,18 +118,18 @@ void SDFRenderer::createPipeline() {
         vertShaderModule, fragShaderModule);
 }
 
-void SDFRenderer::createCommandBuffers() {
+void OnlineSDFRenderer::createCommandBuffers() {
     commandBuffers = vkutils::createCommandBuffers(logicalDevice, commandPool,
                                                    swapchainImages.count);
 }
 
-void SDFRenderer::destroyPipeline() {
+void OnlineSDFRenderer::destroyPipeline() {
     vkDestroyPipeline(logicalDevice, pipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
     vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
 }
 
-void SDFRenderer::destroyRenderContext() {
+void OnlineSDFRenderer::destroyRenderContext() {
     VK_CHECK(vkDeviceWaitIdle(logicalDevice));
     VK_CHECK(vkResetCommandPool(logicalDevice, commandPool, 0));
     vkutils::destroyFrameBuffers(logicalDevice, frameBuffers);
@@ -137,7 +138,7 @@ void SDFRenderer::destroyRenderContext() {
 }
 
 [[nodiscard]] vkutils::PushConstants
-SDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
+OnlineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
     vkutils::PushConstants pushConstants;
     pushConstants.iTime = static_cast<float>(glfwGetTime());
     pushConstants.iFrame = currentFrame;
@@ -153,7 +154,7 @@ SDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
     return pushConstants;
 }
 
-void SDFRenderer::calcTimestamps(uint32_t imageIndex) {
+void OnlineSDFRenderer::calcTimestamps(uint32_t imageIndex) {
     // Get GPU Time
     uint64_t timestamps[2];
     vkGetQueryPoolResults(logicalDevice, queryPool, imageIndex * 2, 2,
@@ -176,7 +177,7 @@ void SDFRenderer::calcTimestamps(uint32_t imageIndex) {
     glfwSetWindowTitle(window, title.c_str());
 }
 
-void SDFRenderer::gameLoop() {
+void OnlineSDFRenderer::gameLoop() {
     uint32_t currentFrame = 0;
     uint32_t frameIndex = 0;
     bool pipelineUpdated = false;
@@ -259,7 +260,7 @@ void SDFRenderer::gameLoop() {
     destroy();
 }
 
-void SDFRenderer::destroy() {
+void OnlineSDFRenderer::destroy() {
     VK_CHECK(vkDeviceWaitIdle(logicalDevice));
     vkutils::destroySemaphores(logicalDevice, imageAvailableSemaphores);
     vkutils::destroySemaphores(logicalDevice, renderFinishedSemaphores);

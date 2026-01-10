@@ -1,5 +1,5 @@
-#ifndef SDF_RENDERER_H
-#define SDF_RENDERER_H
+#ifndef ONLINE_SDF_RENDERER_H
+#define ONLINE_SDF_RENDERER_H
 #include "vkutils.h"
 #include <optional>
 #include <filesystem>
@@ -15,9 +15,8 @@ struct GLFWApplication {
     bool framebufferResized = false;
 };
 
-// NOTE: Consider renaming to something like SDFOnlineRenderer once the offline
-// renderer path is established.
-class SDFRenderer {
+// Online renderer: Vulkan + swapchain -- meant to be displayed.
+class OnlineSDFRenderer {
   private:
     // GLFW Setup
     GLFWApplication app;
@@ -84,14 +83,16 @@ class SDFRenderer {
     getPushConstants(uint32_t currentFrame) noexcept;
 
   public:
-    SDFRenderer(const SDFRenderer &) = delete;
-    SDFRenderer &operator=(const SDFRenderer &) = delete;
-    SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false,
-                std::optional<uint32_t> maxFrames = std::nullopt,
-                bool headless = false,
-                std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt);
+    OnlineSDFRenderer(const OnlineSDFRenderer &) = delete;
+    OnlineSDFRenderer &operator=(const OnlineSDFRenderer &) = delete;
+    OnlineSDFRenderer(const std::string &fragShaderPath,
+                      bool useToyTemplate = false,
+                      std::optional<uint32_t> maxFrames = std::nullopt,
+                      bool headless = false,
+                      std::optional<std::filesystem::path> debugDumpPPMDir =
+                          std::nullopt);
     void setup();
     void gameLoop();
 };
 
-#endif // SDF_RENDERER_H
+#endif // ONLINE_SDF_RENDERER_H

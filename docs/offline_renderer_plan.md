@@ -4,8 +4,8 @@
 Add a new headless/offscreen renderer class that can later feed frames to ffmpeg, while keeping the existing online path intact.
 
 ## Agreed Plan
-- Keep the existing `SDFRenderer` unchanged as the online/windowed path. Do not rename it now.
-- Add a note in `SDFRenderer` to consider renaming later (e.g., `SDFOnlineRenderer`).
+- Keep the existing `OnlineSDFRenderer` as the online/windowed path.
+- Add a note in `OnlineSDFRenderer` to clarify it is the online/swapchain path.
 - Add a new class (e.g., `OfflineSDFRenderer`) dedicated to headless/offscreen rendering.
 - Offline renderer requirements:
   - No swapchain or present.

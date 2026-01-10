@@ -1,5 +1,5 @@
 #include "offline_sdf_renderer.h"
-#include "sdf_renderer.h"
+#include "online_sdf_renderer.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -106,8 +106,8 @@ int main(int argc, char **argv) {
         renderer.setup();
         renderer.renderFrames();
     } else {
-        SDFRenderer renderer{shaderFile.string(), useToyTemplate, maxFrames,
-                             headless, debugDumpPPMDir};
+        OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
+                                   maxFrames, headless, debugDumpPPMDir};
         renderer.setup();
         renderer.gameLoop();
     }

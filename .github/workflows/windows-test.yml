@@ -56,6 +56,10 @@ jobs:
         if (Test-Path $vsdfTestPath) {
           Write-Host "Running vsdf_tests..."
           & $vsdfTestPath
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "vsdf_tests failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
         } else {
           Write-Error "vsdf_tests not found at $vsdfTestPath"
           exit 1
@@ -65,6 +69,10 @@ jobs:
         if (Test-Path $filewatcherTestPath) {
           Write-Host "Running filewatcher_tests..."
           & $filewatcherTestPath
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "filewatcher_tests failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
         } else {
           Write-Error "filewatcher_tests not found at $filewatcherTestPath"
           exit 1

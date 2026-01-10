@@ -106,7 +106,7 @@ TEST(PPMDump, DebugQuadrants) {
     std::filesystem::current_path(VSDF_SOURCE_DIR);
 
     const std::string cmd =
-        fmt::format("\"{}\" \"{}\" --toy --headless --frames 1 --dump-ppm \"{}\"",
+        fmt::format("\"{}\" \"{}\" --toy --headless --frames 1 --debug-dump-ppm \"{}\"",
                     VSDF_BINARY_PATH, shaderPath.string(), outDir.string());
     const int rc = std::system(cmd.c_str());
     std::filesystem::current_path(oldCwd);

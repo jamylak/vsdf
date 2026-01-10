@@ -13,7 +13,11 @@ Add a new headless/offscreen renderer class that can later feed frames to ffmpeg
   - No shader hot-reloading; compile once and fail fast on error.
   - Render to an offscreen image and support readback (future ffmpeg target).
 - Accept some duplicated logic initially; refactor shared pieces later if needed.
+- Add the width and height params
 
 ## Near-Term Validation
 - Render to an offscreen image and read back a frame for inspection.
 - Use this as a checkpoint before integrating ffmpeg.
+
+## Later
+- See if we can move duplicated logic to shared base class

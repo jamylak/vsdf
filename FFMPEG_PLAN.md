@@ -163,7 +163,7 @@ Test:
 - Use the readback frame from Step 5 and dump to `out.ppm`.
 
 Local try:
-- `./build/vsdf --frames 1 --headless --dump-ppm out.ppm`
+- `./build/vsdf --frames 1 --headless --debug-dump-ppm out.ppm` (copies the swapchain image before present, so it stalls)
 - Open the file to verify image contents.
 
 Compose later:

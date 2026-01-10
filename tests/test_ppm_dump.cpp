@@ -10,6 +10,7 @@
 #include <vector>
 
 namespace {
+constexpr uint32_t kPpmMaxValue = 255;
 struct [[nodiscard]] PPMImage {
     uint32_t width = 0;
     uint32_t height = 0;
@@ -62,7 +63,7 @@ void skipWhitespaceAndComments(std::istream &in) {
     skipWhitespaceAndComments(in);
     uint32_t maxval = 0;
     in >> maxval;
-    if (maxval != 255) {
+    if (maxval != kPpmMaxValue) {
         throw std::runtime_error("Unexpected PPM max value");
     }
     in.get(); // consume single whitespace after header

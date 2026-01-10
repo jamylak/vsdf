@@ -646,6 +646,18 @@ createReadbackBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
     return buffer;
 }
 
+static void destroyReadbackBuffer(VkDevice device, ReadbackBuffer &buffer) {
+    if (buffer.buffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, buffer.buffer, nullptr);
+    }
+    if (buffer.memory != VK_NULL_HANDLE) {
+        vkFreeMemory(device, buffer.memory, nullptr);
+    }
+    buffer.buffer = VK_NULL_HANDLE;
+    buffer.memory = VK_NULL_HANDLE;
+    buffer.size = 0;
+}
+
 [[nodiscard]] static VkDescriptorSetLayout
 createDescriptorSetLayout(VkDevice device) {
     VkDescriptorSetLayoutBinding layoutBinding{

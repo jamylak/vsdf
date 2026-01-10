@@ -1068,7 +1068,7 @@ static void submitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer,
         .pSignalSemaphores = &renderFinishedSemaphore,
     };
     VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence));
-} // namespace vkutils
+}
 
 static void presentImage(VkQueue queue, VkSwapchainKHR swapchain,
                          VkSemaphore renderFinishedSemaphore,

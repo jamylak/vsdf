@@ -17,14 +17,9 @@ namespace glfwutils {
  * Initializes GLFW library. Throws runtime_error if initialization fails.
  * Ensures GLFW is only initialized once.
  */
-static void initGLFW(bool headless) {
+static void initGLFW() {
     static bool isInitialized = false;
     if (!isInitialized) {
-        if (headless) {
-#if defined(GLFW_PLATFORM_NULL)
-            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_NULL);
-#endif
-        }
         if (!glfwInit()) {
             throw std::runtime_error("Failed to initialize GLFW");
         }

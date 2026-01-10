@@ -31,7 +31,7 @@ void SDFRenderer::setup() {
 
 void SDFRenderer::glfwSetup() {
     // GLFW Setup
-    glfwutils::initGLFW(headless);
+    glfwutils::initGLFW();
     glfwWindowHint(GLFW_VISIBLE, headless ? GLFW_FALSE : GLFW_TRUE);
     window =
         glfwutils::createGLFWwindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);

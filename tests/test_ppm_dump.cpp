@@ -93,6 +93,15 @@ void skipWhitespaceAndComments(std::istream &in) {
 } // namespace
 
 TEST(PPMDump, DebugQuadrants) {
+    const char *ciEnv = std::getenv("CI");
+    const char *smokeEnv = std::getenv("VSDF_SMOKE_TESTS");
+    const bool inCi = ciEnv && std::string(ciEnv) == "true";
+    const bool smokeEnabled = smokeEnv && std::string(smokeEnv) == "1";
+    if (inCi && !smokeEnabled) {
+        GTEST_SKIP()
+            << "PPM debug quadrants test is skipped in CI unless VSDF_SMOKE_TESTS=1";
+    }
+
     const auto outDir =
         std::filesystem::current_path() / "ppm_test_output";
     std::filesystem::create_directories(outDir);

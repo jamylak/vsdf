@@ -225,8 +225,8 @@ void OnlineSDFRenderer::gameLoop() {
             renderFinishedSemaphores.semaphores[imageIndex],
             fences.fences[frameIndex]);
         if (debugDumpPPMDir) {
-            // Debug-only: copy the swapchain image before present, which stalls.
-            // Mainly useful for smoke tests or debugging.
+            // Debug-only: copy the swapchain image before present, which
+            // stalls. Mainly useful for smoke tests or debugging.
             VK_CHECK(vkWaitForFences(logicalDevice, 1,
                                      &fences.fences[frameIndex], VK_TRUE,
                                      UINT64_MAX));

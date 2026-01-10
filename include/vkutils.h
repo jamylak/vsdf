@@ -1121,20 +1121,20 @@ struct ReadbackContext {
 [[nodiscard]] static ReadbackFrame
 readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
                        VkFormat format, VkExtent2D extent) {
-    // Intended for quick validation/smoke tests of the presented swapchain path.
-    // You'd want to avoid swapchain if you just wanted to only encode video
-    // for example, to save time
+    // Intended for quick validation/smoke tests of the presented swapchain
+    // path. You'd want to avoid swapchain if you just wanted to only encode
+    // video for example, to save time
     const ReadbackFormatInfo formatInfo = getReadbackFormatInfo(format);
 
     VkDeviceSize imageSize = static_cast<VkDeviceSize>(extent.width) *
                              static_cast<VkDeviceSize>(extent.height) *
                              formatInfo.bytesPerPixel;
 
-    ReadbackBuffer stagingBuffer = createReadbackBuffer(
-        context.device, context.physicalDevice, imageSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    ReadbackBuffer stagingBuffer =
+        createReadbackBuffer(context.device, context.physicalDevice, imageSize,
+                             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkCommandBufferAllocateInfo allocInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1198,9 +1198,9 @@ readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
                            stagingBuffer.buffer, 1, &region);
 
     // This is the “undo” barrier after the copy.
-    // It transitions the swapchain image back to PRESENT_SRC_KHR so the presentation engine can
-    // display it.
-    // After the copy, you must move it back to present layout for vkQueuePresentKHR.
+    // It transitions the swapchain image back to PRESENT_SRC_KHR so the
+    // presentation engine can display it. After the copy, you must move it back
+    // to present layout for vkQueuePresentKHR.
     VkImageMemoryBarrier barrierToPresent{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,

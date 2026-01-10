@@ -1077,6 +1077,171 @@ struct ReadbackContext {
     VkQueue queue = VK_NULL_HANDLE;
 };
 
+[[nodiscard]] static ReadbackFrame
+readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
+                       VkFormat format, VkExtent2D extent) {
+    // Intended for quick validation/smoke tests of the presented swapchain path.
+    // You'd want to avoid swapchain if you just wanted to only encode video
+    // for example, to save time
+    uint32_t bytesPerPixel = 0;
+    bool swapRB = false;
+    switch (format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_SRGB:
+        bytesPerPixel = 4;
+        swapRB = true;
+        break;
+    default:
+        throw std::runtime_error(
+            "Unsupported swapchain format for readback; expected BGRA8");
+    }
+
+    VkDeviceSize imageSize = static_cast<VkDeviceSize>(extent.width) *
+                             static_cast<VkDeviceSize>(extent.height) *
+                             bytesPerPixel;
+
+    ReadbackBuffer stagingBuffer = createReadbackBuffer(
+        context.device, context.physicalDevice, imageSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    VkCommandBufferAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = context.commandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer commandBuffer;
+    VK_CHECK(
+        vkAllocateCommandBuffers(context.device, &allocInfo, &commandBuffer));
+
+    VkCommandBufferBeginInfo beginInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+    // This barrier moves from present → transfer‑src so we can read it.
+    VkImageMemoryBarrier barrierToTransfer{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = srcImage,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrierToTransfer);
+
+    VkBufferImageCopy region{
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        .imageOffset = {0, 0, 0},
+        .imageExtent = {extent.width, extent.height, 1},
+    };
+
+    vkCmdCopyImageToBuffer(commandBuffer, srcImage,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           stagingBuffer.buffer, 1, &region);
+
+    // This is the “undo” barrier after the copy.
+    // It transitions the swapchain image back to PRESENT_SRC_KHR so the presentation engine can
+    // display it.
+    // After the copy, you must move it back to present layout for vkQueuePresentKHR.
+    VkImageMemoryBarrier barrierToPresent{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = srcImage,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrierToPresent);
+
+    VK_CHECK(vkEndCommandBuffer(commandBuffer));
+
+    VkSubmitInfo submitInfo{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffer,
+    };
+
+    VK_CHECK(vkQueueSubmit(context.queue, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_CHECK(vkQueueWaitIdle(context.queue));
+
+    void *data = nullptr;
+    VK_CHECK(vkMapMemory(context.device, stagingBuffer.memory, 0, imageSize, 0,
+                         &data));
+
+    ReadbackFrame frame;
+    frame.allocateRGB(extent.width, extent.height);
+    const uint8_t *src = static_cast<const uint8_t *>(data);
+    const size_t pixelCount =
+        static_cast<size_t>(extent.width) * static_cast<size_t>(extent.height);
+    for (size_t i = 0; i < pixelCount; ++i) {
+        const size_t srcOffset = i * bytesPerPixel;
+        const size_t dstOffset = i * 3;
+        uint8_t r = 0;
+        uint8_t g = 0;
+        uint8_t b = 0;
+        if (swapRB) {
+            r = src[srcOffset + 2];
+            g = src[srcOffset + 1];
+            b = src[srcOffset + 0];
+        } else {
+            r = src[srcOffset + 0];
+            g = src[srcOffset + 1];
+            b = src[srcOffset + 2];
+        }
+        frame.rgb[dstOffset + 0] = r;
+        frame.rgb[dstOffset + 1] = g;
+        frame.rgb[dstOffset + 2] = b;
+    }
+
+    vkUnmapMemory(context.device, stagingBuffer.memory);
+    vkFreeCommandBuffers(context.device, context.commandPool, 1,
+                         &commandBuffer);
+    destroyReadbackBuffer(context.device, stagingBuffer);
+
+    return frame;
+}
+
 static void presentImage(VkQueue queue, VkSwapchainKHR swapchain,
                          VkSemaphore renderFinishedSemaphore,
                          uint32_t imageIndex) {

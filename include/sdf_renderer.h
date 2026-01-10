@@ -58,6 +58,9 @@ class SDFRenderer {
     // Runtime configuration
     std::optional<uint32_t> maxFrames;
     bool headless = false;
+
+    // This is useful to check we produce valid output
+    // as part of smoke tests
     std::optional<std::filesystem::path> dumpPPMDir;
     uint32_t dumpedFrames = 0;
 

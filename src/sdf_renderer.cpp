@@ -1,6 +1,7 @@
 #include "sdf_renderer.h"
 #include "filewatcher/filewatcher_factory.h"
 #include "glfwutils.h"
+#include "image_dump.h"
 #include "shader_utils.h"
 #include "vkutils.h"
 #include <cstdint>
@@ -224,6 +225,28 @@ void SDFRenderer::gameLoop() {
             imageAvailableSemaphores.semaphores[imageIndex],
             renderFinishedSemaphores.semaphores[imageIndex],
             fences.fences[frameIndex]);
+        if (dumpPPMDir) {
+            // Useful mainly just in smoke tests to make sure
+            // everything is rendered as we expect it...
+            // For encoding video offscreen image and
+            // completely avoiding swapchain should be better
+            VK_CHECK(vkWaitForFences(logicalDevice, 1,
+                                     &fences.fences[frameIndex], VK_TRUE,
+                                     UINT64_MAX));
+            vkutils::ReadbackContext readbackContext{};
+            readbackContext.device = logicalDevice;
+            readbackContext.physicalDevice = physicalDevice;
+            readbackContext.commandPool = commandPool;
+            readbackContext.queue = queue;
+            ReadbackFrame frame = vkutils::readbackSwapchainImage(
+                readbackContext, swapchainImages.images[imageIndex],
+                swapchainFormat.format, swapchainSize);
+            std::filesystem::create_directories(*dumpPPMDir);
+            std::filesystem::path outPath =
+                *dumpPPMDir / fmt::format("frame_{:04}.ppm", dumpedFrames);
+            image_dump::writePPM(frame, outPath);
+            dumpedFrames++;
+        }
         vkutils::presentImage(queue, swapchain,
                               renderFinishedSemaphores.semaphores[frameIndex],
                               imageIndex);

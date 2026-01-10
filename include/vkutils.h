@@ -440,9 +440,8 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
     std::array<VkPresentModeKHR, presentModeCountMax> presentModes;
 
     // Fill only the first presentModeCount elements
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, config.surface,
-                                              &presentModeCount,
-                                              presentModes.data());
+    vkGetPhysicalDeviceSurfacePresentModesKHR(
+        physicalDevice, config.surface, &presentModeCount, presentModes.data());
 
     // Log only the valid entries
     spdlog::info("Available present modes:");

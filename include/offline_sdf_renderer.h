@@ -1,5 +1,6 @@
 #ifndef OFFLINE_SDF_RENDERER_H
 #define OFFLINE_SDF_RENDERER_H
+#include "sdf_renderer.h"
 #include "vkutils.h"
 #include <chrono>
 #include <filesystem>
@@ -12,41 +13,15 @@ inline constexpr uint32_t OFFSCREEN_DEFAULT_HEIGHT = 600;
 inline constexpr char OFFSCREEN_DEFAULT_VERT_SHADER_PATH[] =
     "shaders/fullscreenquad.vert";
 
-class OfflineSDFRenderer {
+class OfflineSDFRenderer : public SDFRenderer {
   private:
-    // Vulkan Setup
-    VkInstance instance = VK_NULL_HANDLE;
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkPhysicalDeviceProperties deviceProperties{};
-    uint32_t graphicsQueueIndex = 0;
-    VkDevice logicalDevice = VK_NULL_HANDLE;
-    VkQueue queue = VK_NULL_HANDLE;
-    VkQueryPool queryPool = VK_NULL_HANDLE;
-    VkCommandPool commandPool = VK_NULL_HANDLE;
-
-    // Shader Modules.
-    VkShaderModule vertShaderModule = VK_NULL_HANDLE;
-    VkShaderModule fragShaderModule = VK_NULL_HANDLE;
-    std::string fragShaderPath;
-    bool useToyTemplate = false;
-
     // Render Context
     VkExtent2D imageSize{};
     VkFormat imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
     VkImage offscreenImage = VK_NULL_HANDLE;
     VkDeviceMemory offscreenImageMemory = VK_NULL_HANDLE;
     VkImageView offscreenImageView = VK_NULL_HANDLE;
-    VkRenderPass renderPass = VK_NULL_HANDLE;
     VkFramebuffer framebuffer = VK_NULL_HANDLE;
-    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    vkutils::CommandBuffers commandBuffers;
-    vkutils::Fences fences;
-
-    // Runtime configuration
-    std::optional<uint32_t> maxFrames;
-    std::optional<std::filesystem::path> debugDumpPPMDir;
-    uint32_t dumpedFrames = 0;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 

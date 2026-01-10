@@ -142,6 +142,7 @@ void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
     };
 
     VkCommandBuffer commandBuffer;
+    // One-time command buffer to record a single layout transition.
     VK_CHECK(
         vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
 
@@ -173,12 +174,15 @@ void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
         newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        // No need to wait on prior writes; we don't care about old contents.
         barrier.srcAccessMask = 0;
+        // Make color-attachment writes visible for subsequent render pass use.
         barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     } else {
         throw std::runtime_error("Unsupported image layout transition");
     }
 
+    // Insert the layout transition with matching pipeline stage scopes.
     vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0,
                          nullptr, 1, &barrier);
 
@@ -190,6 +194,7 @@ void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
         .pCommandBuffers = &commandBuffer,
     };
 
+    // Submit and wait so the image is ready before further use.
     VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
     VK_CHECK(vkQueueWaitIdle(queue));
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);

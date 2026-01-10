@@ -5,3 +5,4 @@ testshaders
 shaders/*.spv
 _codeql_detected_source_root
 out_ppm
+FFMPEG_PLAN.md

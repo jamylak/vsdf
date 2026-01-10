@@ -1,6 +1,7 @@
 option(ENABLE_SANITIZERS "Build with sanitizers" OFF)
 option(ENABLE_FUZZING "Build fuzz targets" OFF)
-option(VSDF_ENABLE_FFMPEG "Enable FFmpeg recording" ON)
+# (WIP) FFmpeg recording support. Not yet implemented.
+option(VSDF_ENABLE_FFMPEG "Enable FFmpeg recording" OFF)
 
 if (ENABLE_SANITIZERS)
   add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)

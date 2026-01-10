@@ -82,7 +82,7 @@ struct ReadbackBuffer {
     VkDeviceSize size = 0;
 };
 
-[[nodiscard]] static VkInstance setupVulkanInstance() {
+[[nodiscard]] static VkInstance setupVulkanInstance(bool offline = false) {
     const VkApplicationInfo appInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = nullptr,
@@ -94,13 +94,16 @@ struct ReadbackBuffer {
     };
     spdlog::info("Size of push constants {}", sizeof(PushConstants));
 
-    uint32_t extensionCount = 0;
-    const char **glfwExtensions =
-        glfwGetRequiredInstanceExtensions(&extensionCount);
-
-    // Use vector for convenience here, this is only run once at startup
-    std::vector<const char *> extensions(glfwExtensions,
-                                         glfwExtensions + extensionCount);
+    std::vector<const char *> extensions;
+    if (!offline) {
+        // Offline renders on GPU to an offscreen image for readback (future
+        // ffmpeg encoding), so it has no GLFW surface and doesn't need
+        // GLFW-provided instance extensions.
+        uint32_t extensionCount = 0;
+        const char **glfwExtensions =
+            glfwGetRequiredInstanceExtensions(&extensionCount);
+        extensions.assign(glfwExtensions, glfwExtensions + extensionCount);
+    }
 
 #ifdef __APPLE__
     extensions.push_back("VK_KHR_portability_enumeration");
@@ -286,7 +289,7 @@ getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
 
 [[nodiscard]] static VkDevice
 createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
-                          uint32_t graphicsQueueIndex) {
+                          uint32_t graphicsQueueIndex, bool offline = false) {
     float queuePriority = 1.0f;
 
     spdlog::debug("Create a queue...");
@@ -297,12 +300,13 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
         .pQueuePriorities = &queuePriority,
     };
 
-    static const char *requiredExtensions[] = {
-        "VK_KHR_swapchain",
+    std::vector<const char *> requiredExtensions;
+    if (!offline) {
+        requiredExtensions.push_back("VK_KHR_swapchain");
+    }
 #ifdef __APPLE__
-        "VK_KHR_portability_subset",
+    requiredExtensions.push_back("VK_KHR_portability_subset");
 #endif
-    };
 
     spdlog::debug("Create a logical device...");
     VkDevice device;
@@ -318,13 +322,15 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
         .pNext = &dynamicRenderingFeatures,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueInfo,
-        .enabledExtensionCount = std::size(requiredExtensions),
-        .ppEnabledExtensionNames = requiredExtensions,
+        .enabledExtensionCount =
+            static_cast<uint32_t>(requiredExtensions.size()),
+        .ppEnabledExtensionNames =
+            requiredExtensions.empty() ? nullptr : requiredExtensions.data(),
     };
 
     VK_CHECK(
         vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
-    spdlog::debug("Created logical device");
+    spdlog::debug("Created logical device (offline = {})", offline);
 
     return device;
 }

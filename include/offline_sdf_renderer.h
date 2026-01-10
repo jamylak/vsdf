@@ -13,6 +13,8 @@ inline constexpr uint32_t OFFSCREEN_DEFAULT_HEIGHT = 600;
 inline constexpr char OFFSCREEN_DEFAULT_VERT_SHADER_PATH[] =
     "shaders/fullscreenquad.vert";
 
+// Offline SDF Renderer
+// This basis will be used for FFMPEG integration
 class OfflineSDFRenderer : public SDFRenderer {
   private:
     // Render Context

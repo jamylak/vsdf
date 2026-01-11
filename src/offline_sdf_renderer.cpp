@@ -156,7 +156,7 @@ void OfflineSDFRenderer::createPipeline() {
 
 void OfflineSDFRenderer::createCommandBuffers() {
     commandBuffers =
-        vkutils::createCommandBuffers(logicalDevice, commandPool, 1);
+        vkutils::createCommandBuffers(logicalDevice, commandPool, ringSize);
 }
 
 void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,

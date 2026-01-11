@@ -448,6 +448,10 @@ void OfflineSDFRenderer::startEncoding() {
         static_cast<int>(imageSize.height), srcFormat, srcStride);
     encoder->open();
 
+    // Encoder thread will process in parallel with the GPU
+    // through the ring buffer strategy.
+    // When GPU finishes rendering to a slot we can pick it up
+    // to encode while GPU renders to another slot
     encoderThread = std::thread([this]() {
         try {
             while (true) {
@@ -467,6 +471,7 @@ void OfflineSDFRenderer::startEncoding() {
                     encodeCv.notify_all();
                 }
 
+                // Wait for GPU to finish rendering to this slot
                 RingSlot &slot = ringSlots[item.slotIndex];
                 VK_CHECK(vkWaitForFences(logicalDevice, 1,
                                          &fences.fences[item.slotIndex],

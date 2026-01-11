@@ -114,14 +114,16 @@ void OfflineSDFRenderer::setupRenderContext() {
 
         VK_CHECK(vkAllocateMemory(logicalDevice, &allocInfo, nullptr,
                                   &slot.imageMemory));
+        VK_CHECK(
+            vkBindImageMemory(logicalDevice, slot.image, slot.imageMemory, 0));
 
         imageViewCreateInfoTemplate.image = slot.image;
-        VK_CHECK(vkCreateImageView(logicalDevice, &imageViewCreateInfoTemplate, nullptr,
-                                   &slot.imageView));
+        VK_CHECK(vkCreateImageView(logicalDevice, &imageViewCreateInfoTemplate,
+                                   nullptr, &slot.imageView));
 
         framebufferInfoTemplate.pAttachments = &slot.imageView;
-        VK_CHECK(vkCreateFramebuffer(logicalDevice, &framebufferInfoTemplate, nullptr,
-                                     &slot.framebuffer));
+        VK_CHECK(vkCreateFramebuffer(logicalDevice, &framebufferInfoTemplate,
+                                     nullptr, &slot.framebuffer));
 
         slot.stagingBuffer = vkutils::createReadbackBuffer(
             logicalDevice, physicalDevice, imageBytes,

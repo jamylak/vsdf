@@ -95,8 +95,45 @@ void OfflineSDFRenderer::setupRenderContext() {
         .layers = 1,
     };
 
-    VK_CHECK(vkCreateFramebuffer(logicalDevice, &framebufferInfo, nullptr,
-                                 &framebuffer));
+    for (uint32_t i = 0; i < ringSize; ++i) {
+        RingSlot &slot = ringSlots[i];
+        VK_CHECK(vkCreateImage(logicalDevice, &imageCreateInfo, nullptr,
+                               &slot.image));
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(logicalDevice, slot.image,
+                                     &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = memRequirements.size,
+            .memoryTypeIndex = vkutils::findMemoryTypeIndex(
+                physicalDevice, memRequirements.memoryTypeBits,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+        };
+
+        VK_CHECK(vkAllocateMemory(logicalDevice, &allocInfo, nullptr,
+                                  &slot.imageMemory));
+        VK_CHECK(vkBindImageMemory(logicalDevice, slot.image,
+                                   slot.imageMemory, 0));
+
+        imageViewCreateInfoTemplate.image = slot.image;
+        VK_CHECK(vkCreateImageView(logicalDevice, &imageViewCreateInfoTemplate, nullptr,
+                                   &slot.imageView));
+
+        framebufferInfoTemplate.pAttachments = &slot.imageView;
+        VK_CHECK(vkCreateFramebuffer(logicalDevice, &framebufferInfoTemplate, nullptr,
+                                     &slot.framebuffer));
+
+        slot.stagingBuffer = vkutils::createReadbackBuffer(
+            logicalDevice, physicalDevice, imageBytes,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        transitionImageLayout(slot.image, VK_IMAGE_LAYOUT_UNDEFINED,
+                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    }
 
     if (queryPool == VK_NULL_HANDLE) {
         queryPool = vkutils::createQueryPool(logicalDevice, 1);

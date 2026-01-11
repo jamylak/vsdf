@@ -440,7 +440,6 @@ void OfflineSDFRenderer::startEncoding() {
     const int srcStride =
         static_cast<int>(imageSize.width * readbackFormatInfo.bytesPerPixel);
 
-    encodeQueueMax = ringSize == 0 ? 1 : ringSize;
     encodeStop = false;
     encodeFailed = false;
 
@@ -528,7 +527,7 @@ void OfflineSDFRenderer::enqueueEncode(uint32_t slotIndex,
         throw std::runtime_error("FFmpeg encoder failed");
     }
     encodeCv.wait(lock,
-                  [this]() { return encodeQueue.size() < encodeQueueMax; });
+                  [this]() { return encodeQueue.size() < ringSize; });
     if (encodeFailed) {
         throw std::runtime_error("FFmpeg encoder failed");
     }

@@ -372,15 +372,7 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
 }
 
 ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
-    const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
-
-    VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
-                              static_cast<VkDeviceSize>(imageSize.height) *
-                              formatInfo.bytesPerPixel;
-
-    void *data = nullptr;
-    VK_CHECK(vkMapMemory(logicalDevice, slot.stagingBuffer.memory, 0,
-                         imageBytes, 0, &data));
+    const auto formatInfo = readbackFormatInfo;
 
     ReadbackFrame frame;
     frame.allocateRGB(imageSize.width, imageSize.height);

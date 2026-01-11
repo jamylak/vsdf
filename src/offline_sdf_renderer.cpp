@@ -52,6 +52,7 @@ void OfflineSDFRenderer::vulkanSetup() {
 
 void OfflineSDFRenderer::setupRenderContext() {
     const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
+    readbackFormatInfo = formatInfo;
     VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
                               static_cast<VkDeviceSize>(imageSize.height) *
                               formatInfo.bytesPerPixel;

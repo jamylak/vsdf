@@ -28,10 +28,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
 # Platform-specific threading library
 if(UNIX)
   find_package(Threads REQUIRED)
-  target_link_libraries(${PROJECT_NAME} ${COMMON_LIBS} Threads::Threads)
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${COMMON_LIBS} Threads::Threads)
 else()
   # Windows doesn't need explicit pthread library
-  target_link_libraries(${PROJECT_NAME} ${COMMON_LIBS})
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${COMMON_LIBS})
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE

@@ -32,6 +32,7 @@ jobs:
         vcpkg install spdlog:x64-windows
         vcpkg install glm:x64-windows
         vcpkg install gtest:x64-windows
+        vcpkg install ffmpeg:x64-windows
         vcpkg integrate install
         Write-Host "All dependencies installed successfully"
 

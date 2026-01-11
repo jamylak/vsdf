@@ -49,6 +49,8 @@
             spdlog
             vulkan-loader
             vulkan-headers
+            ffmpeg
+            pkg-config
 
             # shaderc
             spirv-tools

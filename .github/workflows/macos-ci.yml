@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install glfw glslang spdlog glm vulkan-tools googletest
+        brew install glfw glslang spdlog glm vulkan-tools googletest ffmpeg pkg-config
 
     - name: Configure
       run: cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -B build

@@ -16,7 +16,12 @@ RUN apt-get update && \
     libvulkan-dev \
     glslang-tools \
     glslang-dev \
-    libglm-dev
+    libglm-dev \
+    pkg-config \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev
     # && rm -rf /var/lib/apt/lists/*
 
 COPY . /app

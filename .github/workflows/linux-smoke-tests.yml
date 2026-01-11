@@ -22,7 +22,8 @@ jobs:
             libgtest-dev libspdlog-dev \
             libglfw3 libglfw3-dev libvulkan-dev \
             glslang-tools glslang-dev libglm-dev \
-            mesa-vulkan-drivers xvfb
+            mesa-vulkan-drivers xvfb pkg-config \
+            libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -G Ninja .

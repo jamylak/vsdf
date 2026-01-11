@@ -458,9 +458,8 @@ void OfflineSDFRenderer::startEncoding() {
                         return encodeStop || !encodeQueue.empty();
                     });
                     if (encodeQueue.empty()) {
-                        if (encodeStop) {
+                        if (encodeStop)
                             break;
-                        }
                         continue;
                     }
                     item = encodeQueue.front();

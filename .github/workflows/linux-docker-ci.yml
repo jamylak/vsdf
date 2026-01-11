@@ -1,0 +1,24 @@
+name: Linux Docker CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Build Docker image
+      run: docker build -t linux-tests -f linux-tests.Dockerfile .
+      
+    - name: Test with Docker
+      run: docker run -e CI=true linux-tests

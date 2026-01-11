@@ -1,7 +1,8 @@
 # VSDF
 Vulkan SDF Renderer + Hot Reloader
 
-[![Linux Docker + macOS CI](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-macos-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-macos-ci.yml)
+[![Linux Docker CI](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-ci.yml)
+[![macOS CI](https://github.com/jamylak/vsdf/actions/workflows/macos-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/macos-ci.yml)
 [![Linux Smoke Tests](https://github.com/jamylak/vsdf/actions/workflows/linux-smoke-tests.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/linux-smoke-tests.yml)
 [![Windows Build & Test](https://github.com/jamylak/vsdf/actions/workflows/windows-build-test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/windows-build-test.yml)
 

@@ -1,4 +1,4 @@
-name: Linux Docker + macOS CI
+name: macOS CI
 
 on:
   push:
@@ -10,19 +10,6 @@ on:
       - main
 
 jobs:
-  build-and-test-linux:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-      
-    - name: Build Docker image
-      run: docker build -t linux-tests -f linux-tests.Dockerfile .
-      
-    - name: Test with Docker
-      run: docker run -e CI=true linux-tests
-
   build-and-test-macos:
     name: Build and Test on macOS
     runs-on: macos-latest

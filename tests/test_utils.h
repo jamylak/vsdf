@@ -1,5 +1,6 @@
 #ifndef TEST_UTILS_H
 #define TEST_UTILS_H
+#include <cstdlib>
 #include <fstream>
 #include <string>
 
@@ -19,4 +20,12 @@ class TempShaderFile {
   private:
     std::string filename_;
 };
+
+inline bool shouldSkipSmokeTests() {
+    const char *ciEnv = std::getenv("CI");
+    const char *smokeEnv = std::getenv("VSDF_SMOKE_TESTS");
+    const bool inCi = ciEnv && std::string(ciEnv) == "true";
+    const bool smokeEnabled = smokeEnv && std::string(smokeEnv) == "1";
+    return inCi && !smokeEnabled;
+}
 #endif // TEST_UTILS_H

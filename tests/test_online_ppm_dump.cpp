@@ -1,4 +1,5 @@
 #include "ppm_utils.h"
+#include "test_utils.h"
 
 #include <gtest/gtest.h>
 
@@ -7,14 +8,10 @@
 #include <spdlog/fmt/fmt.h>
 #include <string>
 
-TEST(PPMDump, DebugQuadrants) {
-    const char *ciEnv = std::getenv("CI");
-    const char *smokeEnv = std::getenv("VSDF_SMOKE_TESTS");
-    const bool inCi = ciEnv && std::string(ciEnv) == "true";
-    const bool smokeEnabled = smokeEnv && std::string(smokeEnv) == "1";
-    if (inCi && !smokeEnabled) {
+TEST(OnlinePPMDump, DebugQuadrants) {
+    if (shouldSkipSmokeTests()) {
         GTEST_SKIP()
-            << "PPM debug quadrants test is skipped in CI unless VSDF_SMOKE_TESTS=1";
+            << "Online PPM debug quadrants test is skipped in CI unless VSDF_SMOKE_TESTS=1";
     }
 
     const auto outDir =

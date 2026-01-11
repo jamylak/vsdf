@@ -1,4 +1,5 @@
 #include "ppm_utils.h"
+#include "test_utils.h"
 
 #include <gtest/gtest.h>
 
@@ -8,6 +9,11 @@
 #include <string>
 
 TEST(OfflinePPMDump, DebugQuadrants) {
+    if (shouldSkipSmokeTests()) {
+        GTEST_SKIP()
+            << "Offline PPM debug quadrants test is skipped in CI unless VSDF_SMOKE_TESTS=1";
+    }
+
     uint32_t framesToRender = 1;
     if (const char *framesEnv = std::getenv("VSDF_OFFLINE_TEST_FRAMES")) {
         try {
@@ -70,6 +76,11 @@ TEST(OfflinePPMDump, DebugQuadrants) {
 }
 
 TEST(OfflinePPMDump, RingBufferMultipleFrames) {
+    if (shouldSkipSmokeTests()) {
+        GTEST_SKIP()
+            << "Offline PPM ring buffer test is skipped in CI unless VSDF_SMOKE_TESTS=1";
+    }
+
     const auto outDir =
         std::filesystem::current_path() / "ppm_offline_ring_test_output";
     std::filesystem::remove_all(outDir);

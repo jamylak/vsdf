@@ -85,6 +85,11 @@ Headless / CI-friendly single-frame run (hide the window and exit after N frames
 ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless
 ```
 
+Offline MP4 encoding (FFmpeg / H.264 via libx264):
+```sh
+./build/vsdf shaders/testtoyshader.frag --frames 100 --ffmpeg-output out.mp4
+```
+
 ## Usage
 ### With shader toy shaders (most seem to work)
 ```sh
@@ -127,6 +132,14 @@ and adjusting it to your liking
 - `--headless` Hide the GLFW window (pair with `xvfb-run` in CI)
 - `--log-level <trace|debug|info|warn|error|critical|off>` Set spdlog verbosity (default: info)
 - `--debug-dump-ppm <dir>` Copy the swapchain image before present (adds a stall); mainly for smoke tests or debugging
+- `--ffmpeg-output <file>` Enable offline encoding; output file path (requires `--frames`)
+- `--ffmpeg-fps <N>` Output FPS (default: 30)
+- `--ffmpeg-crf <N>` Quality for libx264 (default: 20; lower is higher quality)
+- `--ffmpeg-preset <name>` libx264 preset (default: slow)
+- `--ffmpeg-codec <name>` FFmpeg codec (default: libx264)
+- `--ffmpeg-width <N>` Output width (default: 1280)
+- `--ffmpeg-height <N>` Output height (default: 720)
+- `--offline-ring-size <N>` Ring buffer size for offline render (default: 2)
 
 ### Test Dumping 1 frame
 ```sh

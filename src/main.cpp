@@ -37,6 +37,7 @@ int main(int argc, char **argv) {
     bool headless = false;
     bool offline = false;
     std::optional<std::filesystem::path> debugDumpPPMDir;
+    uint32_t offlineRingSize = OFFSCREEN_DEFAULT_RING_SIZE;
     auto logLevel = spdlog::level::info;
     std::filesystem::path shaderFile;
 
@@ -65,6 +66,26 @@ int main(int argc, char **argv) {
                 throw std::runtime_error("--frames requires a valid positive integer value");
             } catch (const std::out_of_range&) {
                 throw std::runtime_error("--frames value is out of range for a positive integer");
+            }
+            continue;
+        } else if (arg == "--offline-ring-size") {
+            if (i + 1 >= argc) {
+                throw std::runtime_error(
+                    "--offline-ring-size requires a positive integer value");
+            }
+            try {
+                offlineRingSize =
+                    static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw std::runtime_error(
+                    "--offline-ring-size requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw std::runtime_error(
+                    "--offline-ring-size value is out of range for a positive integer");
+            }
+            if (offlineRingSize == 0) {
+                throw std::runtime_error(
+                    "--offline-ring-size requires a positive integer value");
             }
             continue;
         } else if (arg == "--log-level") {
@@ -102,7 +123,9 @@ int main(int argc, char **argv) {
 
     if (offline) {
         OfflineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
-                                    maxFrames, debugDumpPPMDir};
+                                    maxFrames, debugDumpPPMDir,
+                                    OFFSCREEN_DEFAULT_WIDTH,
+                                    OFFSCREEN_DEFAULT_HEIGHT, offlineRingSize};
         renderer.setup();
         renderer.renderFrames();
     } else {

@@ -141,9 +141,6 @@ void OfflineSDFRenderer::setupRenderContext() {
     if (fences.count == 0) {
         fences = vkutils::createFences(logicalDevice, ringSize);
     }
-
-    transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 }
 
 void OfflineSDFRenderer::createPipeline() {

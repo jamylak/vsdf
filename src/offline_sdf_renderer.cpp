@@ -413,27 +413,45 @@ void OfflineSDFRenderer::renderFrames() {
     uint32_t totalFrames = maxFrames.value_or(1);
     for (uint32_t currentFrame = 0; currentFrame < totalFrames;
          ++currentFrame) {
-        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[0], VK_TRUE,
-                                 UINT64_MAX));
-        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[0]));
+        const uint32_t slotIndex = currentFrame % ringSize;
+        RingSlot &slot = ringSlots[slotIndex];
 
-        vkutils::recordCommandBuffer(
-            queryPool, renderPass, imageSize, pipeline, pipelineLayout,
-            commandBuffers.commandBuffers[0], framebuffer,
-            getPushConstants(currentFrame), 0);
+        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[slotIndex],
+                                 VK_TRUE, UINT64_MAX));
+        if (slot.pendingReadback) {
+            if (debugDumpPPMDir) {
+                ReadbackFrame frame = readbackOffscreenImage(slot);
+                dumpDebugFrame(frame);
+            }
+            slot.pendingReadback = false;
+        }
+
+        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[slotIndex]));
+        recordCommandBuffer(slotIndex, currentFrame);
 
         VkSubmitInfo submitInfo{
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .commandBufferCount = 1,
-            .pCommandBuffers = &commandBuffers.commandBuffers[0],
+            .pCommandBuffers = &commandBuffers.commandBuffers[slotIndex],
         };
-        VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fences.fences[0]));
-        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[0], VK_TRUE,
-                                 UINT64_MAX));
+        VK_CHECK(
+            vkQueueSubmit(queue, 1, &submitInfo, fences.fences[slotIndex]));
+        slot.pendingReadback = debugDumpPPMDir.has_value();
+    }
 
-        if (debugDumpPPMDir) {
-            ReadbackFrame frame = readbackOffscreenImage();
+    // Finalise after the for loop finished
+    // Read any pending slots
+    if (debugDumpPPMDir) {
+        for (size_t i = 0; i < ringSize; ++i) {
+            RingSlot &slot = ringSlots[i];
+            if (!slot.pendingReadback) {
+                continue;
+            }
+            VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[i],
+                                     VK_TRUE, UINT64_MAX));
+            ReadbackFrame frame = readbackOffscreenImage(slot);
             dumpDebugFrame(frame);
+            slot.pendingReadback = false;
         }
     }
 

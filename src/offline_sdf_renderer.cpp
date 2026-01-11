@@ -159,19 +159,6 @@ void OfflineSDFRenderer::createCommandBuffers() {
         vkutils::createCommandBuffers(logicalDevice, commandPool, ringSize);
 }
 
-void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
-                                               VkImageLayout newLayout) {
-    VkCommandBufferAllocateInfo allocInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = commandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-
-    VkCommandBuffer commandBuffer;
-    // One-time command buffer to record a single layout transition.
-    VK_CHECK(
-        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
 
     VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

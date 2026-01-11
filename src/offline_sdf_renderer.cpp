@@ -1,6 +1,7 @@
 #include "offline_sdf_renderer.h"
 #include "shader_utils.h"
 #include "vkutils.h"
+#include <cstddef>
 #include <cstdint>
 #include <spdlog/spdlog.h>
 

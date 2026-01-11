@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 
 OfflineSDFRenderer::OfflineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
@@ -11,7 +12,14 @@ OfflineSDFRenderer::OfflineSDFRenderer(
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
     uint32_t height, uint32_t ringSize)
     : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
-      imageSize({width, height}), ringSize(ringSize) {}
+      imageSize({width, height}), ringSize(validateRingSize(ringSize)) {}
+
+uint32_t OfflineSDFRenderer::validateRingSize(uint32_t value) {
+    if (value == 0 || value > MAX_FRAME_SLOTS) {
+        throw std::runtime_error("ringSize must be 1..MAX_FRAME_SLOTS");
+    }
+    return value;
+}
 
 void OfflineSDFRenderer::setup() {
     vulkanSetup();
@@ -40,14 +48,6 @@ void OfflineSDFRenderer::vulkanSetup() {
 }
 
 void OfflineSDFRenderer::setupRenderContext() {
-    if (ringSize == 0)
-        ringSize = 1;
-    if (ringSize > MAX_FRAME_SLOTS) {
-        spdlog::warn("Ring size {} exceeds max {}; clamping.", ringSize,
-                     MAX_FRAME_SLOTS);
-        ringSize = MAX_FRAME_SLOTS;
-    }
-
     const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
     VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
                               static_cast<VkDeviceSize>(imageSize.height) *

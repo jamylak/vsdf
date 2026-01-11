@@ -36,6 +36,8 @@ class OfflineSDFRenderer : public SDFRenderer {
 
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 
+    static uint32_t validateRingSize(uint32_t value);
+
     void vulkanSetup();
     void setupRenderContext();
     void createPipeline();

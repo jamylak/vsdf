@@ -139,7 +139,7 @@ and adjusting it to your liking
 - `--ffmpeg-codec <name>` FFmpeg codec (default: libx264)
 - `--ffmpeg-width <N>` Output width (default: 1280)
 - `--ffmpeg-height <N>` Output height (default: 720)
-- `--offline-ring-size <N>` Ring buffer size for offline render (default: 2)
+- `--ffmpeg-ring-buffer-size <N>` Ring buffer size for offline render (default: 2)
 
 ### Test Dumping 1 frame
 ```sh

@@ -444,21 +444,30 @@ void OfflineSDFRenderer::destroyPipeline() {
 
 void OfflineSDFRenderer::destroyRenderContext() {
     VK_CHECK(vkDeviceWaitIdle(logicalDevice));
-    if (framebuffer != VK_NULL_HANDLE) {
-        vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
-        framebuffer = VK_NULL_HANDLE;
-    }
-    if (offscreenImageView != VK_NULL_HANDLE) {
-        vkDestroyImageView(logicalDevice, offscreenImageView, nullptr);
-        offscreenImageView = VK_NULL_HANDLE;
-    }
-    if (offscreenImage != VK_NULL_HANDLE) {
-        vkDestroyImage(logicalDevice, offscreenImage, nullptr);
-        offscreenImage = VK_NULL_HANDLE;
-    }
-    if (offscreenImageMemory != VK_NULL_HANDLE) {
-        vkFreeMemory(logicalDevice, offscreenImageMemory, nullptr);
-        offscreenImageMemory = VK_NULL_HANDLE;
+    for (size_t i = 0; i < ringSize; ++i) {
+        RingSlot &slot = ringSlots[i];
+        if (slot.framebuffer != VK_NULL_HANDLE) {
+            vkDestroyFramebuffer(logicalDevice, slot.framebuffer, nullptr);
+            slot.framebuffer = VK_NULL_HANDLE;
+        }
+        if (slot.imageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(logicalDevice, slot.imageView, nullptr);
+            slot.imageView = VK_NULL_HANDLE;
+        }
+        if (slot.image != VK_NULL_HANDLE) {
+            vkDestroyImage(logicalDevice, slot.image, nullptr);
+            slot.image = VK_NULL_HANDLE;
+        }
+        if (slot.imageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(logicalDevice, slot.imageMemory, nullptr);
+            slot.imageMemory = VK_NULL_HANDLE;
+        }
+        if (slot.stagingBuffer.buffer != VK_NULL_HANDLE ||
+            slot.stagingBuffer.memory != VK_NULL_HANDLE) {
+            vkutils::destroyReadbackBuffer(logicalDevice, slot.stagingBuffer);
+        }
+        slot.inFlight = false;
+        slot.pendingReadback = false;
     }
 }
 

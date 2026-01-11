@@ -126,24 +126,24 @@ int main(int argc, char **argv) {
                     "--ffmpeg-height requires a positive integer value");
             }
             continue;
-        } else if (arg == "--offline-ring-size") {
+        } else if (arg == "--ffmpeg-ring-buffer-size") {
             if (i + 1 >= argc) {
                 throw std::runtime_error(
-                    "--offline-ring-size requires a positive integer value");
+                    "--ffmpeg-ring-buffer-size requires a positive integer value");
             }
             try {
                 offlineRingSize =
                     static_cast<uint32_t>(std::stoul(argv[++i]));
             } catch (const std::invalid_argument &) {
                 throw std::runtime_error(
-                    "--offline-ring-size requires a valid positive integer value");
+                    "--ffmpeg-ring-buffer-size requires a valid positive integer value");
             } catch (const std::out_of_range &) {
                 throw std::runtime_error(
-                    "--offline-ring-size value is out of range for a positive integer");
+                    "--ffmpeg-ring-buffer-size value is out of range for a positive integer");
             }
             if (offlineRingSize == 0) {
                 throw std::runtime_error(
-                    "--offline-ring-size requires a positive integer value");
+                    "--ffmpeg-ring-buffer-size requires a positive integer value");
             }
             continue;
         } else if (arg == "--ffmpeg-output" || arg == "--output-path") {

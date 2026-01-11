@@ -47,6 +47,7 @@ class OfflineSDFRenderer : public SDFRenderer {
     //  - K >= 2: total ≈ (render + readback) + (N - 1) * max(render, readback).
     const uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE;
     std::array<RingSlot, MAX_FRAME_SLOTS> ringSlots;
+    const uint32_t maxFrames;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 

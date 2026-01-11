@@ -18,8 +18,8 @@ OnlineSDFRenderer::OnlineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
     std::optional<uint32_t> maxFrames, bool headless,
     std::optional<std::filesystem::path> debugDumpPPMDir)
-    : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
-      headless(headless) {}
+    : SDFRenderer(fragShaderPath, useToyTemplate, debugDumpPPMDir),
+      headless(headless), maxFrames(maxFrames) {}
 
 void OnlineSDFRenderer::setup() {
     glfwSetup();

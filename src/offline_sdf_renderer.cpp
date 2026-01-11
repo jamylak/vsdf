@@ -13,9 +13,9 @@ OfflineSDFRenderer::OfflineSDFRenderer(
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
     uint32_t height, uint32_t ringSize,
     ffmpeg_utils::EncodeSettings encodeSettings)
-    : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
+    : SDFRenderer(fragShaderPath, useToyTemplate, debugDumpPPMDir),
       imageSize({width, height}), ringSize(validateRingSize(ringSize)),
-      encodeSettings(std::move(encodeSettings)) {}
+      maxFrames(maxFrames), encodeSettings(std::move(encodeSettings)) {}
 
 uint32_t OfflineSDFRenderer::validateRingSize(uint32_t value) {
     if (value == 0 || value > MAX_FRAME_SLOTS) {
@@ -404,9 +404,6 @@ ReadbackFrame OfflineSDFRenderer::debugReadbackOffscreenImage(const RingSlot &sl
 }
 
 void OfflineSDFRenderer::renderFrames() {
-    // Default to 1 frame for now...
-    // TODO: Check if best to instead make maxFrames required
-    // when doing offline render???
     uint32_t totalFrames = maxFrames;
     startEncoding();
     for (uint32_t currentFrame = 0; currentFrame < totalFrames;

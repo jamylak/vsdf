@@ -38,6 +38,7 @@ class OnlineSDFRenderer : public SDFRenderer {
     vkutils::SwapchainImageViews swapchainImageViews;
     vkutils::FrameBuffers frameBuffers;
     bool headless = false;
+    std::optional<uint32_t> maxFrames;
 
     // Timing
     std::chrono::time_point<std::chrono::high_resolution_clock> cpuStartFrame,

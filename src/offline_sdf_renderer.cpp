@@ -47,6 +47,12 @@ void OfflineSDFRenderer::setupRenderContext() {
                      MAX_FRAME_SLOTS);
         ringSize = MAX_FRAME_SLOTS;
     }
+
+    const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
+    VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
+                              static_cast<VkDeviceSize>(imageSize.height) *
+                              formatInfo.bytesPerPixel;
+
     VkImageCreateInfo imageCreateInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,

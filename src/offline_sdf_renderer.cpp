@@ -363,9 +363,16 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
                               glm::vec2(imageSize.width, imageSize.height));
 }
 
+ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
+    const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
+
+    VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
+                              static_cast<VkDeviceSize>(imageSize.height) *
+                              formatInfo.bytesPerPixel;
+
     void *data = nullptr;
-    VK_CHECK(vkMapMemory(logicalDevice, stagingBuffer.memory, 0, imageBytes, 0,
-                         &data));
+    VK_CHECK(vkMapMemory(logicalDevice, slot.stagingBuffer.memory, 0,
+                         imageBytes, 0, &data));
 
     ReadbackFrame frame;
     frame.allocateRGB(imageSize.width, imageSize.height);
@@ -378,7 +385,6 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
         uint8_t r = 0;
         uint8_t g = 0;
         uint8_t b = 0;
-        // Normalize to RGB (no alpha) with optional channel swizzle.
         if (formatInfo.swapRB) {
             r = src[srcOffset + 2];
             g = src[srcOffset + 1];
@@ -393,9 +399,7 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
         frame.rgb[dstOffset + 2] = b;
     }
 
-    vkUnmapMemory(logicalDevice, stagingBuffer.memory);
-    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
-    vkutils::destroyReadbackBuffer(logicalDevice, stagingBuffer);
+    vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
 
     return frame;
 }

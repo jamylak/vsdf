@@ -407,32 +407,14 @@ void OfflineSDFRenderer::renderFrames() {
     // Default to 1 frame for now...
     // TODO: Check if best to instead make maxFrames required
     // when doing offline render???
-    // eg. for now everything is just checking (debugDumpPPMDir)
-    // Need to adjust later eg. for ffmpeg encoding
     uint32_t totalFrames = maxFrames.value_or(1);
-    const bool encodingEnabled = encodeSettings.has_value();
-    if (encodingEnabled) {
-        startEncoding();
-    }
+    startEncoding();
     for (uint32_t currentFrame = 0; currentFrame < totalFrames;
          ++currentFrame) {
         const uint32_t slotIndex = currentFrame % ringSize;
         RingSlot &slot = ringSlots[slotIndex];
 
-        if (encodingEnabled) {
-            waitForSlotEncode(slotIndex);
-        } else {
-            VK_CHECK(vkWaitForFences(logicalDevice, 1,
-                                     &fences.fences[slotIndex], VK_TRUE,
-                                     UINT64_MAX));
-            if (slot.pendingReadback) {
-                if (debugDumpPPMDir) {
-                    ReadbackFrame frame = readbackOffscreenImage(slot);
-                    dumpDebugFrame(frame);
-                }
-                slot.pendingReadback = false;
-            }
-        }
+        waitForSlotEncode(slotIndex);
 
         VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[slotIndex]));
         recordCommandBuffer(slotIndex, currentFrame);
@@ -444,32 +426,11 @@ void OfflineSDFRenderer::renderFrames() {
         };
         VK_CHECK(
             vkQueueSubmit(queue, 1, &submitInfo, fences.fences[slotIndex]));
-        if (encodingEnabled) {
-            enqueueEncode(slotIndex, currentFrame);
-        } else {
-            slot.pendingReadback = debugDumpPPMDir.has_value();
-        }
+        enqueueEncode(slotIndex, currentFrame);
     }
 
     // Finalise after the for loop finished
-    // Read any pending slots
-    if (encodingEnabled) {
-        stopEncoding();
-    } else {
-        if (debugDumpPPMDir) {
-            for (size_t i = 0; i < ringSize; ++i) {
-                RingSlot &slot = ringSlots[i];
-                if (!slot.pendingReadback) {
-                    continue;
-                }
-                VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[i],
-                                         VK_TRUE, UINT64_MAX));
-                ReadbackFrame frame = readbackOffscreenImage(slot);
-                dumpDebugFrame(frame);
-                slot.pendingReadback = false;
-            }
-        }
-    }
+    stopEncoding();
 
     spdlog::info("Offline render done.");
     destroy();
@@ -477,7 +438,8 @@ void OfflineSDFRenderer::renderFrames() {
 
 void OfflineSDFRenderer::startEncoding() {
     if (!encodeSettings) {
-        return;
+        throw std::runtime_error(
+            "Offline renderer requires FFmpeg encode settings");
     }
 
     const AVPixelFormat srcFormat =
@@ -520,6 +482,8 @@ void OfflineSDFRenderer::startEncoding() {
                                          VK_TRUE, UINT64_MAX));
 
                 if (debugDumpPPMDir) {
+                    // Blocking readback + PPM dump; this will stall the encode
+                    // thread but remains an optional debug extra.
                     ReadbackFrame frame = readbackOffscreenImage(slot);
                     dumpDebugFrame(frame);
                 }

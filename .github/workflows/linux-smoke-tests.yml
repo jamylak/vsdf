@@ -1,4 +1,4 @@
-name: Smoke Test
+name: Linux Smoke Tests
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
       - name: Build
         run: cmake --build build
 
-      - name: Debug quadrants smoke test (gtest)
+      - name: GTEST (Includes Validating Frame Dumps)
         run: |
           xvfb-run -s "-screen 0 1024x768x24" \
             env VSDF_SMOKE_TESTS=1 build/tests/vsdf_tests

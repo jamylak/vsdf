@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: Linux Docker + macOS CI
 
 on:
   push:

@@ -11,8 +11,7 @@ OfflineSDFRenderer::OfflineSDFRenderer(
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
     uint32_t height, uint32_t ringSize)
     : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
-      imageSize({width, height}),
-      ringSize(ringSize) {}
+      imageSize({width, height}), ringSize(ringSize) {}
 
 void OfflineSDFRenderer::setup() {
     vulkanSetup();
@@ -115,8 +114,6 @@ void OfflineSDFRenderer::setupRenderContext() {
 
         VK_CHECK(vkAllocateMemory(logicalDevice, &allocInfo, nullptr,
                                   &slot.imageMemory));
-        VK_CHECK(vkBindImageMemory(logicalDevice, slot.image,
-                                   slot.imageMemory, 0));
 
         imageViewCreateInfoTemplate.image = slot.image;
         VK_CHECK(vkCreateImageView(logicalDevice, &imageViewCreateInfoTemplate, nullptr,

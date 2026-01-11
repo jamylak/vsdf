@@ -24,7 +24,6 @@ class OfflineSDFRenderer : public SDFRenderer {
         VkImageView imageView = VK_NULL_HANDLE;
         VkFramebuffer framebuffer = VK_NULL_HANDLE;
         vkutils::ReadbackBuffer stagingBuffer{};
-        bool inFlight = false;
         bool pendingReadback = false;
     };
 

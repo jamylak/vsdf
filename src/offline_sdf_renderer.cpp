@@ -469,7 +469,6 @@ void OfflineSDFRenderer::destroyRenderContext() {
             slot.stagingBuffer.memory != VK_NULL_HANDLE) {
             vkutils::destroyReadbackBuffer(logicalDevice, slot.stagingBuffer);
         }
-        slot.inFlight = false;
         slot.pendingReadback = false;
     }
 }

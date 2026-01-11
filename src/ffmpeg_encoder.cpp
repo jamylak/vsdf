@@ -99,6 +99,8 @@ void FfmpegEncoder::open() {
     }
 
     stream->time_base = codecContext->time_base;
+    stream->avg_frame_rate = codecContext->framerate;
+    stream->r_frame_rate = codecContext->framerate;
 
     if (!(formatContext->oformat->flags & AVFMT_NOFILE)) {
         err = avio_open(&formatContext->pb, settings.outputPath.c_str(),
@@ -170,6 +172,7 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
               dstFrame->data, dstFrame->linesize);
 
     dstFrame->pts = frameIndex;
+    dstFrame->duration = 1;
 
     err = avcodec_send_frame(codecContext, dstFrame);
     if (err < 0) {

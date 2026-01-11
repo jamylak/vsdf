@@ -136,10 +136,10 @@ void OfflineSDFRenderer::setupRenderContext() {
     }
 
     if (queryPool == VK_NULL_HANDLE) {
-        queryPool = vkutils::createQueryPool(logicalDevice, 1);
+        queryPool = vkutils::createQueryPool(logicalDevice, ringSize);
     }
     if (fences.count == 0) {
-        fences = vkutils::createFences(logicalDevice, 1);
+        fences = vkutils::createFences(logicalDevice, ringSize);
     }
 
     transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED,

@@ -175,7 +175,7 @@ void OfflineSDFRenderer::recordCommandBuffer(uint32_t slotIndex,
 
     VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
 
     VkRenderPassBeginInfo renderPassBeginInfo{

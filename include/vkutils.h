@@ -4,7 +4,6 @@
 #ifndef VKUTILS_H
 #define VKUTILS_H
 // This is just to put the verbose vulkan stuff in its own place
-// but it will only be included once
 #include "readback_frame.h"
 #include <cstddef>
 #include <cstdint>

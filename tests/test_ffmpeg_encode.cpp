@@ -1,5 +1,6 @@
 #include "ffmpeg_encode_settings.h"
 #include "ffmpeg_encoder.h"
+#include "ffmpeg_test_utils.h"
 
 #include <gtest/gtest.h>
 
@@ -73,6 +74,33 @@ TEST(FFmpegEncoder, EncodesSmallMp4) {
 
     ASSERT_TRUE(std::filesystem::exists(tempPath));
     ASSERT_GT(std::filesystem::file_size(tempPath), 0u);
+
+    const auto decoded =
+        ffmpeg_test_utils::decodeVideoRgb24(tempPath.string());
+    EXPECT_EQ(decoded.width, width);
+    EXPECT_EQ(decoded.height, height);
+    EXPECT_EQ(decoded.frameCount, 10);
+    ASSERT_FALSE(decoded.firstFrame.empty());
+
+    const int tolerance = 25;
+    const auto samplePixel = [&](int x, int y) {
+        return ffmpeg_test_utils::pixelAt(decoded, x, y);
+    };
+
+    const auto topLeft = samplePixel(2, 2);
+    EXPECT_NEAR(topLeft[0], 128, tolerance);
+    EXPECT_NEAR(topLeft[1], 6, tolerance);
+    EXPECT_NEAR(topLeft[2], 4, tolerance);
+
+    const auto mid = samplePixel(width / 2, height / 2);
+    EXPECT_NEAR(mid[0], 128, tolerance);
+    EXPECT_NEAR(mid[1], (height / 2) * 3, tolerance);
+    EXPECT_NEAR(mid[2], (width / 2) * 2, tolerance);
+
+    const auto bottomRight = samplePixel(width - 3, height - 3);
+    EXPECT_NEAR(bottomRight[0], 128, tolerance);
+    EXPECT_NEAR(bottomRight[1], (height - 3) * 3, tolerance);
+    EXPECT_NEAR(bottomRight[2], (width - 3) * 2, tolerance);
 
     std::filesystem::remove(tempPath, ec);
 }

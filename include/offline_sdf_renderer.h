@@ -32,7 +32,7 @@ class OfflineSDFRenderer : public SDFRenderer {
     VkExtent2D imageSize{};
     VkFormat imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
-    uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE;
+    const uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE;
     std::array<RingSlot, MAX_FRAME_SLOTS> ringSlots;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime;

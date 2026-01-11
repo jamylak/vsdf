@@ -371,7 +371,7 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
                               glm::vec2(imageSize.width, imageSize.height));
 }
 
-ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
+ReadbackFrame OfflineSDFRenderer::debugReadbackOffscreenImage(const RingSlot &slot) {
     const auto formatInfo = readbackFormatInfo;
     const uint8_t *data = static_cast<const uint8_t *>(slot.mappedData);
 
@@ -475,7 +475,7 @@ void OfflineSDFRenderer::startEncoding() {
                 if (debugDumpPPMDir) {
                     // Blocking readback + PPM dump; this will stall the encode
                     // thread but remains an optional debug extra.
-                    ReadbackFrame frame = readbackOffscreenImage(slot);
+                    ReadbackFrame frame = debugReadbackOffscreenImage(slot);
                     dumpDebugFrame(frame);
                 }
 

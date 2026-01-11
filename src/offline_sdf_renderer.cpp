@@ -377,7 +377,7 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
 
     ReadbackFrame frame;
     frame.allocateRGB(imageSize.width, imageSize.height);
-    const uint8_t *src = static_cast<const uint8_t *>(data);
+    const uint8_t *src = data;
     const size_t pixelCount = static_cast<size_t>(imageSize.width) *
                               static_cast<size_t>(imageSize.height);
     for (size_t i = 0; i < pixelCount; ++i) {
@@ -400,8 +400,6 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
         frame.rgb[dstOffset + 2] = b;
     }
 
-    vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
-
     return frame;
 }
 
@@ -412,19 +410,28 @@ void OfflineSDFRenderer::renderFrames() {
     // eg. for now everything is just checking (debugDumpPPMDir)
     // Need to adjust later eg. for ffmpeg encoding
     uint32_t totalFrames = maxFrames.value_or(1);
+    const bool encodingEnabled = encodeSettings.has_value();
+    if (encodingEnabled) {
+        startEncoding();
+    }
     for (uint32_t currentFrame = 0; currentFrame < totalFrames;
          ++currentFrame) {
         const uint32_t slotIndex = currentFrame % ringSize;
         RingSlot &slot = ringSlots[slotIndex];
 
-        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[slotIndex],
-                                 VK_TRUE, UINT64_MAX));
-        if (slot.pendingReadback) {
-            if (debugDumpPPMDir) {
-                ReadbackFrame frame = readbackOffscreenImage(slot);
-                dumpDebugFrame(frame);
+        if (encodingEnabled) {
+            waitForSlotEncode(slotIndex);
+        } else {
+            VK_CHECK(vkWaitForFences(logicalDevice, 1,
+                                     &fences.fences[slotIndex], VK_TRUE,
+                                     UINT64_MAX));
+            if (slot.pendingReadback) {
+                if (debugDumpPPMDir) {
+                    ReadbackFrame frame = readbackOffscreenImage(slot);
+                    dumpDebugFrame(frame);
+                }
+                slot.pendingReadback = false;
             }
-            slot.pendingReadback = false;
         }
 
         VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[slotIndex]));
@@ -437,27 +444,151 @@ void OfflineSDFRenderer::renderFrames() {
         };
         VK_CHECK(
             vkQueueSubmit(queue, 1, &submitInfo, fences.fences[slotIndex]));
-        slot.pendingReadback = debugDumpPPMDir.has_value();
+        if (encodingEnabled) {
+            enqueueEncode(slotIndex, currentFrame);
+        } else {
+            slot.pendingReadback = debugDumpPPMDir.has_value();
+        }
     }
 
     // Finalise after the for loop finished
     // Read any pending slots
-    if (debugDumpPPMDir) {
-        for (size_t i = 0; i < ringSize; ++i) {
-            RingSlot &slot = ringSlots[i];
-            if (!slot.pendingReadback) {
-                continue;
+    if (encodingEnabled) {
+        stopEncoding();
+    } else {
+        if (debugDumpPPMDir) {
+            for (size_t i = 0; i < ringSize; ++i) {
+                RingSlot &slot = ringSlots[i];
+                if (!slot.pendingReadback) {
+                    continue;
+                }
+                VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[i],
+                                         VK_TRUE, UINT64_MAX));
+                ReadbackFrame frame = readbackOffscreenImage(slot);
+                dumpDebugFrame(frame);
+                slot.pendingReadback = false;
             }
-            VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[i],
-                                     VK_TRUE, UINT64_MAX));
-            ReadbackFrame frame = readbackOffscreenImage(slot);
-            dumpDebugFrame(frame);
-            slot.pendingReadback = false;
         }
     }
 
     spdlog::info("Offline render done.");
     destroy();
+}
+
+void OfflineSDFRenderer::startEncoding() {
+    if (!encodeSettings) {
+        return;
+    }
+
+    const AVPixelFormat srcFormat =
+        readbackFormatInfo.swapRB ? AV_PIX_FMT_BGRA : AV_PIX_FMT_RGBA;
+    const int srcStride =
+        static_cast<int>(imageSize.width * readbackFormatInfo.bytesPerPixel);
+
+    encodeQueueMax = ringSize == 0 ? 1 : ringSize;
+    encodeStop = false;
+    encodeFailed = false;
+
+    encoder = std::make_unique<ffmpeg_utils::FfmpegEncoder>(
+        *encodeSettings, static_cast<int>(imageSize.width),
+        static_cast<int>(imageSize.height), srcFormat, srcStride);
+    encoder->open();
+
+    encoderThread = std::thread([this]() {
+        try {
+            while (true) {
+                EncodeItem item;
+                {
+                    std::unique_lock<std::mutex> lock(encodeMutex);
+                    encodeCv.wait(lock, [this]() {
+                        return encodeStop || !encodeQueue.empty();
+                    });
+                    if (encodeQueue.empty()) {
+                        if (encodeStop) {
+                            break;
+                        }
+                        continue;
+                    }
+                    item = encodeQueue.front();
+                    encodeQueue.pop_front();
+                    encodeCv.notify_all();
+                }
+
+                RingSlot &slot = ringSlots[item.slotIndex];
+                VK_CHECK(vkWaitForFences(logicalDevice, 1,
+                                         &fences.fences[item.slotIndex],
+                                         VK_TRUE, UINT64_MAX));
+
+                if (debugDumpPPMDir) {
+                    ReadbackFrame frame = readbackOffscreenImage(slot);
+                    dumpDebugFrame(frame);
+                }
+
+                const uint8_t *src =
+                    static_cast<const uint8_t *>(slot.mappedData);
+                encoder->encodeFrame(src, item.frameIndex);
+
+                {
+                    std::lock_guard<std::mutex> lock(encodeMutex);
+                    slot.pendingEncode = false;
+                }
+                encodeCv.notify_all();
+            }
+
+            encoder->flush();
+        } catch (const std::exception &e) {
+            spdlog::error("FFmpeg encode thread failed: {}", e.what());
+            {
+                std::lock_guard<std::mutex> lock(encodeMutex);
+                encodeFailed = true;
+                encodeStop = true;
+                encodeQueue.clear();
+                for (size_t i = 0; i < ringSize; ++i) {
+                    ringSlots[i].pendingEncode = false;
+                }
+            }
+            encodeCv.notify_all();
+        }
+    });
+}
+
+void OfflineSDFRenderer::stopEncoding() {
+    {
+        std::lock_guard<std::mutex> lock(encodeMutex);
+        encodeStop = true;
+    }
+    encodeCv.notify_all();
+    if (encoderThread.joinable()) {
+        encoderThread.join();
+    }
+    encoder.reset();
+}
+
+void OfflineSDFRenderer::enqueueEncode(uint32_t slotIndex,
+                                       uint32_t frameIndex) {
+    std::unique_lock<std::mutex> lock(encodeMutex);
+    if (encodeFailed) {
+        throw std::runtime_error("FFmpeg encoder failed");
+    }
+    encodeCv.wait(lock,
+                  [this]() { return encodeQueue.size() < encodeQueueMax; });
+    if (encodeFailed) {
+        throw std::runtime_error("FFmpeg encoder failed");
+    }
+    RingSlot &slot = ringSlots[slotIndex];
+    slot.pendingEncode = true;
+    encodeQueue.push_back(EncodeItem{slotIndex, frameIndex});
+    lock.unlock();
+    encodeCv.notify_all();
+}
+
+void OfflineSDFRenderer::waitForSlotEncode(uint32_t slotIndex) {
+    std::unique_lock<std::mutex> lock(encodeMutex);
+    encodeCv.wait(lock, [this, slotIndex]() {
+        return encodeFailed || !ringSlots[slotIndex].pendingEncode;
+    });
+    if (encodeFailed)
+        throw std::runtime_error("FFmpeg encoder failed");
 }
 
 void OfflineSDFRenderer::destroyPipeline() {
@@ -488,9 +619,14 @@ void OfflineSDFRenderer::destroyRenderContext() {
         }
         if (slot.stagingBuffer.buffer != VK_NULL_HANDLE ||
             slot.stagingBuffer.memory != VK_NULL_HANDLE) {
+            if (slot.mappedData) {
+                vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
+                slot.mappedData = nullptr;
+            }
             vkutils::destroyReadbackBuffer(logicalDevice, slot.stagingBuffer);
         }
         slot.pendingReadback = false;
+        slot.pendingEncode = false;
     }
 }
 

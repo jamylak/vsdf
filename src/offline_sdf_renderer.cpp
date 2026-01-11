@@ -159,102 +159,62 @@ void OfflineSDFRenderer::createCommandBuffers() {
         vkutils::createCommandBuffers(logicalDevice, commandPool, ringSize);
 }
 
+void OfflineSDFRenderer::recordCommandBuffer(uint32_t slotIndex,
+                                             uint32_t currentFrame) {
+    RingSlot &slot = ringSlots[slotIndex];
+    VkCommandBuffer commandBuffer = commandBuffers.commandBuffers[slotIndex];
+    vkResetCommandBuffer(commandBuffer, 0);
 
     VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
     };
+
+    VkRenderPassBeginInfo renderPassBeginInfo{
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = renderPass,
+        .framebuffer = slot.framebuffer,
+        .renderArea = {{0, 0}, imageSize},
+        .clearValueCount = 0,
+    };
+
     VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+    vkCmdResetQueryPool(commandBuffer, queryPool, slotIndex * 2, 2);
+    vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        queryPool, slotIndex * 2);
+    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo,
+                         VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    VkImageMemoryBarrier barrier{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .oldLayout = oldLayout,
-        .newLayout = newLayout,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = offscreenImage,
-        .subresourceRange =
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
+    const vkutils::PushConstants pushConstants = getPushConstants(currentFrame);
+    vkCmdPushConstants(commandBuffer, pipelineLayout,
+                       VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                       sizeof(vkutils::PushConstants), &pushConstants);
+
+    VkRect2D scissor{
+        .offset = {0, 0},
+        .extent = {imageSize.width, imageSize.height},
     };
 
-    VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags dstStage =
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-        newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-        // No need to wait on prior writes; we don't care about old contents.
-        barrier.srcAccessMask = 0;
-        // Make color-attachment writes visible for subsequent render pass use.
-        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    } else {
-        throw std::runtime_error("Unsupported image layout transition");
-    }
-
-    // Insert the layout transition with matching pipeline stage scopes.
-    vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0,
-                         nullptr, 1, &barrier);
-
-    VK_CHECK(vkEndCommandBuffer(commandBuffer));
-
-    VkSubmitInfo submitInfo{
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &commandBuffer,
+    VkViewport viewport{
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = static_cast<float>(imageSize.width),
+        .height = static_cast<float>(imageSize.height),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
     };
 
-    // Submit and wait so the image is ready before further use.
-    VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
-    VK_CHECK(vkQueueWaitIdle(queue));
-    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
-}
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-vkutils::PushConstants
-OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
-    auto now = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration<float>(now - startTime).count();
-    return buildPushConstants(elapsed, currentFrame,
-                              glm::vec2(imageSize.width, imageSize.height));
-}
+    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+    vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                        queryPool, slotIndex * 2 + 1);
+    vkCmdEndRenderPass(commandBuffer);
 
-ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
-    const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
-
-    VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
-                              static_cast<VkDeviceSize>(imageSize.height) *
-                              formatInfo.bytesPerPixel;
-    // Staging buffer for GPU->CPU readback.
-    vkutils::ReadbackBuffer stagingBuffer =
-        vkutils::createReadbackBuffer(logicalDevice, physicalDevice, imageBytes,
-                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    VkCommandBufferAllocateInfo allocInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = commandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-
-    VkCommandBuffer commandBuffer;
-    // One-time command buffer to handle layout transitions + copy.
-    VK_CHECK(
-        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
-
-    VkCommandBufferBeginInfo beginInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-
-    // Transition offscreen image to transfer-src layout.
-    // so we can copy from it.
+    // Transition image layout to TRANSFER_SRC_OPTIMAL so we can
+    // copy it to the staging buffer.
     VkImageMemoryBarrier barrierToTransfer{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -263,7 +223,7 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
         .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = offscreenImage,
+        .image = slot.image,
         .subresourceRange =
             {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -294,11 +254,12 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
         .imageExtent = {imageSize.width, imageSize.height, 1},
     };
 
-    vkCmdCopyImageToBuffer(commandBuffer, offscreenImage,
+    vkCmdCopyImageToBuffer(commandBuffer, slot.image,
                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                           stagingBuffer.buffer, 1, &region);
+                           slot.stagingBuffer.buffer, 1, &region);
 
-    // Transition back to color-attachment layout for future rendering.
+    // Transition image back to COLOR_ATTACHMENT_OPTIMAL
+    // for next frame render.
     VkImageMemoryBarrier barrierToColor{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
@@ -307,7 +268,7 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
         .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = offscreenImage,
+        .image = slot.image,
         .subresourceRange =
             {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -323,6 +284,8 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
                          nullptr, 0, nullptr, 1, &barrierToColor);
 
     VK_CHECK(vkEndCommandBuffer(commandBuffer));
+}
+
 
     VkSubmitInfo submitInfo{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,

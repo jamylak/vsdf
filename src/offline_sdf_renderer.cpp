@@ -40,6 +40,13 @@ void OfflineSDFRenderer::vulkanSetup() {
 }
 
 void OfflineSDFRenderer::setupRenderContext() {
+    if (ringSize == 0)
+        ringSize = 1;
+    if (ringSize > MAX_FRAME_SLOTS) {
+        spdlog::warn("Ring size {} exceeds max {}; clamping.", ringSize,
+                     MAX_FRAME_SLOTS);
+        ringSize = MAX_FRAME_SLOTS;
+    }
     VkImageCreateInfo imageCreateInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,

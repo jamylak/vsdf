@@ -68,26 +68,6 @@ void OfflineSDFRenderer::setupRenderContext() {
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    VK_CHECK(vkCreateImage(logicalDevice, &imageCreateInfo, nullptr,
-                           &offscreenImage));
-
-    VkMemoryRequirements memRequirements;
-    vkGetImageMemoryRequirements(logicalDevice, offscreenImage,
-                                 &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo{
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = memRequirements.size,
-        .memoryTypeIndex = vkutils::findMemoryTypeIndex(
-            physicalDevice, memRequirements.memoryTypeBits,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-    };
-
-    VK_CHECK(vkAllocateMemory(logicalDevice, &allocInfo, nullptr,
-                              &offscreenImageMemory));
-    VK_CHECK(vkBindImageMemory(logicalDevice, offscreenImage,
-                               offscreenImageMemory, 0));
-
     VkImageViewCreateInfo imageViewCreateInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = offscreenImage,

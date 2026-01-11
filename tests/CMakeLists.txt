@@ -56,7 +56,8 @@ if (VSDF_ENABLE_FFMPEG)
   target_sources(${PROJECT_NAME} PRIVATE ../src/ffmpeg_utils.cpp
     ../src/ffmpeg_encoder.cpp
     test_ffmpeg.cpp
-    test_ffmpeg_encode.cpp)
+    test_ffmpeg_encode.cpp
+    test_offline_ffmpeg_encode.cpp)
   target_compile_definitions(${PROJECT_NAME} PRIVATE VSDF_ENABLE_FFMPEG=1)
 endif()
 

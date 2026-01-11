@@ -373,6 +373,7 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
 
 ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
     const auto formatInfo = readbackFormatInfo;
+    const uint8_t *data = static_cast<const uint8_t *>(slot.mappedData);
 
     ReadbackFrame frame;
     frame.allocateRGB(imageSize.width, imageSize.height);

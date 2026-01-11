@@ -4,7 +4,6 @@
 #ifndef VKUTILS_H
 #define VKUTILS_H
 // This is just to put the verbose vulkan stuff in its own place
-// but it will only be included once
 #include "readback_frame.h"
 #include <cstddef>
 #include <cstdint>
@@ -27,7 +26,7 @@
             throw std::logic_error("Got a runtime_error");                     \
     } while (0);
 
-inline constexpr size_t MAX_SWAPCHAIN_IMAGES = 10;
+inline constexpr size_t MAX_FRAME_SLOTS = 10;
 
 namespace vkutils {
 struct PushConstants {
@@ -42,32 +41,32 @@ struct PushConstants {
  * unnesicarily. I want to sometimes avoid vector
  */
 struct SwapchainImages {
-    std::array<VkImage, MAX_SWAPCHAIN_IMAGES> images{};
+    std::array<VkImage, MAX_FRAME_SLOTS> images{};
     uint32_t count = 0;
 };
 
 struct SwapchainImageViews {
-    std::array<VkImageView, MAX_SWAPCHAIN_IMAGES> imageViews{};
+    std::array<VkImageView, MAX_FRAME_SLOTS> imageViews{};
     uint32_t count = 0;
 };
 
 struct CommandBuffers {
-    std::array<VkCommandBuffer, MAX_SWAPCHAIN_IMAGES> commandBuffers{};
+    std::array<VkCommandBuffer, MAX_FRAME_SLOTS> commandBuffers{};
     uint32_t count = 0;
 };
 
 struct Fences {
-    std::array<VkFence, MAX_SWAPCHAIN_IMAGES> fences{};
+    std::array<VkFence, MAX_FRAME_SLOTS> fences{};
     uint32_t count = 0;
 };
 
 struct Semaphores {
-    std::array<VkSemaphore, MAX_SWAPCHAIN_IMAGES> semaphores{};
+    std::array<VkSemaphore, MAX_FRAME_SLOTS> semaphores{};
     uint32_t count = 0;
 };
 
 struct FrameBuffers {
-    std::array<VkFramebuffer, MAX_SWAPCHAIN_IMAGES> framebuffers{};
+    std::array<VkFramebuffer, MAX_FRAME_SLOTS> framebuffers{};
     uint32_t count = 0;
 };
 
@@ -571,11 +570,11 @@ getSwapchainImages(VkDevice device, VkSwapchainKHR swapchain) {
     spdlog::debug("Swapchain image count: {}", swapchainImageCount);
     swapchainImages.count = swapchainImageCount;
 
-    if (swapchainImageCount > MAX_SWAPCHAIN_IMAGES) {
+    if (swapchainImageCount > MAX_FRAME_SLOTS) {
         throw std::runtime_error(fmt::format("Swapchain image count {} exceeds "
                                              "maximum images {}",
                                              swapchainImageCount,
-                                             MAX_SWAPCHAIN_IMAGES));
+                                             MAX_FRAME_SLOTS));
     }
 
     VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount,

@@ -11,6 +11,6 @@ TEST(OfflineSDFUtils, ReadbackFormatInfoAcceptsBGRA8) {
 
 TEST(OfflineSDFUtils, ReadbackFormatInfoRejectsUnsupported) {
     EXPECT_THROW(
-        vkutils::getReadbackFormatInfo(VK_FORMAT_R8G8B8A8_UNORM),
+        (void)vkutils::getReadbackFormatInfo(VK_FORMAT_R8G8B8A8_UNORM),
         std::runtime_error);
 }

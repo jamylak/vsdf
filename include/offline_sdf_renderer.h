@@ -10,6 +10,7 @@
 
 inline constexpr uint32_t OFFSCREEN_DEFAULT_WIDTH = 1280;
 inline constexpr uint32_t OFFSCREEN_DEFAULT_HEIGHT = 720;
+inline constexpr uint32_t OFFSCREEN_DEFAULT_RING_SIZE = 2;
 inline constexpr char OFFSCREEN_DEFAULT_VERT_SHADER_PATH[] =
     "shaders/fullscreenquad.vert";
 
@@ -17,16 +18,28 @@ inline constexpr char OFFSCREEN_DEFAULT_VERT_SHADER_PATH[] =
 // This basis will be used for FFMPEG integration
 class OfflineSDFRenderer : public SDFRenderer {
   private:
+    struct RingSlot {
+        VkImage image = VK_NULL_HANDLE;
+        VkDeviceMemory imageMemory = VK_NULL_HANDLE;
+        VkImageView imageView = VK_NULL_HANDLE;
+        VkFramebuffer framebuffer = VK_NULL_HANDLE;
+        vkutils::ReadbackBuffer stagingBuffer{};
+        bool pendingReadback = false;
+    };
+
     // Render Context
     VkExtent2D imageSize{};
     VkFormat imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-    // TODO: Convert to ring buffer for better performance
-    VkImage offscreenImage = VK_NULL_HANDLE;
-    VkDeviceMemory offscreenImageMemory = VK_NULL_HANDLE;
-    VkImageView offscreenImageView = VK_NULL_HANDLE;
-    VkFramebuffer framebuffer = VK_NULL_HANDLE;
+
+    // Ring buffer timing intuition:
+    //  - 1 slot: total ≈ N * (render + readback) (no overlap).
+    //  - K >= 2: total ≈ (render + readback) + (N - 1) * max(render, readback).
+    const uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE;
+    std::array<RingSlot, MAX_FRAME_SLOTS> ringSlots;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+
+    static uint32_t validateRingSize(uint32_t value);
 
     void vulkanSetup();
     void setupRenderContext();
@@ -36,9 +49,10 @@ class OfflineSDFRenderer : public SDFRenderer {
     void destroyPipeline();
     void destroy();
 
-    void transitionImageLayout(VkImageLayout oldLayout,
+    void transitionImageLayout(VkImage image, VkImageLayout oldLayout,
                                VkImageLayout newLayout);
-    [[nodiscard]] ReadbackFrame readbackOffscreenImage();
+    void recordCommandBuffer(uint32_t slotIndex, uint32_t currentFrame);
+    [[nodiscard]] ReadbackFrame readbackOffscreenImage(const RingSlot &slot);
     [[nodiscard]] vkutils::PushConstants
     getPushConstants(uint32_t currentFrame) noexcept;
 
@@ -50,7 +64,8 @@ class OfflineSDFRenderer : public SDFRenderer {
         std::optional<uint32_t> maxFrames = std::nullopt,
         std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt,
         uint32_t width = OFFSCREEN_DEFAULT_WIDTH,
-        uint32_t height = OFFSCREEN_DEFAULT_HEIGHT);
+        uint32_t height = OFFSCREEN_DEFAULT_HEIGHT,
+        uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE);
     void setup();
     void renderFrames();
 };

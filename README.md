@@ -1,9 +1,10 @@
 # VSDF
 Vulkan SDF Renderer + Hot Reloader
 
-[![Continuous Integration](https://github.com/jamylak/vsdf/actions/workflows/test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/test.yml)
-[![Smoke Test](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/smoketest.yml)
-[![Windows CI](https://github.com/jamylak/vsdf/actions/workflows/windows-test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/windows-test.yml)
+[![Linux Docker CI](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-ci.yml)
+[![macOS CI](https://github.com/jamylak/vsdf/actions/workflows/macos-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/macos-ci.yml)
+[![Linux Smoke Tests](https://github.com/jamylak/vsdf/actions/workflows/linux-smoke-tests.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/linux-smoke-tests.yml)
+[![Windows Build & Test](https://github.com/jamylak/vsdf/actions/workflows/windows-build-test.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/windows-build-test.yml)
 
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 

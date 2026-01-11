@@ -1,16 +1,25 @@
 #include "offline_sdf_renderer.h"
 #include "shader_utils.h"
 #include "vkutils.h"
+#include <cstddef>
 #include <cstdint>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 
 OfflineSDFRenderer::OfflineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
     std::optional<uint32_t> maxFrames,
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
-    uint32_t height)
+    uint32_t height, uint32_t ringSize)
     : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
-      imageSize({width, height}) {}
+      imageSize({width, height}), ringSize(validateRingSize(ringSize)) {}
+
+uint32_t OfflineSDFRenderer::validateRingSize(uint32_t value) {
+    if (value == 0 || value > MAX_FRAME_SLOTS) {
+        throw std::runtime_error("ringSize must be 1..MAX_FRAME_SLOTS");
+    }
+    return value;
+}
 
 void OfflineSDFRenderer::setup() {
     vulkanSetup();
@@ -39,6 +48,11 @@ void OfflineSDFRenderer::vulkanSetup() {
 }
 
 void OfflineSDFRenderer::setupRenderContext() {
+    const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
+    VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
+                              static_cast<VkDeviceSize>(imageSize.height) *
+                              formatInfo.bytesPerPixel;
+
     VkImageCreateInfo imageCreateInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
@@ -54,31 +68,12 @@ void OfflineSDFRenderer::setupRenderContext() {
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    VK_CHECK(vkCreateImage(logicalDevice, &imageCreateInfo, nullptr,
-                           &offscreenImage));
-
-    VkMemoryRequirements memRequirements;
-    vkGetImageMemoryRequirements(logicalDevice, offscreenImage,
-                                 &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo{
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = memRequirements.size,
-        .memoryTypeIndex = vkutils::findMemoryTypeIndex(
-            physicalDevice, memRequirements.memoryTypeBits,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-    };
-
-    VK_CHECK(vkAllocateMemory(logicalDevice, &allocInfo, nullptr,
-                              &offscreenImageMemory));
-    VK_CHECK(vkBindImageMemory(logicalDevice, offscreenImage,
-                               offscreenImageMemory, 0));
-
-    VkImageViewCreateInfo imageViewCreateInfo{
+    VkImageViewCreateInfo imageViewCreateInfoTemplate{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = offscreenImage,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = imageFormat,
+        // Image will be filled in later to be offscreen image
+        // .image = ... ring slot image ...
         .subresourceRange =
             {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -89,31 +84,63 @@ void OfflineSDFRenderer::setupRenderContext() {
             },
     };
 
-    VK_CHECK(vkCreateImageView(logicalDevice, &imageViewCreateInfo, nullptr,
-                               &offscreenImageView));
-
-    VkFramebufferCreateInfo framebufferInfo{
+    VkFramebufferCreateInfo framebufferInfoTemplate{
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = renderPass,
         .attachmentCount = 1,
-        .pAttachments = &offscreenImageView,
+        // Attachment will be filled later to be offscreen image view
+        // .pAttachments = ... ring slot image view ...
         .width = imageSize.width,
         .height = imageSize.height,
         .layers = 1,
     };
 
-    VK_CHECK(vkCreateFramebuffer(logicalDevice, &framebufferInfo, nullptr,
-                                 &framebuffer));
+    for (uint32_t i = 0; i < ringSize; ++i) {
+        RingSlot &slot = ringSlots[i];
+        VK_CHECK(vkCreateImage(logicalDevice, &imageCreateInfo, nullptr,
+                               &slot.image));
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(logicalDevice, slot.image,
+                                     &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = memRequirements.size,
+            .memoryTypeIndex = vkutils::findMemoryTypeIndex(
+                physicalDevice, memRequirements.memoryTypeBits,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+        };
+
+        VK_CHECK(vkAllocateMemory(logicalDevice, &allocInfo, nullptr,
+                                  &slot.imageMemory));
+        VK_CHECK(
+            vkBindImageMemory(logicalDevice, slot.image, slot.imageMemory, 0));
+
+        imageViewCreateInfoTemplate.image = slot.image;
+        VK_CHECK(vkCreateImageView(logicalDevice, &imageViewCreateInfoTemplate,
+                                   nullptr, &slot.imageView));
+
+        framebufferInfoTemplate.pAttachments = &slot.imageView;
+        VK_CHECK(vkCreateFramebuffer(logicalDevice, &framebufferInfoTemplate,
+                                     nullptr, &slot.framebuffer));
+
+        slot.stagingBuffer = vkutils::createReadbackBuffer(
+            logicalDevice, physicalDevice, imageBytes,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        transitionImageLayout(slot.image, VK_IMAGE_LAYOUT_UNDEFINED,
+                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    }
 
     if (queryPool == VK_NULL_HANDLE) {
-        queryPool = vkutils::createQueryPool(logicalDevice, 1);
+        queryPool = vkutils::createQueryPool(logicalDevice, ringSize);
     }
     if (fences.count == 0) {
-        fences = vkutils::createFences(logicalDevice, 1);
+        fences = vkutils::createFences(logicalDevice, ringSize);
     }
-
-    transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 }
 
 void OfflineSDFRenderer::createPipeline() {
@@ -129,10 +156,138 @@ void OfflineSDFRenderer::createPipeline() {
 
 void OfflineSDFRenderer::createCommandBuffers() {
     commandBuffers =
-        vkutils::createCommandBuffers(logicalDevice, commandPool, 1);
+        vkutils::createCommandBuffers(logicalDevice, commandPool, ringSize);
 }
 
-void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
+void OfflineSDFRenderer::recordCommandBuffer(uint32_t slotIndex,
+                                             uint32_t currentFrame) {
+    RingSlot &slot = ringSlots[slotIndex];
+    VkCommandBuffer commandBuffer = commandBuffers.commandBuffers[slotIndex];
+    vkResetCommandBuffer(commandBuffer, 0);
+
+    VkCommandBufferBeginInfo beginInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+    };
+
+    VkRenderPassBeginInfo renderPassBeginInfo{
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = renderPass,
+        .framebuffer = slot.framebuffer,
+        .renderArea = {{0, 0}, imageSize},
+        .clearValueCount = 0,
+    };
+
+    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+    vkCmdResetQueryPool(commandBuffer, queryPool, slotIndex * 2, 2);
+    vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        queryPool, slotIndex * 2);
+    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo,
+                         VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    const vkutils::PushConstants pushConstants = getPushConstants(currentFrame);
+    vkCmdPushConstants(commandBuffer, pipelineLayout,
+                       VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                       sizeof(vkutils::PushConstants), &pushConstants);
+
+    VkRect2D scissor{
+        .offset = {0, 0},
+        .extent = {imageSize.width, imageSize.height},
+    };
+
+    VkViewport viewport{
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = static_cast<float>(imageSize.width),
+        .height = static_cast<float>(imageSize.height),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
+
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    vkCmdDraw(commandBuffer, 6, 1, 0, 0);
+    vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                        queryPool, slotIndex * 2 + 1);
+    vkCmdEndRenderPass(commandBuffer);
+
+    // Transition image layout to TRANSFER_SRC_OPTIMAL so we can
+    // copy it to the staging buffer.
+    VkImageMemoryBarrier barrierToTransfer{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = slot.image,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrierToTransfer);
+
+    VkBufferImageCopy region{
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        .imageOffset = {0, 0, 0},
+        .imageExtent = {imageSize.width, imageSize.height, 1},
+    };
+
+    vkCmdCopyImageToBuffer(commandBuffer, slot.image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           slot.stagingBuffer.buffer, 1, &region);
+
+    // Transition image back to COLOR_ATTACHMENT_OPTIMAL
+    // for next frame render.
+    VkImageMemoryBarrier barrierToColor{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = slot.image,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0,
+                         nullptr, 0, nullptr, 1, &barrierToColor);
+
+    VK_CHECK(vkEndCommandBuffer(commandBuffer));
+}
+
+void OfflineSDFRenderer::transitionImageLayout(VkImage image,
+                                               VkImageLayout oldLayout,
                                                VkImageLayout newLayout) {
     VkCommandBufferAllocateInfo allocInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -158,7 +313,7 @@ void OfflineSDFRenderer::transitionImageLayout(VkImageLayout oldLayout,
         .newLayout = newLayout,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = offscreenImage,
+        .image = image,
         .subresourceRange =
             {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -208,121 +363,16 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
                               glm::vec2(imageSize.width, imageSize.height));
 }
 
-ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
+ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
     const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
 
     VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
                               static_cast<VkDeviceSize>(imageSize.height) *
                               formatInfo.bytesPerPixel;
-    // Staging buffer for GPU->CPU readback.
-    vkutils::ReadbackBuffer stagingBuffer =
-        vkutils::createReadbackBuffer(logicalDevice, physicalDevice, imageBytes,
-                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    VkCommandBufferAllocateInfo allocInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = commandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-
-    VkCommandBuffer commandBuffer;
-    // One-time command buffer to handle layout transitions + copy.
-    VK_CHECK(
-        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
-
-    VkCommandBufferBeginInfo beginInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-
-    // Transition offscreen image to transfer-src layout.
-    // so we can copy from it.
-    VkImageMemoryBarrier barrierToTransfer{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = offscreenImage,
-        .subresourceRange =
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-    };
-
-    vkCmdPipelineBarrier(commandBuffer,
-                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
-                         nullptr, 1, &barrierToTransfer);
-
-    VkBufferImageCopy region{
-        .bufferOffset = 0,
-        .bufferRowLength = 0,
-        .bufferImageHeight = 0,
-        .imageSubresource =
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .mipLevel = 0,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        .imageOffset = {0, 0, 0},
-        .imageExtent = {imageSize.width, imageSize.height, 1},
-    };
-
-    vkCmdCopyImageToBuffer(commandBuffer, offscreenImage,
-                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                           stagingBuffer.buffer, 1, &region);
-
-    // Transition back to color-attachment layout for future rendering.
-    VkImageMemoryBarrier barrierToColor{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = offscreenImage,
-        .subresourceRange =
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-    };
-
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0,
-                         nullptr, 0, nullptr, 1, &barrierToColor);
-
-    VK_CHECK(vkEndCommandBuffer(commandBuffer));
-
-    VkSubmitInfo submitInfo{
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &commandBuffer,
-    };
-
-    VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
-    // Wait so the CPU sees a fully populated staging buffer.
-    VK_CHECK(vkQueueWaitIdle(queue));
 
     void *data = nullptr;
-    VK_CHECK(vkMapMemory(logicalDevice, stagingBuffer.memory, 0, imageBytes, 0,
-                         &data));
+    VK_CHECK(vkMapMemory(logicalDevice, slot.stagingBuffer.memory, 0,
+                         imageBytes, 0, &data));
 
     ReadbackFrame frame;
     frame.allocateRGB(imageSize.width, imageSize.height);
@@ -335,7 +385,6 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
         uint8_t r = 0;
         uint8_t g = 0;
         uint8_t b = 0;
-        // Normalize to RGB (no alpha) with optional channel swizzle.
         if (formatInfo.swapRB) {
             r = src[srcOffset + 2];
             g = src[srcOffset + 1];
@@ -350,38 +399,59 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage() {
         frame.rgb[dstOffset + 2] = b;
     }
 
-    vkUnmapMemory(logicalDevice, stagingBuffer.memory);
-    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
-    vkutils::destroyReadbackBuffer(logicalDevice, stagingBuffer);
+    vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
 
     return frame;
 }
 
 void OfflineSDFRenderer::renderFrames() {
+    // Default to 1 frame for now...
+    // TODO: Check if best to instead make maxFrames required
+    // when doing offline render???
+    // eg. for now everything is just checking (debugDumpPPMDir)
+    // Need to adjust later eg. for ffmpeg encoding
     uint32_t totalFrames = maxFrames.value_or(1);
     for (uint32_t currentFrame = 0; currentFrame < totalFrames;
          ++currentFrame) {
-        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[0], VK_TRUE,
-                                 UINT64_MAX));
-        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[0]));
+        const uint32_t slotIndex = currentFrame % ringSize;
+        RingSlot &slot = ringSlots[slotIndex];
 
-        vkutils::recordCommandBuffer(
-            queryPool, renderPass, imageSize, pipeline, pipelineLayout,
-            commandBuffers.commandBuffers[0], framebuffer,
-            getPushConstants(currentFrame), 0);
+        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[slotIndex],
+                                 VK_TRUE, UINT64_MAX));
+        if (slot.pendingReadback) {
+            if (debugDumpPPMDir) {
+                ReadbackFrame frame = readbackOffscreenImage(slot);
+                dumpDebugFrame(frame);
+            }
+            slot.pendingReadback = false;
+        }
+
+        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[slotIndex]));
+        recordCommandBuffer(slotIndex, currentFrame);
 
         VkSubmitInfo submitInfo{
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .commandBufferCount = 1,
-            .pCommandBuffers = &commandBuffers.commandBuffers[0],
+            .pCommandBuffers = &commandBuffers.commandBuffers[slotIndex],
         };
-        VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fences.fences[0]));
-        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[0], VK_TRUE,
-                                 UINT64_MAX));
+        VK_CHECK(
+            vkQueueSubmit(queue, 1, &submitInfo, fences.fences[slotIndex]));
+        slot.pendingReadback = debugDumpPPMDir.has_value();
+    }
 
-        if (debugDumpPPMDir) {
-            ReadbackFrame frame = readbackOffscreenImage();
+    // Finalise after the for loop finished
+    // Read any pending slots
+    if (debugDumpPPMDir) {
+        for (size_t i = 0; i < ringSize; ++i) {
+            RingSlot &slot = ringSlots[i];
+            if (!slot.pendingReadback) {
+                continue;
+            }
+            VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[i],
+                                     VK_TRUE, UINT64_MAX));
+            ReadbackFrame frame = readbackOffscreenImage(slot);
             dumpDebugFrame(frame);
+            slot.pendingReadback = false;
         }
     }
 
@@ -397,21 +467,29 @@ void OfflineSDFRenderer::destroyPipeline() {
 
 void OfflineSDFRenderer::destroyRenderContext() {
     VK_CHECK(vkDeviceWaitIdle(logicalDevice));
-    if (framebuffer != VK_NULL_HANDLE) {
-        vkDestroyFramebuffer(logicalDevice, framebuffer, nullptr);
-        framebuffer = VK_NULL_HANDLE;
-    }
-    if (offscreenImageView != VK_NULL_HANDLE) {
-        vkDestroyImageView(logicalDevice, offscreenImageView, nullptr);
-        offscreenImageView = VK_NULL_HANDLE;
-    }
-    if (offscreenImage != VK_NULL_HANDLE) {
-        vkDestroyImage(logicalDevice, offscreenImage, nullptr);
-        offscreenImage = VK_NULL_HANDLE;
-    }
-    if (offscreenImageMemory != VK_NULL_HANDLE) {
-        vkFreeMemory(logicalDevice, offscreenImageMemory, nullptr);
-        offscreenImageMemory = VK_NULL_HANDLE;
+    for (size_t i = 0; i < ringSize; ++i) {
+        RingSlot &slot = ringSlots[i];
+        if (slot.framebuffer != VK_NULL_HANDLE) {
+            vkDestroyFramebuffer(logicalDevice, slot.framebuffer, nullptr);
+            slot.framebuffer = VK_NULL_HANDLE;
+        }
+        if (slot.imageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(logicalDevice, slot.imageView, nullptr);
+            slot.imageView = VK_NULL_HANDLE;
+        }
+        if (slot.image != VK_NULL_HANDLE) {
+            vkDestroyImage(logicalDevice, slot.image, nullptr);
+            slot.image = VK_NULL_HANDLE;
+        }
+        if (slot.imageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(logicalDevice, slot.imageMemory, nullptr);
+            slot.imageMemory = VK_NULL_HANDLE;
+        }
+        if (slot.stagingBuffer.buffer != VK_NULL_HANDLE ||
+            slot.stagingBuffer.memory != VK_NULL_HANDLE) {
+            vkutils::destroyReadbackBuffer(logicalDevice, slot.stagingBuffer);
+        }
+        slot.pendingReadback = false;
     }
 }
 

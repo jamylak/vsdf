@@ -1,4 +1,4 @@
-name: Nix Flake Test
+name: Nix Flake CI
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - 'flake.nix'
       - 'flake.lock'
       - 'default.nix'
-      - '.github/workflows/nix-flake-test.yml'
+      - '.github/workflows/nix-flake-ci.yml'
 
 jobs:
   nix-flake-test:

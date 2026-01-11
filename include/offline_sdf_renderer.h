@@ -6,7 +6,6 @@
 #include <filesystem>
 #include <optional>
 #include <string>
-#include <vector>
 #include <vulkan/vulkan.h>
 
 inline constexpr uint32_t OFFSCREEN_DEFAULT_WIDTH = 1280;

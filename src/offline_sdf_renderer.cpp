@@ -355,6 +355,14 @@ void OfflineSDFRenderer::transitionImageLayout(VkImage image,
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
 }
 
+vkutils::PushConstants
+OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
+    auto now = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration<float>(now - startTime).count();
+    return buildPushConstants(elapsed, currentFrame,
+                              glm::vec2(imageSize.width, imageSize.height));
+}
+
     void *data = nullptr;
     VK_CHECK(vkMapMemory(logicalDevice, stagingBuffer.memory, 0, imageBytes, 0,
                          &data));

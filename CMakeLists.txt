@@ -80,7 +80,7 @@ if (VSDF_ENABLE_FFMPEG)
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
     libavformat libavcodec libavutil libswscale)
-  target_sources(${PROJECT_NAME} PRIVATE src/ffmpeg_utils.cpp)
+  target_sources(${PROJECT_NAME} PRIVATE src/ffmpeg_utils.cpp src/ffmpeg_encoder.cpp)
   target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFMPEG)
   target_compile_definitions(${PROJECT_NAME} PRIVATE VSDF_ENABLE_FFMPEG=1)
 endif()

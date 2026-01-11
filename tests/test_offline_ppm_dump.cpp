@@ -3,15 +3,37 @@
 
 #include <gtest/gtest.h>
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+}
+
 #include <cstdlib>
 #include <filesystem>
 #include <spdlog/fmt/fmt.h>
 #include <string>
 
+namespace {
+std::string pickH264EncoderName() {
+    const char *candidates[] = {"libx264", "h264_videotoolbox", "h264",
+                                "libopenh264"};
+    for (const char *name : candidates) {
+        if (avcodec_find_encoder_by_name(name)) {
+            return std::string(name);
+        }
+    }
+    return std::string();
+}
+} // namespace
+
 TEST(OfflinePPMDump, DebugQuadrants) {
     if (shouldSkipSmokeTests()) {
         GTEST_SKIP()
             << "Offline PPM debug quadrants test is skipped in CI unless VSDF_SMOKE_TESTS=1";
+    }
+
+    const std::string encoderName = pickH264EncoderName();
+    if (encoderName.empty()) {
+        GTEST_SKIP() << "No H.264 encoder available for offline PPM dump test";
     }
 
     uint32_t framesToRender = 1;
@@ -37,10 +59,15 @@ TEST(OfflinePPMDump, DebugQuadrants) {
 
     std::filesystem::current_path(VSDF_SOURCE_DIR);
 
+    const auto outVideoPath = outDir / "offline_ppm_dump.mp4";
+    std::error_code ec;
+    std::filesystem::remove(outVideoPath, ec);
     const std::string cmd =
-        fmt::format("\"{}\" \"{}\" --toy --offline --frames {} --debug-dump-ppm \"{}\"",
+        fmt::format("\"{}\" \"{}\" --toy --frames {} "
+                    "--debug-dump-ppm \"{}\" --ffmpeg-output \"{}\" "
+                    "--ffmpeg-codec {}",
                     VSDF_BINARY_PATH, shaderPath.string(), framesToRender,
-                    outDir.string());
+                    outDir.string(), outVideoPath.string(), encoderName);
     const int rc = std::system(cmd.c_str());
     std::filesystem::current_path(oldCwd);
     ASSERT_EQ(rc, 0);
@@ -73,12 +100,19 @@ TEST(OfflinePPMDump, DebugQuadrants) {
               (std::array<uint8_t, 3>{0, 0, 0}));
     EXPECT_EQ(ppm_utils::pixelAt(img, xRight, yBottom),
               (std::array<uint8_t, 3>{0, 0, 255}));
+
+    std::filesystem::remove(outVideoPath, ec);
 }
 
 TEST(OfflinePPMDump, RingBufferMultipleFrames) {
     if (shouldSkipSmokeTests()) {
         GTEST_SKIP()
             << "Offline PPM ring buffer test is skipped in CI unless VSDF_SMOKE_TESTS=1";
+    }
+
+    const std::string encoderName = pickH264EncoderName();
+    if (encoderName.empty()) {
+        GTEST_SKIP() << "No H.264 encoder available for offline PPM dump test";
     }
 
     const auto outDir =
@@ -95,11 +129,14 @@ TEST(OfflinePPMDump, RingBufferMultipleFrames) {
 
     const uint32_t framesToRender = 10;
     const uint32_t ringSize = 3;
+    const auto outVideoPath = outDir / "offline_ppm_ring_dump.mp4";
+    std::error_code ec;
+    std::filesystem::remove(outVideoPath, ec);
     const std::string cmd = fmt::format(
-        "\"{}\" \"{}\" --toy --offline --frames {} --offline-ring-size {} "
-        "--debug-dump-ppm \"{}\"",
+        "\"{}\" \"{}\" --toy --frames {} --ffmpeg-ring-buffer-size {} "
+        "--debug-dump-ppm \"{}\" --ffmpeg-output \"{}\" --ffmpeg-codec {}",
         VSDF_BINARY_PATH, shaderPath.string(), framesToRender, ringSize,
-        outDir.string());
+        outDir.string(), outVideoPath.string(), encoderName);
     const int rc = std::system(cmd.c_str());
     std::filesystem::current_path(oldCwd);
     ASSERT_EQ(rc, 0);
@@ -114,4 +151,6 @@ TEST(OfflinePPMDump, RingBufferMultipleFrames) {
     const std::filesystem::path ppmPathNext =
         outDir / fmt::format("frame_{:04}.ppm", framesToRender);
     ASSERT_FALSE(std::filesystem::exists(ppmPathNext));
+
+    std::filesystem::remove(outVideoPath, ec);
 }

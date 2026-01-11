@@ -68,11 +68,12 @@ void OfflineSDFRenderer::setupRenderContext() {
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    VkImageViewCreateInfo imageViewCreateInfo{
+    VkImageViewCreateInfo imageViewCreateInfoTemplate{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = offscreenImage,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = imageFormat,
+        // Image will be filled in later to be offscreen image
+        // .image = ... ring slot image ...
         .subresourceRange =
             {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -83,14 +84,12 @@ void OfflineSDFRenderer::setupRenderContext() {
             },
     };
 
-    VK_CHECK(vkCreateImageView(logicalDevice, &imageViewCreateInfo, nullptr,
-                               &offscreenImageView));
-
-    VkFramebufferCreateInfo framebufferInfo{
+    VkFramebufferCreateInfo framebufferInfoTemplate{
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass = renderPass,
         .attachmentCount = 1,
-        .pAttachments = &offscreenImageView,
+        // Attachment will be filled later to be offscreen image view
+        // .pAttachments = ... ring slot image view ...
         .width = imageSize.width,
         .height = imageSize.height,
         .layers = 1,

@@ -405,6 +405,9 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
 }
 
 void OfflineSDFRenderer::renderFrames() {
+    // Default to 1 frame for now...
+    // TODO: Check if best to instead make maxFrames required
+    // when doing offline render???
     uint32_t totalFrames = maxFrames.value_or(1);
     for (uint32_t currentFrame = 0; currentFrame < totalFrames;
          ++currentFrame) {

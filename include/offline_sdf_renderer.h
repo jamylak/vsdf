@@ -31,6 +31,9 @@ class OfflineSDFRenderer : public SDFRenderer {
     VkExtent2D imageSize{};
     VkFormat imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
+    // Ring buffer timing intuition:
+    //  - 1 slot: total ≈ N * (render + readback) (no overlap).
+    //  - K >= 2: total ≈ (render + readback) + (N - 1) * max(render, readback).
     const uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE;
     std::array<RingSlot, MAX_FRAME_SLOTS> ringSlots;
 

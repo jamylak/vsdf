@@ -5,8 +5,6 @@ project(filewatcher_tests)
 find_package(GTest REQUIRED)
 find_package(spdlog REQUIRED)
 
-include_directories(${GTEST_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include)
-
 set(SOURCE_FILES test_filewatcher.cpp)
 if(APPLE)
   list(APPEND SOURCE_FILES ../../src/filewatcher/mac_filewatcher.cpp)
@@ -21,7 +19,8 @@ elseif(WIN32)
 endif()
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
-target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES} ${EXTRA_LIBS} spdlog::spdlog)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(${PROJECT_NAME} GTest::gtest_main ${EXTRA_LIBS} spdlog::spdlog)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
   target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)

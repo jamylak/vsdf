@@ -1,9 +1,6 @@
 project(${PROJECT_NAME}_tests)
 find_package(GTest REQUIRED)
 
-# Include the Google Test library
-include_directories(${GTEST_INCLUDE_DIRS})
-
 set(TEST_SOURCES
   ../src/shader_utils.cpp
   test_shader_comp.cpp
@@ -12,7 +9,7 @@ set(TEST_SOURCES
 )
 
 # Common libraries for all platforms
-set(COMMON_LIBS ${GTEST_BOTH_LIBRARIES} spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glfw Vulkan::Vulkan)
+set(COMMON_LIBS GTest::gtest_main spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glfw Vulkan::Vulkan)
 
 if (VSDF_ENABLE_FFMPEG)
   list(APPEND TEST_SOURCES

@@ -1,4 +1,5 @@
 #include "offline_sdf_renderer.h"
+#include "ffmpeg_encoder.h"
 #include "shader_utils.h"
 #include "vkutils.h"
 #include <cstddef>
@@ -10,9 +11,11 @@ OfflineSDFRenderer::OfflineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
     std::optional<uint32_t> maxFrames,
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
-    uint32_t height, uint32_t ringSize)
+    uint32_t height, uint32_t ringSize,
+    std::optional<ffmpeg_utils::EncodeSettings> encodeSettings)
     : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
-      imageSize({width, height}), ringSize(validateRingSize(ringSize)) {}
+      imageSize({width, height}), ringSize(validateRingSize(ringSize)),
+      encodeSettings(std::move(encodeSettings)) {}
 
 uint32_t OfflineSDFRenderer::validateRingSize(uint32_t value) {
     if (value == 0 || value > MAX_FRAME_SLOTS) {

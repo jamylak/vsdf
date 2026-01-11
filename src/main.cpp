@@ -41,10 +41,10 @@ int main(int argc, char **argv) {
     bool headless = false;
     std::optional<std::filesystem::path> debugDumpPPMDir;
 #if defined(VSDF_ENABLE_FFMPEG)
-    bool offline = false;
     uint32_t offlineRingSize = OFFSCREEN_DEFAULT_RING_SIZE;
+    uint32_t offlineWidth = OFFSCREEN_DEFAULT_WIDTH;
+    uint32_t offlineHeight = OFFSCREEN_DEFAULT_HEIGHT;
     ffmpeg_utils::EncodeSettings encodeSettings{};
-    bool useEncoding = false;
 #endif
     auto logLevel = spdlog::level::info;
     std::filesystem::path shaderFile;
@@ -88,8 +88,43 @@ int main(int argc, char **argv) {
         }
 
 #if defined(VSDF_ENABLE_FFMPEG)
-        if (arg == "--offline") {
-            offline = true;
+        if (arg == "--ffmpeg-width") {
+            if (i + 1 >= argc) {
+                throw std::runtime_error(
+                    "--ffmpeg-width requires a positive integer value");
+            }
+            try {
+                offlineWidth = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw std::runtime_error(
+                    "--ffmpeg-width requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw std::runtime_error(
+                    "--ffmpeg-width value is out of range for a positive integer");
+            }
+            if (offlineWidth == 0) {
+                throw std::runtime_error(
+                    "--ffmpeg-width requires a positive integer value");
+            }
+            continue;
+        } else if (arg == "--ffmpeg-height") {
+            if (i + 1 >= argc) {
+                throw std::runtime_error(
+                    "--ffmpeg-height requires a positive integer value");
+            }
+            try {
+                offlineHeight = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw std::runtime_error(
+                    "--ffmpeg-height requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw std::runtime_error(
+                    "--ffmpeg-height value is out of range for a positive integer");
+            }
+            if (offlineHeight == 0) {
+                throw std::runtime_error(
+                    "--ffmpeg-height requires a positive integer value");
+            }
             continue;
         } else if (arg == "--offline-ring-size") {
             if (i + 1 >= argc) {
@@ -116,8 +151,6 @@ int main(int argc, char **argv) {
                 throw std::runtime_error("--ffmpeg-output requires a file path");
             }
             encodeSettings.outputPath = argv[++i];
-            useEncoding = true;
-            offline = true;
             continue;
         } else if (arg == "--ffmpeg-fps") {
             if (i + 1 >= argc) {
@@ -131,14 +164,12 @@ int main(int argc, char **argv) {
             if (encodeSettings.fps <= 0) {
                 throw std::runtime_error("--ffmpeg-fps requires a positive integer value");
             }
-            useEncoding = true;
             continue;
         } else if (arg == "--ffmpeg-codec") {
             if (i + 1 >= argc) {
                 throw std::runtime_error("--ffmpeg-codec requires a codec name");
             }
             encodeSettings.codec = argv[++i];
-            useEncoding = true;
             continue;
         } else if (arg == "--ffmpeg-crf") {
             if (i + 1 >= argc) {
@@ -149,14 +180,12 @@ int main(int argc, char **argv) {
             } catch (const std::exception &) {
                 throw std::runtime_error("--ffmpeg-crf requires a valid integer value");
             }
-            useEncoding = true;
             continue;
         } else if (arg == "--ffmpeg-preset") {
             if (i + 1 >= argc) {
                 throw std::runtime_error("--ffmpeg-preset requires a value");
             }
             encodeSettings.preset = argv[++i];
-            useEncoding = true;
             continue;
         }
 #endif
@@ -178,26 +207,23 @@ int main(int argc, char **argv) {
                                  shaderFile.string());
 
 #if defined(VSDF_ENABLE_FFMPEG)
-    std::optional<ffmpeg_utils::EncodeSettings> encodeSettingsOpt;
-    if (useEncoding) {
-        if (encodeSettings.outputPath.empty()) {
-            throw std::runtime_error("--ffmpeg-output must be set when using FFmpeg options");
-        }
-        encodeSettingsOpt = encodeSettings;
-    }
+    const bool useFfmpeg = !encodeSettings.outputPath.empty();
 #endif
+    if (!encodeSettings.outputPath.empty() && !maxFrames) {
+        throw std::runtime_error(
+            "--frames must be set when using --ffmpeg-output");
+    }
 
     spdlog::set_level(logLevel);
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
 #if defined(VSDF_ENABLE_FFMPEG)
-    if (offline) {
-        OfflineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
-                                    maxFrames, debugDumpPPMDir,
-                                    OFFSCREEN_DEFAULT_WIDTH,
-                                    OFFSCREEN_DEFAULT_HEIGHT, offlineRingSize,
-                                    encodeSettingsOpt};
+    if (useFfmpeg) {
+        OfflineSDFRenderer renderer{shaderFile.string(), *maxFrames,
+                                    useToyTemplate, debugDumpPPMDir,
+                                    offlineWidth, offlineHeight,
+                                    offlineRingSize, encodeSettings};
         renderer.setup();
         renderer.renderFrames();
     } else {

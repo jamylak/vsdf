@@ -8,9 +8,10 @@ OfflineSDFRenderer::OfflineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
     std::optional<uint32_t> maxFrames,
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
-    uint32_t height)
+    uint32_t height, uint32_t ringSize)
     : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
-      imageSize({width, height}) {}
+      imageSize({width, height}),
+      ringSize(ringSize) {}
 
 void OfflineSDFRenderer::setup() {
     vulkanSetup();

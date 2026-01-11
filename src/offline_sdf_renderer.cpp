@@ -8,11 +8,11 @@
 #include <stdexcept>
 
 OfflineSDFRenderer::OfflineSDFRenderer(
-    const std::string &fragShaderPath, bool useToyTemplate,
-    std::optional<uint32_t> maxFrames,
+    const std::string &fragShaderPath, uint32_t maxFrames,
+    bool useToyTemplate,
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
     uint32_t height, uint32_t ringSize,
-    std::optional<ffmpeg_utils::EncodeSettings> encodeSettings)
+    ffmpeg_utils::EncodeSettings encodeSettings)
     : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
       imageSize({width, height}), ringSize(validateRingSize(ringSize)),
       encodeSettings(std::move(encodeSettings)) {}
@@ -407,13 +407,11 @@ void OfflineSDFRenderer::renderFrames() {
     // Default to 1 frame for now...
     // TODO: Check if best to instead make maxFrames required
     // when doing offline render???
-    uint32_t totalFrames = maxFrames.value_or(1);
+    uint32_t totalFrames = maxFrames;
     startEncoding();
     for (uint32_t currentFrame = 0; currentFrame < totalFrames;
          ++currentFrame) {
         const uint32_t slotIndex = currentFrame % ringSize;
-        RingSlot &slot = ringSlots[slotIndex];
-
         waitForSlotEncode(slotIndex);
 
         VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[slotIndex]));
@@ -437,11 +435,6 @@ void OfflineSDFRenderer::renderFrames() {
 }
 
 void OfflineSDFRenderer::startEncoding() {
-    if (!encodeSettings) {
-        throw std::runtime_error(
-            "Offline renderer requires FFmpeg encode settings");
-    }
-
     const AVPixelFormat srcFormat =
         readbackFormatInfo.swapRB ? AV_PIX_FMT_BGRA : AV_PIX_FMT_RGBA;
     const int srcStride =
@@ -452,7 +445,7 @@ void OfflineSDFRenderer::startEncoding() {
     encodeFailed = false;
 
     encoder = std::make_unique<ffmpeg_utils::FfmpegEncoder>(
-        *encodeSettings, static_cast<int>(imageSize.width),
+        encodeSettings, static_cast<int>(imageSize.width),
         static_cast<int>(imageSize.height), srcFormat, srcStride);
     encoder->open();
 

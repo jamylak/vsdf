@@ -97,7 +97,7 @@ class OfflineSDFRenderer : public SDFRenderer {
         uint32_t width = OFFSCREEN_DEFAULT_WIDTH,
         uint32_t height = OFFSCREEN_DEFAULT_HEIGHT,
         uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE,
-        ffmpeg_utils::EncodeSettings encodeSettings);
+        ffmpeg_utils::EncodeSettings encodeSettings = {});
     void setup();
     void renderFrames();
 };

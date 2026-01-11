@@ -136,6 +136,9 @@ void OfflineSDFRenderer::setupRenderContext() {
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         slot.rowStride = imageSize.width * formatInfo.bytesPerPixel;
 
+        VK_CHECK(vkMapMemory(logicalDevice, slot.stagingBuffer.memory, 0,
+                             imageBytes, 0, &slot.mappedData));
+
         transitionImageLayout(slot.image, VK_IMAGE_LAYOUT_UNDEFINED,
                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     }

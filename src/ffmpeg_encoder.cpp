@@ -164,7 +164,8 @@ void FfmpegEncoder::open() {
     // Frame wrapper for the caller's input (no allocation for src data).
     //   - Packed RGB (e.g., AV_PIX_FMT_RGB24): plane 0 = interleaved RGBRGB...
     //     (no Y/UV planes at all, plane 1-3 not used)
-    //   - Planar YUV (e.g., AV_PIX_FMT_YUV420P): plane 0 = Y, plane 1 = U, plane 2 = V
+    //   - Planar YUV (e.g., AV_PIX_FMT_YUV420P): plane 0 = Y, plane 1 = U,
+    //   plane 2 = V
 
     srcFrame = av_frame_alloc();
     if (!srcFrame)

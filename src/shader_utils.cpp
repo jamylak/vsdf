@@ -104,26 +104,9 @@ std::string readShaderSourceWithTemplate(const std::string &templateFilename,
     return shaderSourceStream.str();
 }
 
-std::filesystem::path compile(const std::string &shaderFilename,
-                              bool useToyTemplate = false) {
-    // Used to compile .frag or .vert shaders
-    // With .frag shaders we sometimes use the toy template
-    // which does old school GLSL ShaderToy style format
-    spdlog::info("Compiling shader: {}", shaderFilename);
-    std::string shaderString;
-    const char *shaderSource;
-    std::string shaderExtension =
-        std::filesystem::path(shaderFilename).extension().string();
-    EShLanguage lang = getShaderLang(shaderExtension);
-    if (useToyTemplate) {
-        spdlog::debug("Using template for fragment shader {}", shaderFilename);
-        shaderString =
-            readShaderSourceWithTemplate(FRAG_SHADER_TEMPLATE, shaderFilename);
-    } else {
-        shaderString = readShaderSource(shaderFilename);
-    }
-    shaderSource = shaderString.data();
-
+static std::vector<unsigned int>
+compileToSpirv(const char *shaderSource, EShLanguage lang,
+               bool useToyTemplate) {
     glslang::InitializeProcess();
     glslang::TShader shader(lang);
 
@@ -164,7 +147,6 @@ std::filesystem::path compile(const std::string &shaderFilename,
         throw std::runtime_error("Failed to link shader program");
     }
 
-    // Now save SPIR-V binary to a file
     std::vector<unsigned int> spirv;
     spv::SpvBuildLogger logger{};
     glslang::GlslangToSpv(*program.getIntermediate(lang), spirv, &logger,
@@ -172,18 +154,43 @@ std::filesystem::path compile(const std::string &shaderFilename,
 
     spdlog::info("Logger messages: {}", logger.getAllMessages());
 
+    glslang::FinalizeProcess();
+    return spirv;
+}
+
+std::filesystem::path compileToPath(const std::string &shaderFilename,
+                              bool useToyTemplate = false) {
+    // Used to compile shaders to a path
+    // With .frag shaders we sometimes use the toy template
+    // which does old school GLSL ShaderToy style format
+    // also eg. with iTime and so on...
+    spdlog::info("Compiling shader: {}", shaderFilename);
+    std::string shaderString;
+    std::string shaderExtension =
+        std::filesystem::path(shaderFilename).extension().string();
+    EShLanguage lang = getShaderLang(shaderExtension);
+    if (useToyTemplate) {
+        spdlog::debug("Using template for fragment shader {}", shaderFilename);
+        shaderString =
+            readShaderSourceWithTemplate(FRAG_SHADER_TEMPLATE, shaderFilename);
+    } else {
+        shaderString = readShaderSource(shaderFilename);
+    }
+
+    auto spirv = compileToSpirv(shaderString.data(), lang, useToyTemplate);
+
     // Save to file
     std::filesystem::path outputPath = shaderFilename;
     outputPath.replace_extension(".spv");
     // Convert to string to ensure char* path (Windows uses wchar_t* for paths)
     glslang::OutputSpvBin(spirv, outputPath.string().c_str());
-
-    // Print some spirv as a test
-    for (size_t i = 0; i < 3; i++) {
-        spdlog::debug("spirv[{}]: {}", i, spirv[i]);
-    }
-
-    glslang::FinalizeProcess();
     return outputPath;
+}
+
+std::vector<uint32_t> compileFullscreenQuadVertSpirv() {
+    spdlog::info("Compiling embedded fullscreen quad vertex shader");
+    auto spirv =
+        compileToSpirv(FULLSCREEN_QUAD_VERT_SOURCE, EShLangVertex, false);
+    return std::vector<uint32_t>(spirv.begin(), spirv.end());
 }
 } // namespace shader_utils

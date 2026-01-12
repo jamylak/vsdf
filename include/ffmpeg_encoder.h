@@ -10,7 +10,6 @@ extern "C" {
 }
 
 #include <cstdint>
-#include <string>
 
 namespace ffmpeg_utils {
 class FfmpegEncoder {

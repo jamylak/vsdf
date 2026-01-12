@@ -25,36 +25,30 @@ FfmpegEncoder::FfmpegEncoder(const EncodeSettings &settings, int width,
 FfmpegEncoder::~FfmpegEncoder() { close(); }
 
 void FfmpegEncoder::open() {
-    if (opened) {
+    if (opened)
         return;
-    }
 
-    if (settings.outputPath.empty()) {
+    if (settings.outputPath.empty())
         throw std::runtime_error("FFmpeg output path is empty");
-    }
 
     const AVCodec *codec = avcodec_find_encoder_by_name(settings.codec.c_str());
-    if (!codec) {
+    if (!codec)
         throw std::runtime_error("Failed to find encoder: " + settings.codec);
-    }
 
     // Let FFmpeg infer container format from output path (extension).
     int err = avformat_alloc_output_context2(&formatContext, nullptr, nullptr,
                                              settings.outputPath.c_str());
-    if (err < 0 || !formatContext) {
+    if (err < 0 || !formatContext)
         throw std::runtime_error("Failed to create output context: " +
                                  ffmpegErrStr(err));
-    }
 
     stream = avformat_new_stream(formatContext, nullptr);
-    if (!stream) {
+    if (!stream)
         throw std::runtime_error("Failed to create output stream");
-    }
 
     codecContext = avcodec_alloc_context3(codec);
-    if (!codecContext) {
+    if (!codecContext)
         throw std::runtime_error("Failed to allocate codec context");
-    }
 
     codecContext->codec_id = codec->id;
     codecContext->width = width;
@@ -66,9 +60,8 @@ void FfmpegEncoder::open() {
 
     // Some containers require extradata in the stream header instead of
     // packets.
-    if (formatContext->oformat->flags & AVFMT_GLOBALHEADER) {
+    if (formatContext->oformat->flags & AVFMT_GLOBALHEADER)
         codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    }
 
     if (!settings.preset.empty()) {
         err = av_opt_set(codecContext->priv_data, "preset",

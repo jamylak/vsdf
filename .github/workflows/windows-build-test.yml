@@ -27,12 +27,7 @@ jobs:
         Write-Host "Installing dependencies via vcpkg (faster and more reliable for CI)..."
         # vcpkg provides Vulkan headers/loader without needing full SDK installation
         vcpkg install vulkan:x64-windows --recurse
-        vcpkg install glfw3:x64-windows
-        vcpkg install glslang:x64-windows
-        vcpkg install spdlog:x64-windows
-        vcpkg install glm:x64-windows
-        vcpkg install gtest:x64-windows
-        vcpkg install ffmpeg:x64-windows
+        vcpkg install glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows ffmpeg[avcodec,avformat,swscale]:x64-windows
         vcpkg integrate install
         Write-Host "All dependencies installed successfully"
 

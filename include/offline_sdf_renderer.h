@@ -79,6 +79,7 @@ class OfflineSDFRenderer : public SDFRenderer {
     void stopEncoding();
     void enqueueEncode(uint32_t slotIndex, uint32_t frameIndex);
     void waitForSlotEncode(uint32_t slotIndex);
+    void encoderThreadLoop();
 
   public:
     OfflineSDFRenderer(const OfflineSDFRenderer &) = delete;

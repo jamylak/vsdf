@@ -380,67 +380,69 @@ void OfflineSDFRenderer::startEncoding() {
     // through the ring buffer strategy.
     // When GPU finishes rendering to a slot we can pick it up
     // to encode while GPU renders to another slot
-    encoderThread = std::thread([this]() {
-        try {
-            while (true) {
-                EncodeItem item;
-                // 1. WAIT: Get work from queue
-                {
-                    std::unique_lock<std::mutex> lock(encodeMutex);
-                    encodeCv.wait(lock, [this]() {
-                        return encodeStop || !encodeQueue.empty();
-                    });
-                    if (encodeQueue.empty()) {
-                        if (encodeStop)
-                            break;
-                        continue;
-                    }
-                    item = encodeQueue.front();
-                    encodeQueue.pop_front();
-                    encodeCv.notify_all();
+    encoderThread = std::thread([this]() { encoderThreadLoop(); });
+}
+
+void OfflineSDFRenderer::encoderThreadLoop() {
+    try {
+        while (true) {
+            EncodeItem item;
+            // 1. WAIT: Get work from queue
+            {
+                std::unique_lock<std::mutex> lock(encodeMutex);
+                encodeCv.wait(lock, [this]() {
+                    return encodeStop || !encodeQueue.empty();
+                });
+                if (encodeQueue.empty()) {
+                    if (encodeStop)
+                        break;
+                    continue;
                 }
-
-                // 2. Wait for GPU to finish rendering to this slot
-                RingSlot &slot = ringSlots[item.slotIndex];
-                VK_CHECK(vkWaitForFences(logicalDevice, 1,
-                                         &fences.fences[item.slotIndex],
-                                         VK_TRUE, UINT64_MAX));
-
-                if (debugDumpPPMDir) {
-                    // Blocking readback + PPM dump; this will stall the encode
-                    // thread but remains an optional debug extra.
-                    ReadbackFrame frame = debugReadbackOffscreenImage(slot);
-                    dumpDebugFrame(frame);
-                }
-
-                // 3. Encode the frame directly from the slot's mapped data
-                const uint8_t *src =
-                    static_cast<const uint8_t *>(slot.mappedData);
-                encoder->encodeFrame(src, item.frameIndex);
-
-                // 4. Mark slot as free for GPU to use again
-                {
-                    std::lock_guard<std::mutex> lock(encodeMutex);
-                    slot.pendingEncode = false;
-                }
+                item = encodeQueue.front();
+                encodeQueue.pop_front();
                 encodeCv.notify_all();
             }
 
-            encoder->flush();
-        } catch (const std::exception &e) {
-            spdlog::error("FFmpeg encode thread failed: {}", e.what());
+            // 2. Wait for GPU to finish rendering to this slot
+            RingSlot &slot = ringSlots[item.slotIndex];
+            VK_CHECK(vkWaitForFences(logicalDevice, 1,
+                                     &fences.fences[item.slotIndex],
+                                     VK_TRUE, UINT64_MAX));
+
+            if (debugDumpPPMDir) {
+                // Blocking readback + PPM dump; this will stall the encode
+                // thread but remains an optional debug extra.
+                ReadbackFrame frame = debugReadbackOffscreenImage(slot);
+                dumpDebugFrame(frame);
+            }
+
+            // 3. Encode the frame directly from the slot's mapped data
+            const uint8_t *src =
+                static_cast<const uint8_t *>(slot.mappedData);
+            encoder->encodeFrame(src, item.frameIndex);
+
+            // 4. Mark slot as free for GPU to use again
             {
                 std::lock_guard<std::mutex> lock(encodeMutex);
-                encodeFailed = true;
-                encodeStop = true;
-                encodeQueue.clear();
-                for (size_t i = 0; i < ringSize; ++i) {
-                    ringSlots[i].pendingEncode = false;
-                }
+                slot.pendingEncode = false;
             }
             encodeCv.notify_all();
         }
-    });
+
+        encoder->flush();
+    } catch (const std::exception &e) {
+        spdlog::error("FFmpeg encode thread failed: {}", e.what());
+        {
+            std::lock_guard<std::mutex> lock(encodeMutex);
+            encodeFailed = true;
+            encodeStop = true;
+            encodeQueue.clear();
+            for (size_t i = 0; i < ringSize; ++i) {
+                ringSlots[i].pendingEncode = false;
+            }
+        }
+        encodeCv.notify_all();
+    }
 }
 
 void OfflineSDFRenderer::stopEncoding() {

@@ -8,8 +8,7 @@
 #include <stdexcept>
 
 OfflineSDFRenderer::OfflineSDFRenderer(
-    const std::string &fragShaderPath, uint32_t maxFrames,
-    bool useToyTemplate,
+    const std::string &fragShaderPath, uint32_t maxFrames, bool useToyTemplate,
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
     uint32_t height, uint32_t ringSize,
     ffmpeg_utils::EncodeSettings encodeSettings)
@@ -374,7 +373,8 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
                               glm::vec2(imageSize.width, imageSize.height));
 }
 
-ReadbackFrame OfflineSDFRenderer::debugReadbackOffscreenImage(const RingSlot &slot) {
+ReadbackFrame
+OfflineSDFRenderer::debugReadbackOffscreenImage(const RingSlot &slot) {
     const auto formatInfo = readbackFormatInfo;
     const uint8_t *data = static_cast<const uint8_t *>(slot.mappedData);
 
@@ -530,8 +530,7 @@ void OfflineSDFRenderer::enqueueEncode(uint32_t slotIndex,
     if (encodeFailed) {
         throw std::runtime_error("FFmpeg encoder failed");
     }
-    encodeCv.wait(lock,
-                  [this]() { return encodeQueue.size() < ringSize; });
+    encodeCv.wait(lock, [this]() { return encodeQueue.size() < ringSize; });
     if (encodeFailed) {
         throw std::runtime_error("FFmpeg encoder failed");
     }

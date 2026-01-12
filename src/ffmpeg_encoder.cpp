@@ -233,13 +233,12 @@ void FfmpegEncoder::flush() {
 }
 
 void FfmpegEncoder::close() noexcept {
-    if (!opened)
-        return;
-
-    // Finalize the container (MP4: write/close moov if needed, etc.).
-    int err = av_write_trailer(formatContext);
-    if (err < 0)
-        spdlog::warn("Failed to write trailer: {}", ffmpegErrStr(err));
+    if (opened) {
+        // Finalize the container (MP4: write/close moov if needed, etc.).
+        int err = av_write_trailer(formatContext);
+        if (err < 0)
+            spdlog::warn("Failed to write trailer: {}", ffmpegErrStr(err));
+    }
 
     if (dstFrame)
         av_frame_free(&dstFrame);

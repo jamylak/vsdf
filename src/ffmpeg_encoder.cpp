@@ -103,6 +103,7 @@ void FfmpegEncoder::open() {
                                      ffmpegErrStr(err));
     }
 
+    // Write container header and muxer metadata to the output sink.
     err = avformat_write_header(formatContext, nullptr);
     if (err < 0)
         throw std::runtime_error("Failed to write header: " +

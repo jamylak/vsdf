@@ -90,6 +90,9 @@ std::string readShaderSourceWithTemplate(const std::string &templateFilename,
 
 std::filesystem::path compile(const std::string &shaderFilename,
                               bool useToyTemplate = false) {
+    // Used to compile .frag or .vert shaders
+    // With .frag shaders we sometimes use the toy template
+    // which does old school GLSL ShaderToy style format
     spdlog::info("Compiling shader: {}", shaderFilename);
     std::string shaderString;
     const char *shaderSource;

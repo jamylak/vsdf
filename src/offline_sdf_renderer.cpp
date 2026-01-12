@@ -42,10 +42,8 @@ void OfflineSDFRenderer::vulkanSetup() {
     renderPass = vkutils::createRenderPass(logicalDevice, imageFormat, true);
     commandPool = vkutils::createCommandPool(logicalDevice, graphicsQueueIndex);
 
-    std::filesystem::path vertSpirvPath{
-        shader_utils::compile(OFFSCREEN_DEFAULT_VERT_SHADER_PATH)};
-    vertShaderModule =
-        vkutils::createShaderModule(logicalDevice, vertSpirvPath.string());
+    auto vertSpirv = shader_utils::compileFullscreenQuadVertSpirv();
+    vertShaderModule = vkutils::createShaderModule(logicalDevice, vertSpirv);
 }
 
 void OfflineSDFRenderer::setupRenderContext() {
@@ -152,7 +150,7 @@ void OfflineSDFRenderer::setupRenderContext() {
 void OfflineSDFRenderer::createPipeline() {
     createPipelineLayoutCommon();
     std::filesystem::path fragSpirvPath =
-        shader_utils::compile(fragShaderPath, useToyTemplate);
+        shader_utils::compileToPath(fragShaderPath, useToyTemplate);
     fragShaderModule =
         vkutils::createShaderModule(logicalDevice, fragSpirvPath.string());
     pipeline = vkutils::createGraphicsPipeline(

@@ -10,21 +10,8 @@
 #include <string>
 #include <vector>
 
-namespace {
-std::string pickH264EncoderName() {
-    const char *candidates[] = {"libx264", "h264_videotoolbox", "h264",
-                                "libopenh264"};
-    for (const char *name : candidates) {
-        if (avcodec_find_encoder_by_name(name)) {
-            return std::string(name);
-        }
-    }
-    return std::string();
-}
-} // namespace
-
 TEST(FFmpegEncoder, EncodesSmallMp4) {
-    const std::string encoderName = pickH264EncoderName();
+    const std::string encoderName = ffmpeg_test_utils::pickH264EncoderName();
     ASSERT_FALSE(encoderName.empty()) << "No H.264 encoder available";
 
     const int width = 128;

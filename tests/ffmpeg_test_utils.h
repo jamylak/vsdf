@@ -25,6 +25,17 @@ struct DecodedVideo {
     std::vector<uint8_t> firstFrame;
 };
 
+inline std::string pickH264EncoderName() {
+    const char *candidates[] = {"libx264", "h264_videotoolbox", "h264",
+                                "libopenh264"};
+    for (const char *name : candidates) {
+        if (avcodec_find_encoder_by_name(name)) {
+            return name;
+        }
+    }
+    return "";
+}
+
 inline std::array<uint8_t, 3> pixelAt(const DecodedVideo &video, int x, int y) {
     if (x < 0 || y < 0 || x >= video.width || y >= video.height) {
         throw std::out_of_range("pixelAt: coordinates out of bounds");

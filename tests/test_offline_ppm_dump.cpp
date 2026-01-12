@@ -1,5 +1,6 @@
 #include "ppm_utils.h"
 #include "test_utils.h"
+#include "ffmpeg_test_utils.h"
 
 #include <gtest/gtest.h>
 
@@ -12,26 +13,13 @@ extern "C" {
 #include <spdlog/fmt/fmt.h>
 #include <string>
 
-namespace {
-std::string pickH264EncoderName() {
-    const char *candidates[] = {"libx264", "h264_videotoolbox", "h264",
-                                "libopenh264"};
-    for (const char *name : candidates) {
-        if (avcodec_find_encoder_by_name(name)) {
-            return std::string(name);
-        }
-    }
-    return std::string();
-}
-} // namespace
-
 TEST(OfflinePPMDump, DebugQuadrants) {
     if (shouldSkipSmokeTests()) {
         GTEST_SKIP()
             << "Offline PPM debug quadrants test is skipped in CI unless VSDF_SMOKE_TESTS=1";
     }
 
-    const std::string encoderName = pickH264EncoderName();
+    const std::string encoderName = ffmpeg_test_utils::pickH264EncoderName();
     if (encoderName.empty()) {
         GTEST_SKIP() << "No H.264 encoder available for offline PPM dump test";
     }
@@ -110,7 +98,7 @@ TEST(OfflinePPMDump, RingBufferMultipleFrames) {
             << "Offline PPM ring buffer test is skipped in CI unless VSDF_SMOKE_TESTS=1";
     }
 
-    const std::string encoderName = pickH264EncoderName();
+    const std::string encoderName = ffmpeg_test_utils::pickH264EncoderName();
     if (encoderName.empty()) {
         GTEST_SKIP() << "No H.264 encoder available for offline PPM dump test";
     }

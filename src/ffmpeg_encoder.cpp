@@ -95,10 +95,9 @@ void FfmpegEncoder::open() {
     if (!(formatContext->oformat->flags & AVFMT_NOFILE)) {
         err = avio_open(&formatContext->pb, settings.outputPath.c_str(),
                         AVIO_FLAG_WRITE);
-        if (err < 0) {
+        if (err < 0)
             throw std::runtime_error("Failed to open output: " +
                                      ffmpegErrStr(err));
-        }
     }
 
     err = avformat_write_header(formatContext, nullptr);

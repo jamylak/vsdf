@@ -186,9 +186,8 @@ void FfmpegEncoder::open() {
 }
 
 void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
-    if (!opened) {
+    if (!opened)
         throw std::runtime_error("FFmpeg encoder not opened");
-    }
 
     srcFrame->data[0] = const_cast<uint8_t *>(srcData);
     srcFrame->linesize[0] = srcStride;

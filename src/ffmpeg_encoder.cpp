@@ -228,7 +228,6 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
         if (err == AVERROR(EAGAIN) || err == AVERROR_EOF)
             break;
         if (err < 0) {
-            av_packet_free(&packet);
             throw std::runtime_error("Failed to receive packet: " +
                                      ffmpegErrStr(err));
         }
@@ -253,7 +252,6 @@ void FfmpegEncoder::flush() {
         if (err == AVERROR_EOF || err == AVERROR(EAGAIN))
             break;
         if (err < 0) {
-            av_packet_free(&packet);
             throw std::runtime_error("Failed to drain packet: " +
                                      ffmpegErrStr(err));
         }

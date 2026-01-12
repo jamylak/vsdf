@@ -66,30 +66,26 @@ void FfmpegEncoder::open() {
     if (!settings.preset.empty()) {
         err = av_opt_set(codecContext->priv_data, "preset",
                          settings.preset.c_str(), 0);
-        if (err < 0) {
+        if (err < 0)
             spdlog::warn("FFmpeg preset option rejected: {}",
                          ffmpegErrStr(err));
-        }
     }
 
     if (settings.crf >= 0) {
         err = av_opt_set_int(codecContext->priv_data, "crf", settings.crf, 0);
-        if (err < 0) {
+        if (err < 0)
             spdlog::warn("FFmpeg CRF option rejected: {}", ffmpegErrStr(err));
-        }
     }
 
     err = avcodec_open2(codecContext, codec, nullptr);
-    if (err < 0) {
+    if (err < 0)
         throw std::runtime_error("Failed to open encoder: " +
                                  ffmpegErrStr(err));
-    }
 
     err = avcodec_parameters_from_context(stream->codecpar, codecContext);
-    if (err < 0) {
+    if (err < 0)
         throw std::runtime_error("Failed to set stream params: " +
                                  ffmpegErrStr(err));
-    }
 
     stream->time_base = codecContext->time_base;
     stream->avg_frame_rate = codecContext->framerate;

@@ -59,6 +59,8 @@ void FfmpegEncoder::open() {
     codecContext->framerate = AVRational{settings.fps, 1};
     codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
     codecContext->gop_size = settings.fps;
+    // SDF values are full-range 0-255; signal full-range (JPEG) in bitstream.
+    codecContext->color_range = AVCOL_RANGE_JPEG;
 
     // Some containers require extradata in the stream header instead of
     // packets.
@@ -124,6 +126,8 @@ void FfmpegEncoder::open() {
     dstFrame->format = codecContext->pix_fmt;
     dstFrame->width = width;
     dstFrame->height = height;
+    // Ensure the frame metadata matches the full-range encoder setting.
+    dstFrame->color_range = AVCOL_RANGE_JPEG;
 
     // Let FFmpeg choose a default alignment for this build/CPU.
     err = av_frame_get_buffer(dstFrame, 0);
@@ -168,6 +172,8 @@ void FfmpegEncoder::open() {
     srcFrame->format = srcFormat;
     srcFrame->width = width;
     srcFrame->height = height;
+    // Source pixels are full-range 0-255 before conversion.
+    srcFrame->color_range = AVCOL_RANGE_JPEG;
     srcFrame->data[1] = nullptr;
     srcFrame->data[2] = nullptr;
     srcFrame->data[3] = nullptr;

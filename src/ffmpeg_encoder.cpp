@@ -87,6 +87,7 @@ void FfmpegEncoder::open() {
         throw std::runtime_error("Failed to set stream params: " +
                                  ffmpegErrStr(err));
 
+    // TODO: Revisit
     stream->time_base = codecContext->time_base;
     stream->avg_frame_rate = codecContext->framerate;
     stream->r_frame_rate = codecContext->framerate;

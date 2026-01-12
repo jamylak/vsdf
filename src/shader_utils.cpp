@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <glslang/Public/ResourceLimits.h>
@@ -9,6 +10,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 static constexpr char FRAG_SHADER_TEMPLATE[] = "shaders/toytemplate.frag";

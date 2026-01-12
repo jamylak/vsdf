@@ -2,13 +2,14 @@
 #define FILEUTILS_H
 
 #include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-[[nodiscard]] static std::vector<char>
+[[nodiscard]] static std::vector<uint32_t>
 loadBinaryFile(const std::string &filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 

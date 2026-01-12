@@ -87,9 +87,11 @@ void FfmpegEncoder::open() {
         throw std::runtime_error("Failed to set stream params: " +
                                  ffmpegErrStr(err));
 
-    // TODO: Revisit
+    // Match stream time base to the encoder for correct PTS/DTS units.
     stream->time_base = codecContext->time_base;
+    // Advertise the intended average frame rate for container metadata.
     stream->avg_frame_rate = codecContext->framerate;
+    // Set the nominal frame rate used by muxers/readers.
     stream->r_frame_rate = codecContext->framerate;
 
     if (!(formatContext->oformat->flags & AVFMT_NOFILE)) {

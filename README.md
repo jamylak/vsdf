@@ -80,20 +80,15 @@ cmake --build build --config Release
 .\build\Release\vsdf.exe {filepath}.frag
 ```
 
-Headless / CI-friendly single-frame run (hide the window and exit after N frames):
-```sh
-./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless
-```
-
-Offline MP4 encoding (FFmpeg / H.264 via libx264):
-```sh
-./build/vsdf shaders/testtoyshader.frag --frames 100 --ffmpeg-output out.mp4
-```
-
 ## Usage
 ### With shader toy shaders (most seem to work)
 ```sh
 ./build/vsdf --toy path/to/shader.frag
+```
+
+### Offline MP4 encoding (FFmpeg / H.264 via libx264):
+```sh
+./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --ffmpeg-output out.mp4
 ```
 
 ### Example test command using a sample shader in this repo

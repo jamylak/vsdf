@@ -183,9 +183,9 @@ void FfmpegEncoder::open() {
     srcFrame->linesize[3] = 0;
 
     // Create a colorspace/format conversion context for src -> encoder format.
-    swsContext = sws_getCachedContext(nullptr, width, height, srcFormat, width,
-                                      height, codecContext->pix_fmt,
-                                      SWS_BICUBIC, nullptr, nullptr, nullptr);
+    swsContext = sws_getContext(width, height, srcFormat, width, height,
+                                codecContext->pix_fmt, SWS_BICUBIC, nullptr,
+                                nullptr, nullptr);
     if (!swsContext)
         throw std::runtime_error("Failed to create sws context");
 

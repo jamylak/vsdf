@@ -11,6 +11,30 @@
 #include <string>
 
 static constexpr char FRAG_SHADER_TEMPLATE[] = "shaders/toytemplate.frag";
+static constexpr char FULLSCREEN_QUAD_VERT_SOURCE[] = R"(#version 450
+
+layout(location = 0) out vec2 texCoord;
+
+const vec2 vertices[6] = vec2[](
+    vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),
+    vec2(-1.0, -1.0), vec2(1.0, 1.0), vec2(-1.0, 1.0)
+);
+
+void main() {
+    uint index = gl_VertexIndex % 6;  // Ensure the index wraps around if needed
+    gl_Position = vec4(vertices[index], 0.0, 1.0);
+    texCoord = vertices[index] * 0.5 + 0.5;
+}
+)";
+
+static bool isFullscreenQuadShaderPath(const std::string &filename) {
+    std::filesystem::path path(filename);
+    if (path.filename() != "fullscreenquad.vert") {
+        return false;
+    }
+
+    return path.parent_path().filename() == "shaders";
+}
 
 EShLanguage getShaderLang(const std::string &extension) {
     if (extension.length() < 5)
@@ -45,6 +69,13 @@ EShLanguage getShaderLang(const std::string &extension) {
 namespace shader_utils {
 // Read shader source code from file
 std::string readShaderSource(const std::string &filename) {
+    if (isFullscreenQuadShaderPath(filename)) {
+        // Normally this function will read a shader file source
+        // Before compiling it. We bake full screen quad directly
+        // into the binary
+        return FULLSCREEN_QUAD_VERT_SOURCE;
+    }
+
     std::ifstream file(filename);
     if (!file.is_open()) {
         spdlog::error("Failed to open shader source file: {}", filename);

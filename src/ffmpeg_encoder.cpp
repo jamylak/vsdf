@@ -33,14 +33,13 @@ void FfmpegEncoder::open() {
         throw std::runtime_error("FFmpeg output path is empty");
     }
 
-    const AVCodec *codec =
-        avcodec_find_encoder_by_name(settings.codec.c_str());
+    const AVCodec *codec = avcodec_find_encoder_by_name(settings.codec.c_str());
     if (!codec) {
         throw std::runtime_error("Failed to find encoder: " + settings.codec);
     }
 
-    int err = avformat_alloc_output_context2(
-        &formatContext, nullptr, nullptr, settings.outputPath.c_str());
+    int err = avformat_alloc_output_context2(&formatContext, nullptr, nullptr,
+                                             settings.outputPath.c_str());
     if (err < 0 || !formatContext) {
         throw std::runtime_error("Failed to create output context: " +
                                  ffmpegErrStr(err));
@@ -80,8 +79,7 @@ void FfmpegEncoder::open() {
     if (settings.crf >= 0) {
         err = av_opt_set_int(codecContext->priv_data, "crf", settings.crf, 0);
         if (err < 0) {
-            spdlog::warn("FFmpeg CRF option rejected: {}",
-                         ffmpegErrStr(err));
+            spdlog::warn("FFmpeg CRF option rejected: {}", ffmpegErrStr(err));
         }
     }
 
@@ -143,9 +141,9 @@ void FfmpegEncoder::open() {
     srcFrame->linesize[2] = 0;
     srcFrame->linesize[3] = 0;
 
-    swsContext = sws_getCachedContext(
-        nullptr, width, height, srcFormat, width, height,
-        codecContext->pix_fmt, SWS_BICUBIC, nullptr, nullptr, nullptr);
+    swsContext = sws_getCachedContext(nullptr, width, height, srcFormat, width,
+                                      height, codecContext->pix_fmt,
+                                      SWS_BICUBIC, nullptr, nullptr, nullptr);
     if (!swsContext) {
         throw std::runtime_error("Failed to create sws context");
     }
@@ -175,8 +173,7 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
 
     err = avcodec_send_frame(codecContext, dstFrame);
     if (err < 0) {
-        throw std::runtime_error("Failed to send frame: " +
-                                 ffmpegErrStr(err));
+        throw std::runtime_error("Failed to send frame: " + ffmpegErrStr(err));
     }
 
     AVPacket *packet = av_packet_alloc();

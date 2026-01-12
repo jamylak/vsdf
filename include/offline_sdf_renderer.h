@@ -4,7 +4,6 @@
 #include "ffmpeg_encode_settings.h"
 #include "ffmpeg_encoder.h"
 #include "vkutils.h"
-#include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <filesystem>
@@ -48,8 +47,6 @@ class OfflineSDFRenderer : public SDFRenderer {
     const uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE;
     std::array<RingSlot, MAX_FRAME_SLOTS> ringSlots;
     const uint32_t maxFrames;
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 
     static uint32_t validateRingSize(uint32_t value);
 

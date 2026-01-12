@@ -56,8 +56,6 @@ class OfflineSDFRenderer : public SDFRenderer {
     void destroyPipeline();
     void destroy();
 
-    void transitionImageLayout(VkImage image, VkImageLayout oldLayout,
-                               VkImageLayout newLayout);
     void recordCommandBuffer(uint32_t slotIndex, uint32_t currentFrame);
     [[nodiscard]] ReadbackFrame debugReadbackOffscreenImage(const RingSlot &slot);
     [[nodiscard]] vkutils::PushConstants

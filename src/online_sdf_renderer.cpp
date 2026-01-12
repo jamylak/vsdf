@@ -137,8 +137,6 @@ void OnlineSDFRenderer::destroyRenderContext() {
 
 [[nodiscard]] vkutils::PushConstants
 OnlineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
-    // TODO: Should we even use a real time??? or make 1 up???
-    // different for online?
     vkutils::PushConstants pushConstants = buildPushConstants(
         static_cast<float>(glfwGetTime()), currentFrame,
         glm::vec2(swapchainSize.width, swapchainSize.height));

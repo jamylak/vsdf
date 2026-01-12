@@ -19,6 +19,10 @@ loadBinaryFile(const std::string &filename) {
     auto fileSize = file.tellg();
     std::vector<char> buffer(static_cast<std::size_t>(fileSize));
 
+    // if (bytes.size() % 4 != 0) throw ...
+
+    // TODO: SIZE must be a multiple of 4 for SPIR-V..
+
     file.seekg(0);
     file.read(buffer.data(), fileSize);
 

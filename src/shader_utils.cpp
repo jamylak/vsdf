@@ -104,9 +104,9 @@ std::string readShaderSourceWithTemplate(const std::string &templateFilename,
     return shaderSourceStream.str();
 }
 
-static std::vector<unsigned int>
-compileToSpirv(const char *shaderSource, EShLanguage lang,
-               bool useToyTemplate) {
+static std::vector<unsigned int> compileToSpirv(const char *shaderSource,
+                                                EShLanguage lang,
+                                                bool useToyTemplate) {
     glslang::InitializeProcess();
     glslang::TShader shader(lang);
 
@@ -149,6 +149,14 @@ compileToSpirv(const char *shaderSource, EShLanguage lang,
 
     std::vector<unsigned int> spirv;
     spv::SpvBuildLogger logger{};
+
+    // glslang outputs unsigned int. Vulkan loads uint32_t
+    // so we static assert they are equal here to make sure we can simply just
+    // reinterpret them... otherwise we'd have to copy and convert
+    static_assert(sizeof(unsigned int) == 4,
+                  "glslang must output 32-bit words");
+    // TODO: Adjust paths to reinterpret if needed
+
     glslang::GlslangToSpv(*program.getIntermediate(lang), spirv, &logger,
                           nullptr);
 
@@ -159,7 +167,7 @@ compileToSpirv(const char *shaderSource, EShLanguage lang,
 }
 
 std::filesystem::path compileToPath(const std::string &shaderFilename,
-                              bool useToyTemplate = false) {
+                                    bool useToyTemplate = false) {
     // Used to compile shaders to a path
     // With .frag shaders we sometimes use the toy template
     // which does old school GLSL ShaderToy style format

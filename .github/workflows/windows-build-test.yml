@@ -26,8 +26,9 @@ jobs:
       run: |
         Write-Host "Installing dependencies via vcpkg (faster and more reliable for CI)..."
         # vcpkg provides Vulkan headers/loader without needing full SDK installation
-        vcpkg install vulkan:x64-windows --recurse
-        vcpkg install glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows ffmpeg[avcodec,avformat,swscale]:x64-windows
+        vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows --recurse
+        # This takes forever to build ffmpeg... TODO: Find workaround
+        # vcpkg install glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows ffmpeg[avcodec,avformat,swscale]:x64-windows
         vcpkg integrate install
         Write-Host "All dependencies installed successfully"
 
@@ -37,6 +38,7 @@ jobs:
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
           -DBUILD_TESTS=ON `
+          -DDISABLE_FFMPEG=ON `
           -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
           .
 

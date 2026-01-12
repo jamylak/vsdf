@@ -30,11 +30,11 @@ class FfmpegEncoder {
   private:
     void writePacket(AVPacket *packet);
 
-    EncodeSettings settings;
-    int width = 0;
-    int height = 0;
-    AVPixelFormat srcFormat = AV_PIX_FMT_NONE;
-    int srcStride = 0;
+    const EncodeSettings settings;
+    const int width = 0;
+    const int height = 0;
+    const AVPixelFormat srcFormat = AV_PIX_FMT_NONE;
+    const int srcStride = 0;
 
     AVFormatContext *formatContext = nullptr;
     AVCodecContext *codecContext = nullptr;

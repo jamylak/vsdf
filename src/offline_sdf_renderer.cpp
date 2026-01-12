@@ -355,7 +355,7 @@ void OfflineSDFRenderer::renderFrames() {
         enqueueEncode(slotIndex, currentFrame);
     }
 
-    // Finalise after the for loop finished
+    // Finalize after the for loop finished
     stopEncoding();
 
     spdlog::info("Offline render done.");

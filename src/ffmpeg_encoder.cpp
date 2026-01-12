@@ -188,6 +188,10 @@ void FfmpegEncoder::open() {
     if (!swsContext)
         throw std::runtime_error("Failed to create sws context");
 
+    packet = av_packet_alloc();
+    if (!packet)
+        throw std::runtime_error("Failed to allocate packet");
+
     opened = true;
 }
 
@@ -217,10 +221,6 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
     if (err < 0)
         throw std::runtime_error("Failed to send frame: " + ffmpegErrStr(err));
 
-    AVPacket *packet = av_packet_alloc();
-    if (!packet)
-        throw std::runtime_error("Failed to allocate packet");
-
     // Drain all packets produced for the submitted frame.
     while (true) {
         err = avcodec_receive_packet(codecContext, packet);
@@ -234,8 +234,6 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
         writePacket(packet);
         av_packet_unref(packet);
     }
-
-    av_packet_free(&packet);
 }
 
 void FfmpegEncoder::flush() {
@@ -247,10 +245,6 @@ void FfmpegEncoder::flush() {
     if (err < 0)
         throw std::runtime_error("Failed to flush encoder: " +
                                  ffmpegErrStr(err));
-
-    AVPacket *packet = av_packet_alloc();
-    if (!packet)
-        throw std::runtime_error("Failed to allocate packet");
 
     // Drain any remaining packets buffered by the encoder.
     while (true) {
@@ -265,8 +259,6 @@ void FfmpegEncoder::flush() {
         writePacket(packet);
         av_packet_unref(packet);
     }
-
-    av_packet_free(&packet);
 }
 
 void FfmpegEncoder::close() noexcept {
@@ -282,6 +274,8 @@ void FfmpegEncoder::close() noexcept {
         av_frame_free(&dstFrame);
     if (srcFrame)
         av_frame_free(&srcFrame);
+    if (packet)
+        av_packet_free(&packet);
     if (swsContext) {
         sws_freeContext(swsContext);
         swsContext = nullptr;

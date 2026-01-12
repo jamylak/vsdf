@@ -42,6 +42,7 @@ class FfmpegEncoder {
     SwsContext *swsContext = nullptr;
     AVFrame *dstFrame = nullptr;
     AVFrame *srcFrame = nullptr;
+    AVPacket *packet = nullptr;
     bool opened = false;
 };
 } // namespace ffmpeg_utils

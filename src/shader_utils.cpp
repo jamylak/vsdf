@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 static constexpr char FRAG_SHADER_TEMPLATE[] = "shaders/toytemplate.frag";
 static constexpr char FULLSCREEN_QUAD_VERT_SOURCE[] = R"(#version 450
@@ -26,15 +27,6 @@ void main() {
     texCoord = vertices[index] * 0.5 + 0.5;
 }
 )";
-
-static bool isFullscreenQuadShaderPath(const std::string &filename) {
-    std::filesystem::path path(filename);
-    if (path.filename() != "fullscreenquad.vert") {
-        return false;
-    }
-
-    return path.parent_path().filename() == "shaders";
-}
 
 EShLanguage getShaderLang(const std::string &extension) {
     if (extension.length() < 5)
@@ -69,13 +61,6 @@ EShLanguage getShaderLang(const std::string &extension) {
 namespace shader_utils {
 // Read shader source code from file
 std::string readShaderSource(const std::string &filename) {
-    if (isFullscreenQuadShaderPath(filename)) {
-        // Normally this function will read a shader file source
-        // Before compiling it. We bake full screen quad directly
-        // into the binary
-        return FULLSCREEN_QUAD_VERT_SOURCE;
-    }
-
     std::ifstream file(filename);
     if (!file.is_open()) {
         spdlog::error("Failed to open shader source file: {}", filename);

@@ -7,7 +7,7 @@
 TEST(ShaderUtilsTest, CompileTest) {
     TempShaderFile tempShader("temp_shader.frag",
                               "#version 450\nvoid main() {}");
-    shader_utils::compile(tempShader.filename());
+    shader_utils::compileToPath(tempShader.filename());
 
     std::string expectedSpvFilename = "temp_shader.spv";
     std::ifstream spvFile(expectedSpvFilename);
@@ -30,7 +30,7 @@ TEST(ShaderUtilsTest, CompileVertexShader) {
     TempShaderFile tempShader(
         "temp_vertex.vert",
         "#version 450\nvoid main() { gl_Position = vec4(0.0); }");
-    shader_utils::compile(tempShader.filename());
+    shader_utils::compileToPath(tempShader.filename());
 
     std::string expectedSpvFilename = "temp_vertex.spv";
     std::ifstream spvFile(expectedSpvFilename);
@@ -53,7 +53,7 @@ TEST(ShaderUtilsTest, CompileGLSLESTest) {
         "    fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red\n"
         "}");
 
-    shader_utils::compile(tempShader.filename(), true);
+    shader_utils::compileToPath(tempShader.filename(), true);
 
     std::string expectedSpvFilename = "temp_glsl_es.spv";
     std::ifstream spvFile(expectedSpvFilename);

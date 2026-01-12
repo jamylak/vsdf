@@ -25,7 +25,7 @@ class FfmpegEncoder {
     void open();
     void encodeFrame(const uint8_t *srcData, int64_t frameIndex);
     void flush();
-    void close();
+    void close() noexcept;
 
   private:
     void writePacket(AVPacket *packet);

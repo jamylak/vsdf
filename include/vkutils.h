@@ -903,6 +903,20 @@ createShaderModule(VkDevice device, const std::string &filename) {
     return shaderModule;
 }
 
+[[nodiscard]] static VkShaderModule
+createShaderModule(VkDevice device, const std::vector<uint32_t> &spirv) {
+    spdlog::info("Create shader module from SPIR-V");
+    VkShaderModule shaderModule;
+    VkShaderModuleCreateInfo createinfo{
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = spirv.size() * sizeof(uint32_t),
+        .pCode = spirv.data(),
+    };
+
+    VK_CHECK(vkCreateShaderModule(device, &createinfo, nullptr, &shaderModule));
+    return shaderModule;
+}
+
 [[nodiscard]] static VkPipeline
 createGraphicsPipeline(VkDevice device, VkRenderPass renderPass,
                        VkPipelineLayout pipelineLayout, VkExtent2D extent,

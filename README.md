@@ -25,7 +25,8 @@ Supports macOS, Linux, and Windows with native file watcher implementations for 
 ## Mac Dev Setup (Homebrew)
 Install Vulkan + deps with Homebrew (Quickstart + macOS CI):
 ```sh
-brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools googletest
+brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools googletest ffmpeg
+# Note: FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`)
 ```
 
 ### Mac Lunar Setup (Optional)
@@ -46,6 +47,8 @@ sudo apt-get install -y \
   libgtest-dev libspdlog-dev \
   libglfw3 libglfw3-dev libvulkan-dev \
   glslang-tools glslang-dev libglm-dev \
+  # (Optional) set -DDISABLE_FFMPEG=ON to skip \
+  libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
 ```
 
 ## Windows Dev Setup
@@ -59,15 +62,16 @@ sudo apt-get install -y \
 2. Install dependencies using vcpkg (includes Vulkan):
    ```powershell
    vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
+   # Note: FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it
+   vcpkg install ffmpeg[avcodec,avformat,swscale]:x64-windows
    vcpkg integrate install
    ```
-
-Note: vcpkg provides Vulkan headers and loader, eliminating the need for a separate Vulkan SDK installation.
 
 ## Build
 
 ### Linux/macOS
 ```sh
+# FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
 cmake -B build .
 cmake --build build
 ./build/vsdf {filepath}.frag
@@ -75,6 +79,7 @@ cmake --build build
 
 ### Windows
 ```powershell
+# FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
 cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" .
 cmake --build build --config Release
 .\build\Release\vsdf.exe {filepath}.frag

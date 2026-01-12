@@ -101,29 +101,27 @@ void FfmpegEncoder::open() {
     }
 
     err = avformat_write_header(formatContext, nullptr);
-    if (err < 0) {
+    if (err < 0)
         throw std::runtime_error("Failed to write header: " +
                                  ffmpegErrStr(err));
-    }
 
     dstFrame = av_frame_alloc();
-    if (!dstFrame) {
+    if (!dstFrame)
         throw std::runtime_error("Failed to allocate destination frame");
-    }
+
     dstFrame->format = codecContext->pix_fmt;
     dstFrame->width = width;
     dstFrame->height = height;
+
     // Let FFmpeg choose a default alignment for this build/CPU.
     err = av_frame_get_buffer(dstFrame, 0);
-    if (err < 0) {
+    if (err < 0)
         throw std::runtime_error("Failed to allocate frame buffer: " +
                                  ffmpegErrStr(err));
-    }
 
     srcFrame = av_frame_alloc();
-    if (!srcFrame) {
+    if (!srcFrame)
         throw std::runtime_error("Failed to allocate source frame");
-    }
     srcFrame->format = srcFormat;
     srcFrame->width = width;
     srcFrame->height = height;
@@ -138,9 +136,8 @@ void FfmpegEncoder::open() {
     swsContext = sws_getCachedContext(nullptr, width, height, srcFormat, width,
                                       height, codecContext->pix_fmt,
                                       SWS_BICUBIC, nullptr, nullptr, nullptr);
-    if (!swsContext) {
+    if (!swsContext)
         throw std::runtime_error("Failed to create sws context");
-    }
 
     opened = true;
 }

@@ -194,10 +194,9 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
 
     // Ensure dstFrame has an owned, writable buffer before conversion.
     int err = av_frame_make_writable(dstFrame);
-    if (err < 0) {
+    if (err < 0)
         throw std::runtime_error("Failed to make frame writable: " +
                                  ffmpegErrStr(err));
-    }
 
     // Convert/copy into the destination frame in the encoder's pixel format.
     sws_scale(swsContext, srcFrame->data, srcFrame->linesize, 0, height,
@@ -209,14 +208,12 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
 
     // Push one frame into the encoder; it may output 0..N packets.
     err = avcodec_send_frame(codecContext, dstFrame);
-    if (err < 0) {
+    if (err < 0)
         throw std::runtime_error("Failed to send frame: " + ffmpegErrStr(err));
-    }
 
     AVPacket *packet = av_packet_alloc();
-    if (!packet) {
+    if (!packet)
         throw std::runtime_error("Failed to allocate packet");
-    }
 
     // Drain all packets produced for the submitted frame.
     while (true) {
@@ -237,21 +234,18 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
 }
 
 void FfmpegEncoder::flush() {
-    if (!opened) {
+    if (!opened)
         return;
-    }
 
     // Send a null frame to signal end-of-stream and flush delayed frames.
     int err = avcodec_send_frame(codecContext, nullptr);
-    if (err < 0) {
+    if (err < 0)
         throw std::runtime_error("Failed to flush encoder: " +
                                  ffmpegErrStr(err));
-    }
 
     AVPacket *packet = av_packet_alloc();
-    if (!packet) {
+    if (!packet)
         throw std::runtime_error("Failed to allocate packet");
-    }
 
     // Drain any remaining packets buffered by the encoder.
     while (true) {

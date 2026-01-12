@@ -131,6 +131,32 @@ void FfmpegEncoder::open() {
         throw std::runtime_error("Failed to allocate frame buffer: " +
                                  ffmpegErrStr(err));
 
+    // ASCII sketch of a tiny 4×4 YUV420P frame:
+    //
+    //   Plane 0 (Y, 4x4):
+    //   Y00 Y01 Y02 Y03
+    //   Y10 Y11 Y12 Y13
+    //   Y20 Y21 Y22 Y23
+    //   Y30 Y31 Y32 Y33
+    //
+    //   Plane 1 (U, 2x2):
+    //   U00 U01
+    //   U10 U11
+    //
+    //   Plane 2 (V, 2x2):
+    //   V00 V01
+    //   V10 V11
+    //
+    //   What are data[0..4]?
+    //   - data[0]: pointer to plane 0 (first byte of Y or packed RGB)
+    //   - data[1]: pointer to plane 1 (U/Cb if planar)
+    //   - data[2]: pointer to plane 2 (V/Cr if planar)
+    //   - data[3]: pointer to plane 3 (alpha or extra plane if format uses it)
+    //   - data[4]: usually unused (FFmpeg reserves up to 8 pointers via
+    //   AV_NUM_DATA_POINTERS)
+    //
+    //   linesize[i] = number of bytes per row in plane i
+
     // Frame wrapper for the caller's input (no allocation for src data).
     srcFrame = av_frame_alloc();
     if (!srcFrame)

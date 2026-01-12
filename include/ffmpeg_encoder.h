@@ -14,7 +14,7 @@ extern "C" {
 namespace ffmpeg_utils {
 class FfmpegEncoder {
   public:
-    FfmpegEncoder(const EncodeSettings &settings, int width, int height,
+    FfmpegEncoder(EncodeSettings &settings, int width, int height,
                   AVPixelFormat srcFormat, int srcStride);
     ~FfmpegEncoder();
     FfmpegEncoder(const FfmpegEncoder &) = delete;

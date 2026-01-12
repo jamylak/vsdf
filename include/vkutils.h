@@ -8,12 +8,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <ios>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
+#include <string>
 #include <sys/types.h>
 #include <vector>
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
-#include "fileutils.h"
 #include <GLFW/glfw3.h>
 #include <array>
 #include <glm/glm.hpp>
@@ -84,6 +87,32 @@ struct ReadbackBuffer {
 struct ReadbackFormatInfo {
     uint32_t bytesPerPixel = 0;
     bool swapRB = false;
+};
+
+[[nodiscard]] static std::vector<uint32_t>
+loadSpvFile(const std::string &filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open())
+        throw std::runtime_error("Failed to open file: " + filename);
+
+    std::streamoff fileSize = file.tellg();
+    if (fileSize % static_cast<std::streamoff>(sizeof(uint32_t)) != 0)
+        throw std::runtime_error("SPIR-V file size is not a multiple of 4: " +
+                                 filename);
+
+    std::size_t byteSize = static_cast<std::size_t>(fileSize);
+    std::vector<uint32_t> buffer(byteSize / sizeof(uint32_t));
+
+    file.seekg(0);
+    file.read(reinterpret_cast<char *>(buffer.data()),
+              static_cast<std::streamsize>(byteSize));
+
+    if (file.gcount() != static_cast<std::streamsize>(byteSize))
+        throw std::runtime_error("Failed to read the complete file: " +
+                                 filename);
+
+    return buffer;
 };
 
 [[nodiscard]] inline ReadbackFormatInfo getReadbackFormatInfo(VkFormat format) {
@@ -766,6 +795,74 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
     return commandBuffers;
 }
 
+static void transitionImageLayout(VkDevice logicalDevice,
+                                  VkCommandPool commandPool, VkQueue queue,
+                                  VkImage image, VkImageLayout oldLayout,
+                                  VkImageLayout newLayout) {
+    VkCommandBufferAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = commandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer commandBuffer;
+    VK_CHECK(
+        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
+
+    VkCommandBufferBeginInfo beginInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+    VkImageMemoryBarrier barrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    VkPipelineStageFlags dstStage =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+        newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        // No need to wait on prior writes; we don't care about old contents.
+        barrier.srcAccessMask = 0;
+        // Make color-attachment writes visible for subsequent render pass use.
+        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    } else {
+        throw std::runtime_error("Unsupported image layout transition");
+    }
+
+    vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrier);
+
+    VK_CHECK(vkEndCommandBuffer(commandBuffer));
+
+    VkSubmitInfo submitInfo{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffer,
+    };
+
+    // Submit and wait so the image is ready before further use.
+    VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_CHECK(vkQueueWaitIdle(queue));
+    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+}
+
 [[nodiscard]] static Fences createFences(VkDevice device, uint32_t count) {
     spdlog::info("Create fences");
     Fences fences;
@@ -892,11 +989,25 @@ createFrameBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent,
 createShaderModule(VkDevice device, const std::string &filename) {
     spdlog::info("Create shader module");
     VkShaderModule shaderModule;
-    auto code = loadBinaryFile(filename);
+    auto code = loadSpvFile(filename);
     VkShaderModuleCreateInfo createinfo{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = code.size(),
-        .pCode = reinterpret_cast<const uint32_t *>(code.data()),
+        .codeSize = code.size() * sizeof(uint32_t),
+        .pCode = code.data(),
+    };
+
+    VK_CHECK(vkCreateShaderModule(device, &createinfo, nullptr, &shaderModule));
+    return shaderModule;
+}
+
+[[nodiscard]] static VkShaderModule
+createShaderModule(VkDevice device, const std::vector<uint32_t> &spirv) {
+    spdlog::info("Create shader module from SPIR-V");
+    VkShaderModule shaderModule;
+    VkShaderModuleCreateInfo createinfo{
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = spirv.size() * sizeof(uint32_t),
+        .pCode = spirv.data(),
     };
 
     VK_CHECK(vkCreateShaderModule(device, &createinfo, nullptr, &shaderModule));
@@ -1121,8 +1232,8 @@ struct ReadbackContext {
 };
 
 [[nodiscard]] static ReadbackFrame
-readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
-                       VkFormat format, VkExtent2D extent) {
+debugReadbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
+                            VkFormat format, VkExtent2D extent) {
     // Intended for quick validation/smoke tests of the presented swapchain
     // path. You'd want to avoid swapchain if you just wanted to only encode
     // video for example, to save time

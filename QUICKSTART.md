@@ -7,7 +7,7 @@ Go from zero to your first shader in minutes.
 ### macOS (Homebrew)
 Install Vulkan + deps with Homebrew:
 ```sh
-brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools
+brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools ffmpeg
 ```
 
 Build:
@@ -25,10 +25,13 @@ sudo apt-get install -y \
   libgtest-dev libspdlog-dev \
   libglfw3 libglfw3-dev libvulkan-dev \
   glslang-tools glslang-dev libglm-dev \
+  # (Optional) set -DDISABLE_FFMPEG=ON to skip \
+  libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
 ```
 
 Build:
 ```sh
+# FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
 cmake -B build .
 cmake --build build
 ```
@@ -43,10 +46,13 @@ cmake --build build
 2. Install deps (includes Vulkan):
    ```powershell
    vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
+   # (Optional) set -DDISABLE_FFMPEG=ON to skip
+   vcpkg install ffmpeg[avcodec,avformat,swscale]:x64-windows
    vcpkg integrate install
    ```
 3. Build:
    ```powershell
+   # FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
    cmake -B build -DCMAKE_TOOLCHAIN_FILE="<path-to-vcpkg>/scripts/buildsystems/vcpkg.cmake" .
    cmake --build build --config Release
    ```

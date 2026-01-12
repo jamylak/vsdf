@@ -10,7 +10,6 @@
 class SDFRenderer {
   protected:
     SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
-                std::optional<uint32_t> maxFrames,
                 std::optional<std::filesystem::path> debugDumpPPMDir);
 
     void logDeviceLimits() const;
@@ -48,9 +47,6 @@ class SDFRenderer {
     VkPipeline pipeline = VK_NULL_HANDLE;
     vkutils::CommandBuffers commandBuffers;
     vkutils::Fences fences;
-
-    // Runtime configuration
-    std::optional<uint32_t> maxFrames;
 
     // Some useful stuff to debug
     std::optional<std::filesystem::path> debugDumpPPMDir;

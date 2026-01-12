@@ -1,7 +1,12 @@
 option(ENABLE_SANITIZERS "Build with sanitizers" OFF)
 option(ENABLE_FUZZING "Build fuzz targets" OFF)
-# (WIP) FFmpeg recording support. Not yet implemented.
-option(VSDF_ENABLE_FFMPEG "Enable FFmpeg recording" OFF)
+option(DISABLE_FFMPEG "Disable FFmpeg/offline renderer" OFF)
+
+if (DISABLE_FFMPEG)
+  set(VSDF_ENABLE_FFMPEG OFF)
+else()
+  set(VSDF_ENABLE_FFMPEG ON)
+endif()
 
 if (ENABLE_SANITIZERS)
   add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
@@ -31,7 +36,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
   add_link_options(-fsanitize=address)
 endif()
 
-add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp src/online_sdf_renderer.cpp src/offline_sdf_renderer.cpp src/image_dump.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp src/online_sdf_renderer.cpp src/image_dump.cpp)
 
 # Recommended warnings and safeguards
 if(MSVC)
@@ -75,13 +80,21 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
 include_directories(${PROJECT_NAME} PRIVATE include ${GLM_INCLUDE_DIRS})
 
-# Optional FFmpeg integration (build plumbing only)
 if (VSDF_ENABLE_FFMPEG)
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
-    libavformat libavcodec libavutil libswscale)
-  target_sources(${PROJECT_NAME} PRIVATE src/ffmpeg_utils.cpp)
-  target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFMPEG)
+  target_sources(${PROJECT_NAME} PRIVATE src/offline_sdf_renderer.cpp src/ffmpeg_utils.cpp src/ffmpeg_encoder.cpp)
+  if (WIN32)
+    find_package(FFMPEG CONFIG REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+      FFMPEG::avformat
+      FFMPEG::avcodec
+      FFMPEG::avutil
+      FFMPEG::swscale)
+  else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+      libavformat libavcodec libavutil libswscale)
+    target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFMPEG)
+  endif()
   target_compile_definitions(${PROJECT_NAME} PRIVATE VSDF_ENABLE_FFMPEG=1)
 endif()
 

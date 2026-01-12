@@ -18,8 +18,8 @@ OnlineSDFRenderer::OnlineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
     std::optional<uint32_t> maxFrames, bool headless,
     std::optional<std::filesystem::path> debugDumpPPMDir)
-    : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
-      headless(headless) {}
+    : SDFRenderer(fragShaderPath, useToyTemplate, debugDumpPPMDir),
+      headless(headless), maxFrames(maxFrames) {}
 
 void OnlineSDFRenderer::setup() {
     glfwSetup();
@@ -56,10 +56,8 @@ void OnlineSDFRenderer::vulkanSetup() {
         vkutils::createRenderPass(logicalDevice, swapchainFormat.format);
     commandPool = vkutils::createCommandPool(logicalDevice, graphicsQueueIndex);
     // Since it's SDF, only need to set up full screen quad vert shader once
-    std::filesystem::path vertSpirvPath{
-        shader_utils::compile(FULL_SCREEN_QUAD_VERT_SHADER_PATH)};
-    vertShaderModule =
-        vkutils::createShaderModule(logicalDevice, vertSpirvPath.string());
+    auto vertSpirv = shader_utils::compileFullscreenQuadVertSpirv();
+    vertShaderModule = vkutils::createShaderModule(logicalDevice, vertSpirv);
 }
 
 void OnlineSDFRenderer::setupRenderContext() {
@@ -101,7 +99,8 @@ void OnlineSDFRenderer::createPipeline() {
     createPipelineLayoutCommon();
     std::filesystem::path fragSpirvPath;
     try {
-        fragSpirvPath = shader_utils::compile(fragShaderPath, useToyTemplate);
+        fragSpirvPath =
+            shader_utils::compileToPath(fragShaderPath, useToyTemplate);
     } catch (const std::runtime_error &) {
         // An error occured while compiling the shader
         // This can happen while doing live edits
@@ -231,7 +230,7 @@ void OnlineSDFRenderer::gameLoop() {
             readbackContext.physicalDevice = physicalDevice;
             readbackContext.commandPool = commandPool;
             readbackContext.queue = queue;
-            ReadbackFrame frame = vkutils::readbackSwapchainImage(
+            ReadbackFrame frame = vkutils::debugReadbackSwapchainImage(
                 readbackContext, swapchainImages.images[imageIndex],
                 swapchainFormat.format, swapchainSize);
             dumpDebugFrame(frame);

@@ -1,4 +1,5 @@
 #include "offline_sdf_renderer.h"
+#include "ffmpeg_encoder.h"
 #include "shader_utils.h"
 #include "vkutils.h"
 #include <cstddef>
@@ -7,12 +8,13 @@
 #include <stdexcept>
 
 OfflineSDFRenderer::OfflineSDFRenderer(
-    const std::string &fragShaderPath, bool useToyTemplate,
-    std::optional<uint32_t> maxFrames,
+    const std::string &fragShaderPath, uint32_t maxFrames, bool useToyTemplate,
     std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
-    uint32_t height, uint32_t ringSize)
-    : SDFRenderer(fragShaderPath, useToyTemplate, maxFrames, debugDumpPPMDir),
-      imageSize({width, height}), ringSize(validateRingSize(ringSize)) {}
+    uint32_t height, uint32_t ringSize,
+    ffmpeg_utils::EncodeSettings encodeSettings)
+    : SDFRenderer(fragShaderPath, useToyTemplate, debugDumpPPMDir),
+      imageSize({width, height}), ringSize(validateRingSize(ringSize)),
+      maxFrames(maxFrames), encodeSettings(std::move(encodeSettings)) {}
 
 uint32_t OfflineSDFRenderer::validateRingSize(uint32_t value) {
     if (value == 0 || value > MAX_FRAME_SLOTS) {
@@ -26,7 +28,6 @@ void OfflineSDFRenderer::setup() {
     setupRenderContext();
     createPipeline();
     createCommandBuffers();
-    startTime = std::chrono::high_resolution_clock::now();
 }
 
 void OfflineSDFRenderer::vulkanSetup() {
@@ -41,14 +42,13 @@ void OfflineSDFRenderer::vulkanSetup() {
     renderPass = vkutils::createRenderPass(logicalDevice, imageFormat, true);
     commandPool = vkutils::createCommandPool(logicalDevice, graphicsQueueIndex);
 
-    std::filesystem::path vertSpirvPath{
-        shader_utils::compile(OFFSCREEN_DEFAULT_VERT_SHADER_PATH)};
-    vertShaderModule =
-        vkutils::createShaderModule(logicalDevice, vertSpirvPath.string());
+    auto vertSpirv = shader_utils::compileFullscreenQuadVertSpirv();
+    vertShaderModule = vkutils::createShaderModule(logicalDevice, vertSpirv);
 }
 
 void OfflineSDFRenderer::setupRenderContext() {
     const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
+    readbackFormatInfo = formatInfo;
     VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
                               static_cast<VkDeviceSize>(imageSize.height) *
                               formatInfo.bytesPerPixel;
@@ -130,9 +130,15 @@ void OfflineSDFRenderer::setupRenderContext() {
             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        slot.rowStride = imageSize.width * formatInfo.bytesPerPixel;
 
-        transitionImageLayout(slot.image, VK_IMAGE_LAYOUT_UNDEFINED,
-                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        VK_CHECK(vkMapMemory(logicalDevice, slot.stagingBuffer.memory, 0,
+                             imageBytes, 0, &slot.mappedData));
+
+        vkutils::transitionImageLayout(
+            logicalDevice, commandPool, queue, slot.image,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     }
 
     if (queryPool == VK_NULL_HANDLE) {
@@ -146,7 +152,7 @@ void OfflineSDFRenderer::setupRenderContext() {
 void OfflineSDFRenderer::createPipeline() {
     createPipelineLayoutCommon();
     std::filesystem::path fragSpirvPath =
-        shader_utils::compile(fragShaderPath, useToyTemplate);
+        shader_utils::compileToPath(fragShaderPath, useToyTemplate);
     fragShaderModule =
         vkutils::createShaderModule(logicalDevice, fragSpirvPath.string());
     pipeline = vkutils::createGraphicsPipeline(
@@ -167,7 +173,7 @@ void OfflineSDFRenderer::recordCommandBuffer(uint32_t slotIndex,
 
     VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
 
     VkRenderPassBeginInfo renderPassBeginInfo{
@@ -286,97 +292,23 @@ void OfflineSDFRenderer::recordCommandBuffer(uint32_t slotIndex,
     VK_CHECK(vkEndCommandBuffer(commandBuffer));
 }
 
-void OfflineSDFRenderer::transitionImageLayout(VkImage image,
-                                               VkImageLayout oldLayout,
-                                               VkImageLayout newLayout) {
-    VkCommandBufferAllocateInfo allocInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = commandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-
-    VkCommandBuffer commandBuffer;
-    // One-time command buffer to record a single layout transition.
-    VK_CHECK(
-        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
-
-    VkCommandBufferBeginInfo beginInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-
-    VkImageMemoryBarrier barrier{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-        .oldLayout = oldLayout,
-        .newLayout = newLayout,
-        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = image,
-        .subresourceRange =
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-    };
-
-    VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags dstStage =
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
-        newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-        // No need to wait on prior writes; we don't care about old contents.
-        barrier.srcAccessMask = 0;
-        // Make color-attachment writes visible for subsequent render pass use.
-        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    } else {
-        throw std::runtime_error("Unsupported image layout transition");
-    }
-
-    // Insert the layout transition with matching pipeline stage scopes.
-    vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0,
-                         nullptr, 1, &barrier);
-
-    VK_CHECK(vkEndCommandBuffer(commandBuffer));
-
-    VkSubmitInfo submitInfo{
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &commandBuffer,
-    };
-
-    // Submit and wait so the image is ready before further use.
-    VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
-    VK_CHECK(vkQueueWaitIdle(queue));
-    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
-}
-
 vkutils::PushConstants
 OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
-    auto now = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration<float>(now - startTime).count();
+    const float elapsed = static_cast<float>(currentFrame) /
+                          static_cast<float>(encodeSettings.fps);
     return buildPushConstants(elapsed, currentFrame,
                               glm::vec2(imageSize.width, imageSize.height));
 }
 
-ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
-    const auto formatInfo = vkutils::getReadbackFormatInfo(imageFormat);
-
-    VkDeviceSize imageBytes = static_cast<VkDeviceSize>(imageSize.width) *
-                              static_cast<VkDeviceSize>(imageSize.height) *
-                              formatInfo.bytesPerPixel;
-
-    void *data = nullptr;
-    VK_CHECK(vkMapMemory(logicalDevice, slot.stagingBuffer.memory, 0,
-                         imageBytes, 0, &data));
+ReadbackFrame
+OfflineSDFRenderer::debugReadbackOffscreenImage(const RingSlot &slot) {
+    // Only for debug PPM dump
+    const auto formatInfo = readbackFormatInfo;
+    const uint8_t *data = static_cast<const uint8_t *>(slot.mappedData);
 
     ReadbackFrame frame;
     frame.allocateRGB(imageSize.width, imageSize.height);
-    const uint8_t *src = static_cast<const uint8_t *>(data);
+    const uint8_t *src = data;
     const size_t pixelCount = static_cast<size_t>(imageSize.width) *
                               static_cast<size_t>(imageSize.height);
     for (size_t i = 0; i < pixelCount; ++i) {
@@ -399,32 +331,16 @@ ReadbackFrame OfflineSDFRenderer::readbackOffscreenImage(const RingSlot &slot) {
         frame.rgb[dstOffset + 2] = b;
     }
 
-    vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
-
     return frame;
 }
 
 void OfflineSDFRenderer::renderFrames() {
-    // Default to 1 frame for now...
-    // TODO: Check if best to instead make maxFrames required
-    // when doing offline render???
-    // eg. for now everything is just checking (debugDumpPPMDir)
-    // Need to adjust later eg. for ffmpeg encoding
-    uint32_t totalFrames = maxFrames.value_or(1);
+    uint32_t totalFrames = maxFrames;
+    startEncoding();
     for (uint32_t currentFrame = 0; currentFrame < totalFrames;
          ++currentFrame) {
         const uint32_t slotIndex = currentFrame % ringSize;
-        RingSlot &slot = ringSlots[slotIndex];
-
-        VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[slotIndex],
-                                 VK_TRUE, UINT64_MAX));
-        if (slot.pendingReadback) {
-            if (debugDumpPPMDir) {
-                ReadbackFrame frame = readbackOffscreenImage(slot);
-                dumpDebugFrame(frame);
-            }
-            slot.pendingReadback = false;
-        }
+        waitForSlotEncode(slotIndex);
 
         VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[slotIndex]));
         recordCommandBuffer(slotIndex, currentFrame);
@@ -436,27 +352,138 @@ void OfflineSDFRenderer::renderFrames() {
         };
         VK_CHECK(
             vkQueueSubmit(queue, 1, &submitInfo, fences.fences[slotIndex]));
-        slot.pendingReadback = debugDumpPPMDir.has_value();
+        enqueueEncode(slotIndex, currentFrame);
     }
 
-    // Finalise after the for loop finished
-    // Read any pending slots
-    if (debugDumpPPMDir) {
-        for (size_t i = 0; i < ringSize; ++i) {
-            RingSlot &slot = ringSlots[i];
-            if (!slot.pendingReadback) {
-                continue;
-            }
-            VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[i],
-                                     VK_TRUE, UINT64_MAX));
-            ReadbackFrame frame = readbackOffscreenImage(slot);
-            dumpDebugFrame(frame);
-            slot.pendingReadback = false;
-        }
-    }
+    // Finalize after the for loop finished
+    stopEncoding();
 
     spdlog::info("Offline render done.");
     destroy();
+}
+
+void OfflineSDFRenderer::startEncoding() {
+    const AVPixelFormat srcFormat =
+        readbackFormatInfo.swapRB ? AV_PIX_FMT_BGRA : AV_PIX_FMT_RGBA;
+    const int srcStride =
+        static_cast<int>(imageSize.width * readbackFormatInfo.bytesPerPixel);
+
+    encodeStop = false;
+    encodeFailed = false;
+
+    encoder = std::make_unique<ffmpeg_utils::FfmpegEncoder>(
+        encodeSettings, static_cast<int>(imageSize.width),
+        static_cast<int>(imageSize.height), srcFormat, srcStride);
+    encoder->open();
+
+    // Encoder thread will process in parallel with the GPU
+    // through the ring buffer strategy.
+    // When GPU finishes rendering to a slot we can pick it up
+    // to encode while GPU renders to another slot
+    encoderThread = std::thread([this]() {
+        try {
+            runEncoderLoop();
+        } catch (const std::exception &e) {
+            spdlog::error("FFmpeg encode thread failed: {}", e.what());
+            {
+                std::lock_guard<std::mutex> lock(encodeMutex);
+                encodeFailed = true;
+                encodeStop = true;
+                encodeQueue.clear();
+                for (size_t i = 0; i < ringSize; ++i) {
+                    ringSlots[i].pendingEncode = false;
+                }
+            }
+            encodeCv.notify_all();
+        }
+    });
+}
+
+void OfflineSDFRenderer::runEncoderLoop() {
+    while (true) {
+        EncodeItem item;
+        // 1. WAIT: Get work from queue
+        {
+            std::unique_lock<std::mutex> lock(encodeMutex);
+            encodeCv.wait(lock, [this]() {
+                return encodeStop || !encodeQueue.empty();
+            });
+            if (encodeQueue.empty()) {
+                if (encodeStop)
+                    break;
+                continue;
+            }
+            item = encodeQueue.front();
+            encodeQueue.pop_front();
+            encodeCv.notify_all();
+        }
+
+        // 2. Wait for GPU to finish rendering to this slot
+        RingSlot &slot = ringSlots[item.slotIndex];
+        VK_CHECK(vkWaitForFences(logicalDevice, 1,
+                                 &fences.fences[item.slotIndex],
+                                 VK_TRUE, UINT64_MAX));
+
+        if (debugDumpPPMDir) {
+            // Blocking readback + PPM dump; this will stall the encode
+            // thread but remains an optional debug extra.
+            ReadbackFrame frame = debugReadbackOffscreenImage(slot);
+            dumpDebugFrame(frame);
+        }
+
+        // 3. Encode the frame directly from the slot's mapped data
+        const uint8_t *src =
+            static_cast<const uint8_t *>(slot.mappedData);
+        encoder->encodeFrame(src, item.frameIndex);
+
+        // 4. Mark slot as free for GPU to use again
+        {
+            std::lock_guard<std::mutex> lock(encodeMutex);
+            slot.pendingEncode = false;
+        }
+        encodeCv.notify_all();
+    }
+
+    encoder->flush();
+}
+
+void OfflineSDFRenderer::stopEncoding() {
+    {
+        std::lock_guard<std::mutex> lock(encodeMutex);
+        encodeStop = true;
+    }
+    encodeCv.notify_all();
+    if (encoderThread.joinable()) {
+        encoderThread.join();
+    }
+    encoder.reset();
+}
+
+void OfflineSDFRenderer::enqueueEncode(uint32_t slotIndex,
+                                       uint32_t frameIndex) {
+    std::unique_lock<std::mutex> lock(encodeMutex);
+    if (encodeFailed)
+        throw std::runtime_error("FFmpeg encoder failed");
+
+    // Make sure encode queue doesn't get bigger than the ring size
+    encodeCv.wait(lock, [this]() { return encodeQueue.size() < ringSize; });
+    if (encodeFailed)
+        throw std::runtime_error("FFmpeg encoder failed");
+
+    RingSlot &slot = ringSlots[slotIndex];
+    slot.pendingEncode = true;
+    encodeQueue.push_back(EncodeItem{slotIndex, frameIndex});
+    lock.unlock();
+    encodeCv.notify_all();
+}
+
+void OfflineSDFRenderer::waitForSlotEncode(uint32_t slotIndex) {
+    std::unique_lock<std::mutex> lock(encodeMutex);
+    encodeCv.wait(lock, [this, slotIndex]() {
+        return encodeFailed || !ringSlots[slotIndex].pendingEncode;
+    });
+    if (encodeFailed)
+        throw std::runtime_error("FFmpeg encoder failed");
 }
 
 void OfflineSDFRenderer::destroyPipeline() {
@@ -487,9 +514,14 @@ void OfflineSDFRenderer::destroyRenderContext() {
         }
         if (slot.stagingBuffer.buffer != VK_NULL_HANDLE ||
             slot.stagingBuffer.memory != VK_NULL_HANDLE) {
+            if (slot.mappedData) {
+                vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
+                slot.mappedData = nullptr;
+            }
             vkutils::destroyReadbackBuffer(logicalDevice, slot.stagingBuffer);
         }
         slot.pendingReadback = false;
+        slot.pendingEncode = false;
     }
 }
 

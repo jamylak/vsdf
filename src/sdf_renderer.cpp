@@ -3,12 +3,10 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-SDFRenderer::SDFRenderer(
-    const std::string &fragShaderPath, bool useToyTemplate,
-    std::optional<uint32_t> maxFrames,
-    std::optional<std::filesystem::path> debugDumpPPMDir)
+SDFRenderer::SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
+                         std::optional<std::filesystem::path> debugDumpPPMDir)
     : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
-      maxFrames(maxFrames), debugDumpPPMDir(debugDumpPPMDir) {}
+      debugDumpPPMDir(debugDumpPPMDir) {}
 
 void SDFRenderer::logDeviceLimits() const {
     spdlog::info("Device limits {:.3f}",

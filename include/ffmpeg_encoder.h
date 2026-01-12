@@ -1,0 +1,50 @@
+#ifndef FFMPEG_ENCODER_H
+#define FFMPEG_ENCODER_H
+
+#include "ffmpeg_encode_settings.h"
+
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
+}
+
+#include <cstdint>
+
+namespace ffmpeg_utils {
+class FfmpegEncoder {
+  public:
+    FfmpegEncoder(const EncodeSettings &settings, int width, int height,
+                  AVPixelFormat srcFormat, int srcStride);
+    ~FfmpegEncoder();
+    FfmpegEncoder(const FfmpegEncoder &) = delete;
+    FfmpegEncoder &operator=(const FfmpegEncoder &) = delete;
+    FfmpegEncoder(FfmpegEncoder &&) = delete;
+    FfmpegEncoder &operator=(FfmpegEncoder &&) = delete;
+
+    void open();
+    void encodeFrame(const uint8_t *srcData, int64_t frameIndex);
+    void flush();
+    void close() noexcept;
+
+  private:
+    void writePacket(AVPacket *packet);
+
+    const EncodeSettings settings;
+    const int width = 0;
+    const int height = 0;
+    const AVPixelFormat srcFormat = AV_PIX_FMT_NONE;
+    const int srcStride = 0;
+
+    AVFormatContext *formatContext = nullptr;
+    AVCodecContext *codecContext = nullptr;
+    AVStream *stream = nullptr;
+    SwsContext *swsContext = nullptr;
+    AVFrame *dstFrame = nullptr;
+    AVFrame *srcFrame = nullptr;
+    AVPacket *packet = nullptr;
+    bool opened = false;
+};
+} // namespace ffmpeg_utils
+
+#endif // FFMPEG_ENCODER_H

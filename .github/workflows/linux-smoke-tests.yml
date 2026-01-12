@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 6
     env:
       # Force CPU Vulkan ICD (lavapipe) so the smoke test runs without a GPU
       VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
@@ -22,7 +23,8 @@ jobs:
             libgtest-dev libspdlog-dev \
             libglfw3 libglfw3-dev libvulkan-dev \
             glslang-tools glslang-dev libglm-dev \
-            mesa-vulkan-drivers xvfb
+            mesa-vulkan-drivers xvfb pkg-config \
+            libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -G Ninja .

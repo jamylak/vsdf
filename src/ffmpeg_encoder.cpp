@@ -42,6 +42,7 @@ void FfmpegEncoder::open() {
         throw std::runtime_error("Failed to create output context: " +
                                  ffmpegErrStr(err));
 
+    // Create one logical track in the container (video-only in this case).
     stream = avformat_new_stream(formatContext, nullptr);
     if (!stream)
         throw std::runtime_error("Failed to create output stream");
@@ -53,6 +54,7 @@ void FfmpegEncoder::open() {
     codecContext->codec_id = codec->id;
     codecContext->width = width;
     codecContext->height = height;
+    // Encoder timestamps are in 1/fps timebase for frame-accurate PTS.
     codecContext->time_base = AVRational{1, settings.fps};
     codecContext->framerate = AVRational{settings.fps, 1};
     codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
@@ -63,6 +65,7 @@ void FfmpegEncoder::open() {
     if (formatContext->oformat->flags & AVFMT_GLOBALHEADER)
         codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
+    // Optional codec knobs (e.g., libx264 preset + CRF quality target).
     if (!settings.preset.empty()) {
         err = av_opt_set(codecContext->priv_data, "preset",
                          settings.preset.c_str(), 0);
@@ -77,11 +80,13 @@ void FfmpegEncoder::open() {
             spdlog::warn("FFmpeg CRF option rejected: {}", ffmpegErrStr(err));
     }
 
+    // Initializes codec internals and validates parameters.
     err = avcodec_open2(codecContext, codec, nullptr);
     if (err < 0)
         throw std::runtime_error("Failed to open encoder: " +
                                  ffmpegErrStr(err));
 
+    // Copy encoder settings into the container stream header metadata.
     err = avcodec_parameters_from_context(stream->codecpar, codecContext);
     if (err < 0)
         throw std::runtime_error("Failed to set stream params: " +
@@ -111,6 +116,7 @@ void FfmpegEncoder::open() {
         throw std::runtime_error("Failed to write header: " +
                                  ffmpegErrStr(err));
 
+    // Frame buffer that matches the encoder's expected pixel format.
     dstFrame = av_frame_alloc();
     if (!dstFrame)
         throw std::runtime_error("Failed to allocate destination frame");
@@ -125,6 +131,7 @@ void FfmpegEncoder::open() {
         throw std::runtime_error("Failed to allocate frame buffer: " +
                                  ffmpegErrStr(err));
 
+    // Frame wrapper for the caller's input (no allocation for src data).
     srcFrame = av_frame_alloc();
     if (!srcFrame)
         throw std::runtime_error("Failed to allocate source frame");
@@ -156,6 +163,7 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
     srcFrame->data[0] = const_cast<uint8_t *>(srcData);
     srcFrame->linesize[0] = srcStride;
 
+    // Ensure dstFrame has an owned, writable buffer before conversion.
     int err = av_frame_make_writable(dstFrame);
     if (err < 0) {
         throw std::runtime_error("Failed to make frame writable: " +
@@ -170,6 +178,7 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
     dstFrame->pts = frameIndex;
     dstFrame->duration = 1;
 
+    // Push one frame into the encoder; it may output 0..N packets.
     err = avcodec_send_frame(codecContext, dstFrame);
     if (err < 0) {
         throw std::runtime_error("Failed to send frame: " + ffmpegErrStr(err));
@@ -180,6 +189,7 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
         throw std::runtime_error("Failed to allocate packet");
     }
 
+    // Drain all packets produced for the submitted frame.
     while (true) {
         err = avcodec_receive_packet(codecContext, packet);
         if (err == AVERROR(EAGAIN) || err == AVERROR_EOF) {
@@ -202,6 +212,7 @@ void FfmpegEncoder::flush() {
         return;
     }
 
+    // Send a null frame to signal end-of-stream and flush delayed frames.
     int err = avcodec_send_frame(codecContext, nullptr);
     if (err < 0) {
         throw std::runtime_error("Failed to flush encoder: " +
@@ -213,6 +224,7 @@ void FfmpegEncoder::flush() {
         throw std::runtime_error("Failed to allocate packet");
     }
 
+    // Drain any remaining packets buffered by the encoder.
     while (true) {
         err = avcodec_receive_packet(codecContext, packet);
         if (err == AVERROR_EOF || err == AVERROR(EAGAIN)) {
@@ -235,6 +247,7 @@ void FfmpegEncoder::close() noexcept {
         return;
     }
 
+    // Finalize the container (MP4: write/close moov if needed, etc.).
     int err = av_write_trailer(formatContext);
     if (err < 0) {
         spdlog::warn("Failed to write trailer: {}", ffmpegErrStr(err));

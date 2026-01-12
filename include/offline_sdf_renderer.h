@@ -17,8 +17,6 @@
 inline constexpr uint32_t OFFSCREEN_DEFAULT_WIDTH = 1280;
 inline constexpr uint32_t OFFSCREEN_DEFAULT_HEIGHT = 720;
 inline constexpr uint32_t OFFSCREEN_DEFAULT_RING_SIZE = 2;
-inline constexpr char OFFSCREEN_DEFAULT_VERT_SHADER_PATH[] =
-    "shaders/fullscreenquad.vert";
 
 // Offline SDF Renderer
 // This basis will be used for FFMPEG integration

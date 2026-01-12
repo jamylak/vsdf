@@ -150,16 +150,6 @@ void FfmpegEncoder::open() {
     //   Plane 2 (V, 2x2):
     //   V00 V01
     //   V10 V11
-    //
-    //   What are data[0..4]?
-    //   - data[0]: pointer to plane 0 (first byte of Y or packed RGB)
-    //   - data[1]: pointer to plane 1 (U/Cb if planar)
-    //   - data[2]: pointer to plane 2 (V/Cr if planar)
-    //   - data[3]: pointer to plane 3 (alpha or extra plane if format uses it)
-    //   - data[4]: usually unused (FFmpeg reserves up to 8 pointers via
-    //   AV_NUM_DATA_POINTERS)
-    //
-    //   linesize[i] = number of bytes per row in plane i
 
     // Frame wrapper for the caller's input (no allocation for src data).
     //   - Packed RGB (e.g., AV_PIX_FMT_RGB24): plane 0 = interleaved RGBRGB...
@@ -175,12 +165,6 @@ void FfmpegEncoder::open() {
     srcFrame->height = height;
     // Source pixels are full-range 0-255 before conversion.
     srcFrame->color_range = AVCOL_RANGE_JPEG;
-    srcFrame->data[1] = nullptr;
-    srcFrame->data[2] = nullptr;
-    srcFrame->data[3] = nullptr;
-    srcFrame->linesize[1] = 0;
-    srcFrame->linesize[2] = 0;
-    srcFrame->linesize[3] = 0;
 
     // Create a colorspace/format conversion context for src -> encoder format.
     swsContext = sws_getContext(width, height, srcFormat, width, height,

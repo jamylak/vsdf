@@ -2,8 +2,8 @@
 #define ONLINE_SDF_RENDERER_H
 #include "sdf_renderer.h"
 #include "vkutils.h"
-#include <optional>
 #include <filesystem>
+#include <optional>
 #include <vulkan/vulkan.h>
 
 inline constexpr uint32_t WINDOW_WIDTH = 800;
@@ -60,12 +60,10 @@ class OnlineSDFRenderer : public SDFRenderer {
   public:
     OnlineSDFRenderer(const OnlineSDFRenderer &) = delete;
     OnlineSDFRenderer &operator=(const OnlineSDFRenderer &) = delete;
-    OnlineSDFRenderer(const std::string &fragShaderPath,
-                      bool useToyTemplate = false,
-                      std::optional<uint32_t> maxFrames = std::nullopt,
-                      bool headless = false,
-                      std::optional<std::filesystem::path> debugDumpPPMDir =
-                          std::nullopt);
+    OnlineSDFRenderer(
+        const std::string &fragShaderPath, bool useToyTemplate = false,
+        std::optional<uint32_t> maxFrames = std::nullopt, bool headless = false,
+        std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt);
     void setup();
     void gameLoop();
 };

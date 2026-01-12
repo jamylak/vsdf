@@ -462,13 +462,14 @@ void OfflineSDFRenderer::stopEncoding() {
 void OfflineSDFRenderer::enqueueEncode(uint32_t slotIndex,
                                        uint32_t frameIndex) {
     std::unique_lock<std::mutex> lock(encodeMutex);
-    if (encodeFailed) {
+    if (encodeFailed)
         throw std::runtime_error("FFmpeg encoder failed");
-    }
+
+    // Make sure encode queue doesn't get bigger than the ring size
     encodeCv.wait(lock, [this]() { return encodeQueue.size() < ringSize; });
-    if (encodeFailed) {
+    if (encodeFailed)
         throw std::runtime_error("FFmpeg encoder failed");
-    }
+
     RingSlot &slot = ringSlots[slotIndex];
     slot.pendingEncode = true;
     encodeQueue.push_back(EncodeItem{slotIndex, frameIndex});

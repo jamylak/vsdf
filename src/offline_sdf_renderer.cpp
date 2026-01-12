@@ -361,14 +361,15 @@ void OfflineSDFRenderer::transitionImageLayout(VkImage image,
 
 vkutils::PushConstants
 OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
-    const float elapsed =
-        static_cast<float>(currentFrame) / static_cast<float>(encodeSettings.fps);
+    const float elapsed = static_cast<float>(currentFrame) /
+                          static_cast<float>(encodeSettings.fps);
     return buildPushConstants(elapsed, currentFrame,
                               glm::vec2(imageSize.width, imageSize.height));
 }
 
 ReadbackFrame
 OfflineSDFRenderer::debugReadbackOffscreenImage(const RingSlot &slot) {
+    // Only for debug PPM dump
     const auto formatInfo = readbackFormatInfo;
     const uint8_t *data = static_cast<const uint8_t *>(slot.mappedData);
 

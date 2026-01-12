@@ -208,11 +208,11 @@ int main(int argc, char **argv) {
 
 #if defined(VSDF_ENABLE_FFMPEG)
     const bool useFfmpeg = !encodeSettings.outputPath.empty();
-#endif
     if (!encodeSettings.outputPath.empty() && !maxFrames) {
         throw std::runtime_error(
             "--frames must be set when using --ffmpeg-output");
     }
+#endif
 
     spdlog::set_level(logLevel);
     spdlog::info("Setting things up...");

@@ -203,12 +203,6 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
     srcFrame->data[0] = const_cast<uint8_t *>(srcData);
     srcFrame->linesize[0] = srcStride;
 
-    // Ensure dstFrame has an owned, writable buffer before conversion.
-    int err = av_frame_make_writable(dstFrame);
-    if (err < 0)
-        throw std::runtime_error("Failed to make frame writable: " +
-                                 ffmpegErrStr(err));
-
     // Convert/copy into the destination frame in the encoder's pixel format.
     sws_scale(swsContext, srcFrame->data, srcFrame->linesize, 0, height,
               dstFrame->data, dstFrame->linesize);
@@ -218,7 +212,7 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
     dstFrame->duration = 1;
 
     // Push one frame into the encoder; it may output 0..N packets.
-    err = avcodec_send_frame(codecContext, dstFrame);
+    int err = avcodec_send_frame(codecContext, dstFrame);
     if (err < 0)
         throw std::runtime_error("Failed to send frame: " + ffmpegErrStr(err));
 

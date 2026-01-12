@@ -13,6 +13,7 @@ jobs:
   build-and-test-macos:
     name: Build and Test on macOS
     runs-on: macos-latest
+    timeout-minutes: 6
 
     steps:
     - name: Checkout code

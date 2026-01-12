@@ -17,8 +17,8 @@ std::string ffmpegErrStr(int err) {
 }
 } // namespace
 
-FfmpegEncoder::FfmpegEncoder(EncodeSettings &settings, int width, int height,
-                             AVPixelFormat srcFormat, int srcStride)
+FfmpegEncoder::FfmpegEncoder(const EncodeSettings &settings, int width,
+                             int height, AVPixelFormat srcFormat, int srcStride)
     : settings(settings), width(width), height(height), srcFormat(srcFormat),
       srcStride(srcStride) {}
 

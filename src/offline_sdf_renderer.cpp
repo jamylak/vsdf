@@ -135,9 +135,10 @@ void OfflineSDFRenderer::setupRenderContext() {
         VK_CHECK(vkMapMemory(logicalDevice, slot.stagingBuffer.memory, 0,
                              imageBytes, 0, &slot.mappedData));
 
-        vkutils::transitionImageLayout(logicalDevice, commandPool, queue,
-                                       slot.image, VK_IMAGE_LAYOUT_UNDEFINED,
-                                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        vkutils::transitionImageLayout(
+            logicalDevice, commandPool, queue, slot.image,
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     }
 
     if (queryPool == VK_NULL_HANDLE) {
@@ -383,6 +384,7 @@ void OfflineSDFRenderer::startEncoding() {
         try {
             while (true) {
                 EncodeItem item;
+                // 1. WAIT: Get work from queue
                 {
                     std::unique_lock<std::mutex> lock(encodeMutex);
                     encodeCv.wait(lock, [this]() {
@@ -398,7 +400,7 @@ void OfflineSDFRenderer::startEncoding() {
                     encodeCv.notify_all();
                 }
 
-                // Wait for GPU to finish rendering to this slot
+                // 2. Wait for GPU to finish rendering to this slot
                 RingSlot &slot = ringSlots[item.slotIndex];
                 VK_CHECK(vkWaitForFences(logicalDevice, 1,
                                          &fences.fences[item.slotIndex],
@@ -411,10 +413,12 @@ void OfflineSDFRenderer::startEncoding() {
                     dumpDebugFrame(frame);
                 }
 
+                // 3. Encode the frame directly from the slot's mapped data
                 const uint8_t *src =
                     static_cast<const uint8_t *>(slot.mappedData);
                 encoder->encodeFrame(src, item.frameIndex);
 
+                // 4. Mark slot as free for GPU to use again
                 {
                     std::lock_guard<std::mutex> lock(encodeMutex);
                     slot.pendingEncode = false;

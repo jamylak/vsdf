@@ -18,6 +18,10 @@ class FfmpegEncoder {
     FfmpegEncoder(const EncodeSettings &settings, int width, int height,
                   AVPixelFormat srcFormat, int srcStride);
     ~FfmpegEncoder();
+    FfmpegEncoder(const FfmpegEncoder &) = delete;
+    FfmpegEncoder &operator=(const FfmpegEncoder &) = delete;
+    FfmpegEncoder(FfmpegEncoder &&) = delete;
+    FfmpegEncoder &operator=(FfmpegEncoder &&) = delete;
 
     void open();
     void encodeFrame(const uint8_t *srcData, int64_t frameIndex);

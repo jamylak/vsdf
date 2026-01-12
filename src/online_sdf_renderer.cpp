@@ -99,7 +99,8 @@ void OnlineSDFRenderer::createPipeline() {
     createPipelineLayoutCommon();
     std::filesystem::path fragSpirvPath;
     try {
-        fragSpirvPath = shader_utils::compileToPath(fragShaderPath, useToyTemplate);
+        fragSpirvPath =
+            shader_utils::compileToPath(fragShaderPath, useToyTemplate);
     } catch (const std::runtime_error &) {
         // An error occured while compiling the shader
         // This can happen while doing live edits
@@ -229,7 +230,7 @@ void OnlineSDFRenderer::gameLoop() {
             readbackContext.physicalDevice = physicalDevice;
             readbackContext.commandPool = commandPool;
             readbackContext.queue = queue;
-            ReadbackFrame frame = vkutils::readbackSwapchainImage(
+            ReadbackFrame frame = vkutils::debugReadbackSwapchainImage(
                 readbackContext, swapchainImages.images[imageIndex],
                 swapchainFormat.format, swapchainSize);
             dumpDebugFrame(frame);

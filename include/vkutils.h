@@ -10,9 +10,9 @@
 #include <cstring>
 #include <fstream>
 #include <ios>
+#include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
-#include <spdlog/spdlog.h>
 #include <sys/types.h>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -795,10 +795,10 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
     return commandBuffers;
 }
 
-static void transitionImageLayout(VkDevice logicalDevice, VkCommandPool commandPool,
-                                   VkQueue queue, VkImage image,
-                                   VkImageLayout oldLayout,
-                                   VkImageLayout newLayout) {
+static void transitionImageLayout(VkDevice logicalDevice,
+                                  VkCommandPool commandPool, VkQueue queue,
+                                  VkImage image, VkImageLayout oldLayout,
+                                  VkImageLayout newLayout) {
     VkCommandBufferAllocateInfo allocInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = commandPool,
@@ -807,7 +807,8 @@ static void transitionImageLayout(VkDevice logicalDevice, VkCommandPool commandP
     };
 
     VkCommandBuffer commandBuffer;
-    VK_CHECK(vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
+    VK_CHECK(
+        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
 
     VkCommandBufferBeginInfo beginInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -1231,8 +1232,8 @@ struct ReadbackContext {
 };
 
 [[nodiscard]] static ReadbackFrame
-readbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
-                       VkFormat format, VkExtent2D extent) {
+debugReadbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
+                            VkFormat format, VkExtent2D extent) {
     // Intended for quick validation/smoke tests of the presented swapchain
     // path. You'd want to avoid swapchain if you just wanted to only encode
     // video for example, to save time

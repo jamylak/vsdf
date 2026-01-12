@@ -104,8 +104,8 @@ void FfmpegEncoder::open() {
     }
 
     // Write container header and muxer metadata to the output sink.
-    // MP4: ftyp + moov boxes (initial container metadata)
-    //      [ ftyp ][ moov ] ...
+    // MP4: writes ftyp + moov boxes (initial container metadata) before mdat.
+    //      [ ftyp ][ moov ][ mdat ] ... (unless fragmented MP4)
     err = avformat_write_header(formatContext, nullptr);
     if (err < 0)
         throw std::runtime_error("Failed to write header: " +

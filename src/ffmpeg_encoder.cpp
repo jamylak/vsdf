@@ -94,6 +94,7 @@ void FfmpegEncoder::open() {
     // Set the nominal frame rate used by muxers/readers.
     stream->r_frame_rate = codecContext->framerate;
 
+    // We always write to a file, but just keep this anyway...
     if (!(formatContext->oformat->flags & AVFMT_NOFILE)) {
         err = avio_open(&formatContext->pb, settings.outputPath.c_str(),
                         AVIO_FLAG_WRITE);

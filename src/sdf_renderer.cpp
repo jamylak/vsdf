@@ -3,9 +3,8 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-SDFRenderer::SDFRenderer(
-    const std::string &fragShaderPath, bool useToyTemplate,
-    std::optional<std::filesystem::path> debugDumpPPMDir)
+SDFRenderer::SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
+                         std::optional<std::filesystem::path> debugDumpPPMDir)
     : fragShaderPath(fragShaderPath), useToyTemplate(useToyTemplate),
       debugDumpPPMDir(debugDumpPPMDir) {}
 

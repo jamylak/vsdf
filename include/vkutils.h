@@ -8,12 +8,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <ios>
+#include <stdexcept>
+#include <string>
 #include <spdlog/spdlog.h>
 #include <sys/types.h>
 #include <vector>
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
-#include "fileutils.h"
 #include <GLFW/glfw3.h>
 #include <array>
 #include <glm/glm.hpp>
@@ -84,6 +87,32 @@ struct ReadbackBuffer {
 struct ReadbackFormatInfo {
     uint32_t bytesPerPixel = 0;
     bool swapRB = false;
+};
+
+[[nodiscard]] static std::vector<uint32_t>
+loadSpvFile(const std::string &filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open())
+        throw std::runtime_error("Failed to open file: " + filename);
+
+    std::streamoff fileSize = file.tellg();
+    if (fileSize % static_cast<std::streamoff>(sizeof(uint32_t)) != 0)
+        throw std::runtime_error("SPIR-V file size is not a multiple of 4: " +
+                                 filename);
+
+    std::size_t byteSize = static_cast<std::size_t>(fileSize);
+    std::vector<uint32_t> buffer(byteSize / sizeof(uint32_t));
+
+    file.seekg(0);
+    file.read(reinterpret_cast<char *>(buffer.data()),
+              static_cast<std::streamsize>(byteSize));
+
+    if (file.gcount() != static_cast<std::streamsize>(byteSize))
+        throw std::runtime_error("Failed to read the complete file: " +
+                                 filename);
+
+    return buffer;
 };
 
 [[nodiscard]] inline ReadbackFormatInfo getReadbackFormatInfo(VkFormat format) {
@@ -892,11 +921,11 @@ createFrameBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent,
 createShaderModule(VkDevice device, const std::string &filename) {
     spdlog::info("Create shader module");
     VkShaderModule shaderModule;
-    auto code = loadBinaryFile(filename);
+    auto code = loadSpvFile(filename);
     VkShaderModuleCreateInfo createinfo{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = code.size(),
-        .pCode = reinterpret_cast<const uint32_t *>(code.data()),
+        .codeSize = code.size() * sizeof(uint32_t),
+        .pCode = code.data(),
     };
 
     VK_CHECK(vkCreateShaderModule(device, &createinfo, nullptr, &shaderModule));

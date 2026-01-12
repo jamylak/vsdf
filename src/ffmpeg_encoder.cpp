@@ -263,6 +263,8 @@ void FfmpegEncoder::close() noexcept {
 }
 
 void FfmpegEncoder::writePacket(AVPacket *packet) {
+    // Rescale from codec timebase to stream timebase before muxing.
+    av_packet_rescale_ts(packet, codecContext->time_base, stream->time_base);
     packet->stream_index = stream->index;
     int err = av_interleaved_write_frame(formatContext, packet);
     if (err < 0)

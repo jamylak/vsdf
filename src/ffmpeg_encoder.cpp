@@ -218,9 +218,8 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
     // Drain all packets produced for the submitted frame.
     while (true) {
         err = avcodec_receive_packet(codecContext, packet);
-        if (err == AVERROR(EAGAIN) || err == AVERROR_EOF) {
+        if (err == AVERROR(EAGAIN) || err == AVERROR_EOF)
             break;
-        }
         if (err < 0) {
             av_packet_free(&packet);
             throw std::runtime_error("Failed to receive packet: " +
@@ -250,9 +249,8 @@ void FfmpegEncoder::flush() {
     // Drain any remaining packets buffered by the encoder.
     while (true) {
         err = avcodec_receive_packet(codecContext, packet);
-        if (err == AVERROR_EOF || err == AVERROR(EAGAIN)) {
+        if (err == AVERROR_EOF || err == AVERROR(EAGAIN))
             break;
-        }
         if (err < 0) {
             av_packet_free(&packet);
             throw std::runtime_error("Failed to drain packet: " +
@@ -266,33 +264,27 @@ void FfmpegEncoder::flush() {
 }
 
 void FfmpegEncoder::close() noexcept {
-    if (!opened) {
+    if (!opened)
         return;
-    }
 
     // Finalize the container (MP4: write/close moov if needed, etc.).
     int err = av_write_trailer(formatContext);
-    if (err < 0) {
+    if (err < 0)
         spdlog::warn("Failed to write trailer: {}", ffmpegErrStr(err));
-    }
 
-    if (dstFrame) {
+    if (dstFrame)
         av_frame_free(&dstFrame);
-    }
-    if (srcFrame) {
+    if (srcFrame)
         av_frame_free(&srcFrame);
-    }
     if (swsContext) {
         sws_freeContext(swsContext);
         swsContext = nullptr;
     }
-    if (codecContext) {
+    if (codecContext)
         avcodec_free_context(&codecContext);
-    }
     if (formatContext) {
-        if (!(formatContext->oformat->flags & AVFMT_NOFILE)) {
+        if (!(formatContext->oformat->flags & AVFMT_NOFILE))
             avio_closep(&formatContext->pb);
-        }
         avformat_free_context(formatContext);
         formatContext = nullptr;
     }
@@ -305,9 +297,8 @@ void FfmpegEncoder::writePacket(AVPacket *packet) {
     av_packet_rescale_ts(packet, codecContext->time_base, stream->time_base);
     packet->stream_index = stream->index;
     int err = av_interleaved_write_frame(formatContext, packet);
-    if (err < 0) {
+    if (err < 0)
         throw std::runtime_error("Failed to write packet: " +
                                  ffmpegErrStr(err));
-    }
 }
 } // namespace ffmpeg_utils

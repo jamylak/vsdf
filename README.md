@@ -80,6 +80,21 @@ cmake --build build --config Release
 .\build\Release\vsdf.exe {filepath}.frag
 ```
 
+## Install
+
+### System-wide Install
+
+To make `vsdf` available as a command in your shell, you can install it to a standard system directory like `/usr/local`.
+
+**Linux/macOS**
+```sh
+# Pick somewhere in your PATH and install it there
+cmake --install build --prefix /usr/local
+vsdf {filepath}.frag
+```
+
+On Windows, you can also install to a custom location and add that location to your `PATH` environment variable to make it accessible from any command prompt.
+
 ## Usage
 ### With shader toy shaders (most seem to work)
 ```sh

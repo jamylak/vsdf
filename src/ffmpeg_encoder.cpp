@@ -38,6 +38,7 @@ void FfmpegEncoder::open() {
         throw std::runtime_error("Failed to find encoder: " + settings.codec);
     }
 
+    // Let FFmpeg infer container format from output path (extension).
     int err = avformat_alloc_output_context2(&formatContext, nullptr, nullptr,
                                              settings.outputPath.c_str());
     if (err < 0 || !formatContext) {
@@ -63,6 +64,8 @@ void FfmpegEncoder::open() {
     codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
     codecContext->gop_size = settings.fps;
 
+    // Some containers require extradata in the stream header instead of
+    // packets.
     if (formatContext->oformat->flags & AVFMT_GLOBALHEADER) {
         codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
     }
@@ -121,7 +124,8 @@ void FfmpegEncoder::open() {
     dstFrame->format = codecContext->pix_fmt;
     dstFrame->width = width;
     dstFrame->height = height;
-    err = av_frame_get_buffer(dstFrame, 32);
+    // Let FFmpeg choose a default alignment for this build/CPU.
+    err = av_frame_get_buffer(dstFrame, 0);
     if (err < 0) {
         throw std::runtime_error("Failed to allocate frame buffer: " +
                                  ffmpegErrStr(err));
@@ -141,6 +145,7 @@ void FfmpegEncoder::open() {
     srcFrame->linesize[2] = 0;
     srcFrame->linesize[3] = 0;
 
+    // Create a colorspace/format conversion context for src -> encoder format.
     swsContext = sws_getCachedContext(nullptr, width, height, srcFormat, width,
                                       height, codecContext->pix_fmt,
                                       SWS_BICUBIC, nullptr, nullptr, nullptr);
@@ -165,9 +170,11 @@ void FfmpegEncoder::encodeFrame(const uint8_t *srcData, int64_t frameIndex) {
                                  ffmpegErrStr(err));
     }
 
+    // Convert/copy into the destination frame in the encoder's pixel format.
     sws_scale(swsContext, srcFrame->data, srcFrame->linesize, 0, height,
               dstFrame->data, dstFrame->linesize);
 
+    // PTS in stream timebase units; duration set to one frame.
     dstFrame->pts = frameIndex;
     dstFrame->duration = 1;
 
@@ -231,7 +238,7 @@ void FfmpegEncoder::flush() {
     av_packet_free(&packet);
 }
 
-void FfmpegEncoder::close() {
+void FfmpegEncoder::close() noexcept {
     if (!opened) {
         return;
     }
@@ -266,6 +273,7 @@ void FfmpegEncoder::close() {
 }
 
 void FfmpegEncoder::writePacket(AVPacket *packet) {
+    // Rescale from codec timebase to stream timebase before muxing.
     av_packet_rescale_ts(packet, codecContext->time_base, stream->time_base);
     packet->stream_index = stream->index;
     int err = av_interleaved_write_frame(formatContext, packet);

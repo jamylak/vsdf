@@ -29,6 +29,8 @@ void OfflineSDFRenderer::setup() {
     setupRenderContext();
     createPipeline();
     createCommandBuffers();
+    // TODO: I think i need Fake Time????
+    // BASED on FPS...
     startTime = std::chrono::high_resolution_clock::now();
 }
 
@@ -365,6 +367,7 @@ void OfflineSDFRenderer::transitionImageLayout(VkImage image,
 
 vkutils::PushConstants
 OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
+    // TODO: I think i need Fake Time????
     auto now = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration<float>(now - startTime).count();
     return buildPushConstants(elapsed, currentFrame,

@@ -27,13 +27,8 @@ project(vsdf)
 # Prefer static libraries for Release builds (except FFmpeg which has too many deps)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "Release build - preferring static libraries where practical")
-    # Note: We keep FFmpeg dynamic due to its extensive dependency chain
+    # Note: We keep FFmpeg and system libraries (libstdc++) dynamic
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib" ".so")
-    
-    # Link statically to C++ stdlib on Linux
-    if(UNIX AND NOT APPLE)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
-    endif()
 else()
     message(STATUS "Debug build - using dynamic libraries")
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".so" ".a")

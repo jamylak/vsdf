@@ -8,11 +8,22 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <unordered_map>
 
 namespace {
+constexpr const char kVersion[] = "vsdf dev";
+
+void printHelp(const char *exe) {
+    fmt::print("Usage: {} [options] <shader.frag>\nExample: {} --toy "
+               "shaders/testtoyshader.frag\n",
+               exe, exe);
+}
+
+void printVersion() { fmt::print("{}\n", kVersion); }
+
 spdlog::level::level_enum parseLogLevel(const std::string &levelStr) {
     static const std::unordered_map<std::string, spdlog::level::level_enum>
         kLevels = {{"trace", spdlog::level::trace},
@@ -55,7 +66,13 @@ int main(int argc, char **argv) {
     std::string arg;
     for (int i = 1; i < argc; ++i) {
         arg = argv[i];
-        if (arg == "--toy") {
+        if (arg == "--help") {
+            printHelp(argv[0]);
+            return 0;
+        } else if (arg == "--version") {
+            printVersion();
+            return 0;
+        } else if (arg == "--toy") {
             useToyTemplate = true;
             continue;
         } else if (arg == "--headless") {

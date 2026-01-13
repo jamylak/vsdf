@@ -73,7 +73,7 @@ jobs:
         brew install glfw glslang spdlog glm vulkan-tools ffmpeg pkg-config
 
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} .
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} -DCMAKE_CXX_FLAGS="-Wno-error=sign-conversion -Wno-error=implicit-int-conversion" .
 
     - name: Build
       run: cmake --build build

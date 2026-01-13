@@ -30,7 +30,7 @@ jobs:
           libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
 
     - name: Configure
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja .
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-Wno-error=array-bounds" -G Ninja .
 
     - name: Build
       run: cmake --build build

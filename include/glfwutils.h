@@ -1,8 +1,9 @@
 #ifndef GLFWUTILS_H
 #define GLFWUTILS_H
 
-#define GLFW_INCLUDE_VULKAN
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <volk.h>
 #include <stdexcept>
 #include <string>
 
@@ -14,8 +15,8 @@
 namespace glfwutils {
 
 /**
- * Initializes GLFW library. Throws runtime_error if initialization fails.
- * Ensures GLFW is only initialized once.
+ * Initializes GLFW library and volk. Throws runtime_error if initialization fails.
+ * Ensures GLFW and volk are only initialized once.
  */
 static void initGLFW() {
     static bool isInitialized = false;
@@ -24,6 +25,14 @@ static void initGLFW() {
             throw std::runtime_error("Failed to initialize GLFW");
         }
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL context
+        
+        // Initialize volk after GLFW
+        VkResult result = volkInitialize();
+        if (result != VK_SUCCESS) {
+            glfwTerminate();
+            throw std::runtime_error("Failed to initialize volk (Vulkan loader not found)");
+        }
+        
         isInitialized = true;
     }
 }

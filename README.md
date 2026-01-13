@@ -8,6 +8,19 @@ Vulkan SDF Renderer + Hot Reloader
 
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 
+## License
+**VSDF is licensed under GPL-3.0** (changed from MIT to enable static linking with GPL-licensed FFmpeg).
+
+## Runtime Requirements for Binary Releases
+
+To run the pre-built binaries, you only need:
+- **Vulkan 1.2+** runtime installed
+  - macOS: Install [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) or `brew install molten-vk`
+  - Linux: Install `libvulkan1` and GPU drivers (Mesa/NVIDIA/AMD)
+- **FFmpeg** (optional, for video export): `brew install ffmpeg` / `apt install ffmpeg`
+
+The binary uses [volk](https://github.com/zeux/volk) to dynamically find Vulkan at runtime, so it works regardless of installation location.
+
 Quickstart: see [QUICKSTART.md](QUICKSTART.md) for install + first shader.
 
 Render an SDF like ShaderToy using Vulkan and hot reload based on frag shader changes.

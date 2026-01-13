@@ -4,7 +4,6 @@
 #include "vkutils.h"
 #include <filesystem>
 #include <optional>
-#include <vulkan/vulkan.h>
 
 inline constexpr uint32_t WINDOW_WIDTH = 800;
 inline constexpr uint32_t WINDOW_HEIGHT = 600;

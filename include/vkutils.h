@@ -15,8 +15,8 @@
 #include <string>
 #include <sys/types.h>
 #include <vector>
-#include <vulkan/vulkan.h>
-#define GLFW_INCLUDE_VULKAN
+#include <volk.h>
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <array>
 #include <glm/glm.hpp>
@@ -214,6 +214,10 @@ loadSpvFile(const std::string &filename) {
 
     VkInstance instance;
     VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance));
+    
+    // Load instance-specific Vulkan functions
+    volkLoadInstance(instance);
+    
     return instance;
 }
 
@@ -391,6 +395,10 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
 
     VK_CHECK(
         vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
+    
+    // Load device-specific Vulkan functions
+    volkLoadDevice(device);
+    
     spdlog::debug("Created logical device (offline = {})", offline);
 
     return device;

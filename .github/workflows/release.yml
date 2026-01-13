@@ -149,9 +149,13 @@ jobs:
         for lib in $DYLIBS; do
           if [ -f "$lib" ]; then
             libname=$(basename "$lib")
-            echo "Copying $libname"
-            cp "$lib" release/macos/libs/
-            
+            if [ -f "release/macos/libs/$libname" ]; then
+              echo "Already copied $libname"
+            else
+              echo "Copying $libname"
+              cp "$lib" release/macos/libs/
+            fi
+
             # Also copy any dependencies of this library
             SUB_DYLIBS=$(otool -L "$lib" | grep -E "(glslang|spirv-tools|ffmpeg|libav)" | awk '{print $1}')
             for sublib in $SUB_DYLIBS; do

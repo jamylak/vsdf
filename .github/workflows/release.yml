@@ -39,6 +39,7 @@ jobs:
       run: |
         mkdir -p release/linux
         cp build/vsdf release/linux/
+        chmod +x release/linux/vsdf
         cp -r shaders release/linux/
         cp README.md release/linux/
         cp LICENSE release/linux/

@@ -28,10 +28,17 @@ project(vsdf)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "Release build - preferring static libraries where practical")
     # Note: We keep FFmpeg and system libraries (libstdc++) dynamic
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib" ".so")
+    if(WIN32)
+        # Windows static and import libs use .lib; keep defaults for other suffixes.
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib" ".a")
+    else()
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dylib" ".so")
+    endif()
 else()
     message(STATUS "Debug build - using dynamic libraries")
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".so" ".a")
+    if(NOT WIN32)
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".so" ".a")
+    endif()
 endif()
 
 # For Release builds, try to find static versions of key libraries

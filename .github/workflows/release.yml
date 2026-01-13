@@ -222,6 +222,25 @@ jobs:
         echo "Binary dependencies after fixing:"
         otool -L release/macos/vsdf
 
+    - name: Code sign binaries
+      run: |
+        echo "Ad-hoc signing binary and libraries..."
+        # Ad-hoc sign all libraries
+        for lib in release/macos/libs/*.dylib; do
+          echo "Signing $(basename "$lib")"
+          codesign --force --sign - "$lib"
+        done
+        
+        # Ad-hoc sign the main binary
+        echo "Signing vsdf"
+        codesign --force --sign - release/macos/vsdf
+        
+        echo "Verifying signatures..."
+        codesign -v release/macos/vsdf
+        for lib in release/macos/libs/*.dylib; do
+          codesign -v "$lib"
+        done
+
     - name: Package binary
       run: |
         cp -r shaders release/macos/

@@ -11,10 +11,10 @@ on:
 jobs:
   build-linux:
     name: Build Linux Release
-    # Use a 20.04 container for max glibc/libstdc++ compatibility while keeping runner availability fast.
-    # Binaries built here work on Ubuntu 20.04+ and most modern distros (Debian 11+, Fedora 32+, Arch, etc.)
+    # Use a 22.04 container for good glibc compatibility while having modern packages.
+    # Binaries built here work on Ubuntu 22.04+ and most modern distros (Debian 12+, Fedora 36+, Arch, etc.)
     runs-on: ubuntu-latest
-    container: ubuntu:20.04
+    container: ubuntu:22.04
     timeout-minutes: 15
 
     steps:

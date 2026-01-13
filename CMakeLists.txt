@@ -60,8 +60,8 @@ else()
     find_package(spdlog REQUIRED)
 endif()
 
-# Vulkan: Only need headers for volk, not the loader library
-find_package(Vulkan REQUIRED COMPONENTS glslc glslangValidator)
+# Vulkan: Only need headers for volk, not the loader library or tools
+find_package(Vulkan REQUIRED)
 find_package(glslang REQUIRED)
 find_package(glm REQUIRED)
 

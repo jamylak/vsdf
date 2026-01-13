@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
     branches:
-      - 'copilot/add-cicd-workflow-for-builds'
+      - 'release-binaries-04'
   workflow_dispatch:
 
 jobs:

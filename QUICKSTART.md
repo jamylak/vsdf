@@ -77,6 +77,11 @@ cp shaders/vulktemplate.frag shaders/myshader.frag
 ./build/vsdf shaders/myshader.frag
 ```
 
+## 4) Record video with FFMPEG (offline MP4 encoding)
+```sh
+./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --ffmpeg-output out.mp4
+```
+
 ## Notes
 - `--toy` prepends `shaders/toytemplate.frag` to set up push constants in the format
 ShaderToy uses, e.g., `iTime` as well as `main()` etc.

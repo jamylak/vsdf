@@ -18,6 +18,11 @@ jobs:
     timeout-minutes: 15
 
     steps:
+    - name: Install Git
+      run: |
+        apt-get update
+        apt-get install -y git
+
     - name: Checkout code
       uses: actions/checkout@v4
       with:

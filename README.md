@@ -93,6 +93,8 @@ To make `vsdf` available as a command in your shell, you can install it to a sta
 
 **Linux/macOS**
 ```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
 # Pick somewhere in your PATH and install it there
 cmake --install build --prefix /usr/local
 vsdf {filepath}.frag

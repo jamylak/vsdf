@@ -5,9 +5,13 @@ on:
     branches:
       - main
       - master
+    paths-ignore:
+      - '.github/workflows/build.yml'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '.github/workflows/build.yml'
 
 jobs:
   build-and-test-windows:

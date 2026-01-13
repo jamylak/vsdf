@@ -3,7 +3,11 @@ name: Smoke Test
 on:
   push:
     branches: [main, master]
+    paths-ignore:
+      - '.github/workflows/build.yml'
   pull_request:
+    paths-ignore:
+      - '.github/workflows/build.yml'
 
 jobs:
   build-and-test:

@@ -7,11 +7,13 @@ on:
       - '**.md'
       - 'LICENSE'
       - '.gitignore'
+      - '.github/workflows/release.yml'
   pull_request:
     paths-ignore:
       - '**.md'
       - 'LICENSE'
       - '.gitignore'
+      - '.github/workflows/release.yml'
 
 jobs:
   build-and-test:

@@ -61,7 +61,13 @@ else()
 endif()
 
 # Vulkan: Only need headers for volk, not the loader library or tools
-find_package(Vulkan REQUIRED)
+if(WIN32)
+    # On Windows, only require headers (volk handles loader)
+    find_package(Vulkan REQUIRED COMPONENTS Headers)
+else()
+    # On Unix, standard package detection works fine
+    find_package(Vulkan REQUIRED)
+endif()
 find_package(glslang REQUIRED)
 find_package(glm REQUIRED)
 

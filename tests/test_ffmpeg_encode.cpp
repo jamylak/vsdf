@@ -62,6 +62,13 @@ TEST(FFmpegEncoder, EncodesSmallMp4) {
     ASSERT_TRUE(std::filesystem::exists(tempPath));
     ASSERT_GT(std::filesystem::file_size(tempPath), 0u);
 
+    // Prevent duration issues such as https://github.com/jamylak/vsdf/issues/36
+    const auto metadata =
+        ffmpeg_test_utils::probeVideoMetadata(tempPath.string());
+    const double expectedDuration = static_cast<double>(10) / settings.fps;
+    EXPECT_GT(metadata.durationSeconds, 0.0);
+    EXPECT_NEAR(metadata.durationSeconds, expectedDuration, 0.05);
+
     const auto decoded =
         ffmpeg_test_utils::decodeVideoRgb24(tempPath.string());
     EXPECT_EQ(decoded.width, width);

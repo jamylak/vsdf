@@ -25,6 +25,13 @@ struct DecodedVideo {
     std::vector<uint8_t> firstFrame;
 };
 
+struct VideoMetadata {
+    double durationSeconds = 0.0;
+    AVRational timeBase{0, 1};
+    AVRational avgFrameRate{0, 1};
+    int64_t durationTs = 0;
+};
+
 inline std::string pickH264EncoderName() {
     const char *candidates[] = {"libx264", "h264_videotoolbox", "h264",
                                 "libopenh264"};
@@ -34,6 +41,61 @@ inline std::string pickH264EncoderName() {
         }
     }
     return "";
+}
+
+inline VideoMetadata probeVideoMetadata(const std::string &path) {
+    AVFormatContext *formatCtx = nullptr;
+
+    auto cleanup = [&]() {
+        if (formatCtx) {
+            avformat_close_input(&formatCtx);
+        }
+    };
+
+    try {
+        if (avformat_open_input(&formatCtx, path.c_str(), nullptr, nullptr) <
+            0) {
+            throw std::runtime_error("Failed to open video file");
+        }
+        if (avformat_find_stream_info(formatCtx, nullptr) < 0) {
+            throw std::runtime_error("Failed to read stream info");
+        }
+
+        const AVCodec *decoder = nullptr;
+        const int streamIndex =
+            av_find_best_stream(formatCtx, AVMEDIA_TYPE_VIDEO, -1, -1,
+                                &decoder, 0);
+        if (streamIndex < 0) {
+            throw std::runtime_error("No video stream found");
+        }
+
+        const AVStream *stream = formatCtx->streams[streamIndex];
+        VideoMetadata metadata;
+        metadata.timeBase = stream->time_base;
+        metadata.avgFrameRate = stream->avg_frame_rate;
+        metadata.durationTs = stream->duration;
+
+        if (formatCtx->duration != AV_NOPTS_VALUE &&
+            formatCtx->duration > 0) {
+            metadata.durationSeconds =
+                static_cast<double>(formatCtx->duration) / AV_TIME_BASE;
+        } else if (stream->duration != AV_NOPTS_VALUE && stream->duration > 0) {
+            metadata.durationSeconds =
+                static_cast<double>(stream->duration) *
+                av_q2d(stream->time_base);
+        } else if (stream->nb_frames > 0 &&
+                   stream->avg_frame_rate.num > 0) {
+            metadata.durationSeconds =
+                static_cast<double>(stream->nb_frames) /
+                av_q2d(stream->avg_frame_rate);
+        }
+
+        cleanup();
+        return metadata;
+    } catch (...) {
+        cleanup();
+        throw;
+    }
 }
 
 inline std::array<uint8_t, 3> pixelAt(const DecodedVideo &video, int x, int y) {

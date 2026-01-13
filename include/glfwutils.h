@@ -1,7 +1,7 @@
 #ifndef GLFWUTILS_H
 #define GLFWUTILS_H
 
-#define GLFW_INCLUDE_VULKAN
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <stdexcept>
 #include <string>
@@ -15,17 +15,13 @@ namespace glfwutils {
 
 /**
  * Initializes GLFW library. Throws runtime_error if initialization fails.
- * Ensures GLFW is only initialized once.
+ * Must be called once before creating windows.
  */
 static void initGLFW() {
-    static bool isInitialized = false;
-    if (!isInitialized) {
-        if (!glfwInit()) {
-            throw std::runtime_error("Failed to initialize GLFW");
-        }
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL context
-        isInitialized = true;
+    if (!glfwInit()) {
+        throw std::runtime_error("Failed to initialize GLFW");
     }
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL context
 }
 
 /**

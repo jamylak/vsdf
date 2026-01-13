@@ -11,12 +11,16 @@ on:
 jobs:
   build-linux:
     name: Build Linux Release
-    runs-on: ubuntu-latest
+    # Use Ubuntu 20.04 for maximum glibc/libstdc++ compatibility
+    # Binaries built here work on Ubuntu 20.04+ and most modern distros (Debian 11+, Fedora 32+, Arch, etc.)
+    runs-on: ubuntu-20.04
     timeout-minutes: 15
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install dependencies
       run: |
@@ -35,11 +39,59 @@ jobs:
     - name: Build
       run: cmake --build build
 
-    - name: Package binary
+    - name: Install patchelf for fixing library paths
+      run: sudo apt-get install -y patchelf
+
+    - name: Bundle dependencies and fix paths
       run: |
-        mkdir -p release/linux
+        mkdir -p release/linux/libs
         cp build/vsdf release/linux/
         chmod +x release/linux/vsdf
+        
+        echo "Bundling dynamic libraries..."
+        
+        # Find non-system libraries
+        ldd build/vsdf | grep -E "(glslang|SPIRV|ffmpeg|libav)" | awk '{print $3}' | while read lib; do
+          if [ -f "$lib" ]; then
+            libname=$(basename "$lib")
+            echo "Copying $libname"
+            cp "$lib" release/linux/libs/
+            
+            # Also copy dependencies of this library
+            ldd "$lib" 2>/dev/null | grep -E "(glslang|SPIRV|ffmpeg|libav)" | awk '{print $3}' | while read sublib; do
+              if [ -f "$sublib" ]; then
+                sublibname=$(basename "$sublib")
+                if [ ! -f "release/linux/libs/$sublibname" ]; then
+                  echo "  -> Copying dependency $sublibname"
+                  cp "$sublib" release/linux/libs/
+                fi
+              fi
+            done
+          fi
+        done
+        
+        echo "Fixing library paths..."
+        
+        # Set RPATH on main binary to look in libs/ folder
+        patchelf --set-rpath '$ORIGIN/libs' release/linux/vsdf
+        
+        # Fix RPATH for each bundled library
+        for lib in release/linux/libs/*.so*; do
+          [ -f "$lib" ] && patchelf --set-rpath '$ORIGIN' "$lib" 2>/dev/null || true
+        done
+        
+        echo "Bundle complete!"
+        echo "Bundled libraries:"
+        ls -lh release/linux/libs/
+        
+        echo "Binary RPATH:"
+        patchelf --print-rpath release/linux/vsdf
+        
+        echo "Binary dependencies:"
+        ldd release/linux/vsdf | head -20
+
+    - name: Package binary
+      run: |
         cp -r shaders release/linux/
         cp README.md release/linux/
         cp LICENSE release/linux/
@@ -66,7 +118,9 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install dependencies
       run: |
@@ -78,10 +132,81 @@ jobs:
     - name: Build
       run: cmake --build build
 
+    - name: Bundle dependencies and fix paths
+      run: |
+        # Create libs directory
+        mkdir -p release/macos/libs
+        
+        # Copy the binary
+        cp build/vsdf release/macos/
+        
+        # Find and copy all non-system dylibs
+        echo "Bundling dynamic libraries..."
+        
+        # Get list of dynamic libraries (excluding system ones)
+        DYLIBS=$(otool -L build/vsdf | grep -E "(glslang|spirv-tools|ffmpeg|libav)" | awk '{print $1}')
+        
+        for lib in $DYLIBS; do
+          if [ -f "$lib" ]; then
+            libname=$(basename "$lib")
+            echo "Copying $libname"
+            cp "$lib" release/macos/libs/
+            
+            # Also copy any dependencies of this library
+            SUB_DYLIBS=$(otool -L "$lib" | grep -E "(glslang|spirv-tools|ffmpeg|libav)" | awk '{print $1}')
+            for sublib in $SUB_DYLIBS; do
+              if [ -f "$sublib" ]; then
+                sublibname=$(basename "$sublib")
+                if [ ! -f "release/macos/libs/$sublibname" ]; then
+                  echo "Copying dependency $sublibname"
+                  cp "$sublib" release/macos/libs/
+                fi
+              fi
+            done
+          fi
+        done
+        
+        # Fix all library paths to use @rpath
+        echo "Fixing library paths..."
+        
+        # Fix paths in the main binary
+        for lib in release/macos/libs/*.dylib; do
+          libname=$(basename "$lib")
+          # Find the original path in the binary
+          ORIG_PATH=$(otool -L release/macos/vsdf | grep "$libname" | awk '{print $1}')
+          if [ ! -z "$ORIG_PATH" ]; then
+            echo "Fixing $libname in vsdf"
+            install_name_tool -change "$ORIG_PATH" "@rpath/libs/$libname" release/macos/vsdf
+          fi
+        done
+        
+        # Fix inter-library dependencies
+        for lib in release/macos/libs/*.dylib; do
+          libname=$(basename "$lib")
+          echo "Fixing paths in $libname"
+          
+          # Fix the library's own id
+          install_name_tool -id "@rpath/libs/$libname" "$lib"
+          
+          # Fix references to other bundled libraries
+          for otherlib in release/macos/libs/*.dylib; do
+            othername=$(basename "$otherlib")
+            ORIG_PATH=$(otool -L "$lib" | grep "$othername" | awk '{print $1}')
+            if [ ! -z "$ORIG_PATH" ] && [ "$ORIG_PATH" != "@rpath/libs/$othername" ]; then
+              install_name_tool -change "$ORIG_PATH" "@rpath/libs/$othername" "$lib"
+            fi
+          done
+        done
+        
+        echo "Bundle complete!"
+        echo "Bundled libraries:"
+        ls -lh release/macos/libs/
+        
+        echo "Binary dependencies after fixing:"
+        otool -L release/macos/vsdf
+
     - name: Package binary
       run: |
-        mkdir -p release/macos
-        cp build/vsdf release/macos/
         cp -r shaders release/macos/
         cp README.md release/macos/
         cp LICENSE release/macos/
@@ -103,7 +228,9 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install dependencies via vcpkg
       timeout-minutes: 25
@@ -150,7 +277,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4

@@ -15,8 +15,8 @@
 #include <string>
 #include <sys/types.h>
 #include <vector>
-#include <vulkan/vulkan.h>
-#define GLFW_INCLUDE_VULKAN
+#include <volk.h>
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <array>
 #include <glm/glm.hpp>
@@ -126,7 +126,27 @@ loadSpvFile(const std::string &filename) {
     }
 }
 
+/**
+ * Initializes volk meta-loader to find Vulkan dynamically.
+ * Must be called once before creating VkInstance.
+ * Throws runtime_error if Vulkan loader not found.
+ */
+static void initVolk() {
+    VkResult result = volkInitialize();
+    if (result != VK_SUCCESS) {
+        spdlog::error("Failed to initialize volk: Vulkan loader not found");
+        spdlog::error("Please install Vulkan runtime:");
+        spdlog::error("  macOS: brew install molten-vk");
+        spdlog::error("  Linux: apt install libvulkan1");
+        throw std::runtime_error("Failed to initialize Vulkan loader (volk)");
+    }
+    spdlog::debug("volk initialized successfully");
+}
+
 [[nodiscard]] static VkInstance setupVulkanInstance(bool offline = false) {
+    // Initialize volk first (only runs once, thread-safe via static guard)
+    initVolk();
+    
     const VkApplicationInfo appInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = nullptr,
@@ -214,6 +234,10 @@ loadSpvFile(const std::string &filename) {
 
     VkInstance instance;
     VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance));
+    
+    // Load instance-specific Vulkan functions
+    volkLoadInstance(instance);
+    
     return instance;
 }
 
@@ -391,6 +415,10 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
 
     VK_CHECK(
         vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
+    
+    // Load device-specific Vulkan functions
+    volkLoadDevice(device);
+    
     spdlog::debug("Created logical device (offline = {})", offline);
 
     return device;

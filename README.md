@@ -8,6 +8,9 @@ Vulkan SDF Renderer + Hot Reloader
 
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 
+## License
+**VSDF is licensed under GPL-3.0**
+
 Quickstart: see [QUICKSTART.md](QUICKSTART.md) for install + first shader.
 
 Render an SDF like ShaderToy using Vulkan and hot reload based on frag shader changes.
@@ -191,6 +194,9 @@ cmake --build build --config Debug
 ```sh
 nix develop
 ```
+
+The binary uses [volk](https://github.com/zeux/volk) to dynamically find Vulkan at runtime, so it works regardless of installation location.
+
 
 ### Credits:
 - https://shadertoy.com

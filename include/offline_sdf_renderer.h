@@ -12,7 +12,6 @@
 #include <optional>
 #include <string>
 #include <thread>
-#include <vulkan/vulkan.h>
 
 inline constexpr uint32_t OFFSCREEN_DEFAULT_WIDTH = 1280;
 inline constexpr uint32_t OFFSCREEN_DEFAULT_HEIGHT = 720;

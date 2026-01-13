@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <optional>
 #include <string>
-#include <vulkan/vulkan.h>
 
 class SDFRenderer {
   protected:

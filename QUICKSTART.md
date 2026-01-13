@@ -12,7 +12,7 @@ brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools ffmpeg
 
 Build:
 ```sh
-cmake -B build .
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
 cmake --build build
 ```
 
@@ -32,7 +32,7 @@ sudo apt-get install -y \
 Build:
 ```sh
 # FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
-cmake -B build .
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
 cmake --build build
 ```
 

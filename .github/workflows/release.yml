@@ -53,9 +53,16 @@ jobs:
         path: release/vsdf-linux-x86_64.tar.gz
 
   build-macos:
-    name: Build macOS Release
-    runs-on: macos-latest
+    name: Build macOS ${{ matrix.arch }} Release
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: macos-13
+          - arch: arm64
+            runner: macos-14
 
     steps:
     - name: Checkout code

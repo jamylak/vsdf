@@ -20,8 +20,9 @@ jobs:
     steps:
     - name: Install Git
       run: |
+        export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        apt-get install -y git
+        apt-get install -y --no-install-recommends git
 
     - name: Checkout code
       uses: actions/checkout@v4
@@ -30,8 +31,9 @@ jobs:
 
     - name: Install dependencies
       run: |
+        export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        apt-get install -y \
+        apt-get install -y --no-install-recommends \
           build-essential cmake ninja-build \
           libspdlog-dev \
           libglfw3 libglfw3-dev libvulkan-dev \
@@ -46,7 +48,9 @@ jobs:
       run: cmake --build build
 
     - name: Install patchelf for fixing library paths
-      run: apt-get install -y patchelf
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get install -y --no-install-recommends patchelf
 
     - name: Bundle dependencies and fix paths
       run: |

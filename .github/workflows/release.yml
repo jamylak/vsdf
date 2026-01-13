@@ -35,11 +35,59 @@ jobs:
     - name: Build
       run: cmake --build build
 
-    - name: Package binary
+    - name: Install patchelf for fixing library paths
+      run: sudo apt-get install -y patchelf
+
+    - name: Bundle dependencies and fix paths
       run: |
-        mkdir -p release/linux
+        mkdir -p release/linux/libs
         cp build/vsdf release/linux/
         chmod +x release/linux/vsdf
+        
+        echo "Bundling dynamic libraries..."
+        
+        # Find non-system libraries
+        ldd build/vsdf | grep -E "(glslang|SPIRV|ffmpeg|libav)" | awk '{print $3}' | while read lib; do
+          if [ -f "$lib" ]; then
+            libname=$(basename "$lib")
+            echo "Copying $libname"
+            cp "$lib" release/linux/libs/
+            
+            # Also copy dependencies of this library
+            ldd "$lib" 2>/dev/null | grep -E "(glslang|SPIRV|ffmpeg|libav)" | awk '{print $3}' | while read sublib; do
+              if [ -f "$sublib" ]; then
+                sublibname=$(basename "$sublib")
+                if [ ! -f "release/linux/libs/$sublibname" ]; then
+                  echo "  -> Copying dependency $sublibname"
+                  cp "$sublib" release/linux/libs/
+                fi
+              fi
+            done
+          fi
+        done
+        
+        echo "Fixing library paths..."
+        
+        # Set RPATH on main binary to look in libs/ folder
+        patchelf --set-rpath '$ORIGIN/libs' release/linux/vsdf
+        
+        # Fix RPATH for each bundled library
+        for lib in release/linux/libs/*.so*; do
+          [ -f "$lib" ] && patchelf --set-rpath '$ORIGIN' "$lib" 2>/dev/null || true
+        done
+        
+        echo "Bundle complete!"
+        echo "Bundled libraries:"
+        ls -lh release/linux/libs/
+        
+        echo "Binary RPATH:"
+        patchelf --print-rpath release/linux/vsdf
+        
+        echo "Binary dependencies:"
+        ldd release/linux/vsdf | head -20
+
+    - name: Package binary
+      run: |
         cp -r shaders release/linux/
         cp README.md release/linux/
         cp LICENSE release/linux/

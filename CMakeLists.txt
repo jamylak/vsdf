@@ -126,6 +126,12 @@ elseif(UNIX AND NOT APPLE)
   find_package(Threads REQUIRED)
   target_sources(${PROJECT_NAME} PRIVATE src/filewatcher/linux_filewatcher.cpp)
   target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
+  
+  # RPATH settings for finding bundled libraries on Linux
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+      BUILD_RPATH "$ORIGIN/libs:$ORIGIN"
+      INSTALL_RPATH "$ORIGIN/libs:$ORIGIN"
+  )
 elseif(WIN32)
   message("Building filewatcher for Windows")
   target_sources(${PROJECT_NAME} PRIVATE src/filewatcher/windows_filewatcher.cpp)

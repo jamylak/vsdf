@@ -1,14 +1,18 @@
-name: Nix Flake Test
+name: Nix Flake CI
 
 on:
   push:
     branches: [main, master]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
     paths:
       - 'flake.nix'
       - 'flake.lock'
       - 'default.nix'
-      - '.github/workflows/nix-flake-test.yml'
+      - '.github/workflows/nix-flake-ci.yml'
 
 jobs:
   nix-flake-test:

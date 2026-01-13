@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: macOS CI
 
 on:
   push:
@@ -6,30 +6,22 @@ on:
       - main
       - master
     paths-ignore:
-      - '.github/workflows/build.yml'
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
     branches:
       - main
     paths-ignore:
-      - '.github/workflows/build.yml'
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
 
 jobs:
-  build-and-test-linux:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-      
-    - name: Build Docker image
-      run: docker build -t linux-tests -f linux-tests.Dockerfile .
-      
-    - name: Test with Docker
-      run: docker run linux-tests
-
   build-and-test-macos:
     name: Build and Test on macOS
     runs-on: macos-latest
+    timeout-minutes: 6
 
     steps:
     - name: Checkout code
@@ -37,7 +29,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install glfw glslang spdlog glm vulkan-tools googletest
+        brew install glfw glslang spdlog glm vulkan-tools googletest ffmpeg pkg-config
 
     - name: Configure
       run: cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -B build

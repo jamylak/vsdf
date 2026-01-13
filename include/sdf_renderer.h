@@ -1,88 +1,56 @@
 #ifndef SDF_RENDERER_H
 #define SDF_RENDERER_H
+
 #include "vkutils.h"
+#include <filesystem>
 #include <optional>
+#include <string>
 #include <vulkan/vulkan.h>
 
-inline constexpr uint32_t WINDOW_WIDTH = 800;
-inline constexpr uint32_t WINDOW_HEIGHT = 600;
-inline constexpr char WINDOW_TITLE[] = "Vulkan";
-inline constexpr char FULL_SCREEN_QUAD_VERT_SHADER_PATH[] =
-    "shaders/fullscreenquad.vert";
-
-struct GLFWApplication {
-    bool framebufferResized = false;
-};
-
 class SDFRenderer {
-  private:
-    // GLFW Setup
-    GLFWApplication app;
-    GLFWwindow *window;
+  protected:
+    SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate,
+                std::optional<std::filesystem::path> debugDumpPPMDir);
+
+    void logDeviceLimits() const;
+    void initDeviceQueue();
+    void createPipelineLayoutCommon();
+    void dumpDebugFrame(const ReadbackFrame &frame);
+    void destroyPipelineCommon() noexcept;
+    [[nodiscard]] vkutils::PushConstants
+    buildPushConstants(float timeSeconds, uint32_t currentFrame,
+                       const glm::vec2 &resolution) const noexcept;
 
     // Vulkan Setup
-    VkInstance instance;
-    VkPhysicalDevice physicalDevice;
-    VkPhysicalDeviceProperties deviceProperties;
-    VkSurfaceKHR surface;
-    uint32_t graphicsQueueIndex;
-    VkDevice logicalDevice;
-    VkQueue queue;
+    VkInstance instance = VK_NULL_HANDLE;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkPhysicalDeviceProperties deviceProperties{};
+    uint32_t graphicsQueueIndex = 0;
+    VkDevice logicalDevice = VK_NULL_HANDLE;
+    VkQueue queue = VK_NULL_HANDLE;
     VkQueryPool queryPool = VK_NULL_HANDLE;
-    VkSurfaceFormatKHR swapchainFormat;
-    VkCommandPool commandPool;
-    vkutils::Semaphores imageAvailableSemaphores;
-    vkutils::Semaphores renderFinishedSemaphores;
-    vkutils::Fences fences;
+    VkCommandPool commandPool = VK_NULL_HANDLE;
 
     // Shader Modules.
-    // Full screen quad vert shader + frag shader
-    VkShaderModule vertShaderModule;
-    VkShaderModule fragShaderModule;
+    VkShaderModule vertShaderModule = VK_NULL_HANDLE;
+    VkShaderModule fragShaderModule = VK_NULL_HANDLE;
     std::string fragShaderPath;
-    bool useToyTemplate;
+
+    // Whether to use shader toy template
+    // eg. old school OpenGL style shaders
+    // + some things like iTime etc..
+    bool useToyTemplate = false;
 
     // Render Context
-    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-    VkSurfaceCapabilitiesKHR surfaceCapabilities;
-    VkExtent2D swapchainSize;
-    vkutils::SwapchainImages swapchainImages;
-    vkutils::SwapchainImageViews swapchainImageViews;
-    VkRenderPass renderPass;
-    vkutils::FrameBuffers frameBuffers;
-    VkPipelineLayout pipelineLayout;
-    VkPipeline pipeline;
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+    VkPipeline pipeline = VK_NULL_HANDLE;
     vkutils::CommandBuffers commandBuffers;
+    vkutils::Fences fences;
 
-    // Runtime configuration
-    std::optional<uint32_t> maxFrames;
-    bool headless = false;
-
-    // Timing
-    std::chrono::time_point<std::chrono::high_resolution_clock> cpuStartFrame,
-        cpuEndFrame;
-
-    void glfwSetup();
-    void vulkanSetup();
-    void setupRenderContext();
-    void createCommandBuffers();
-    void createPipeline();
-    void calcTimestamps(uint32_t imageIndex);
-    void destroyRenderContext();
-    void destroyPipeline();
-    void destroy();
-
-    [[nodiscard]] vkutils::PushConstants
-    getPushConstants(uint32_t currentFrame) noexcept;
-
-  public:
-    SDFRenderer(const SDFRenderer &) = delete;
-    SDFRenderer &operator=(const SDFRenderer &) = delete;
-    SDFRenderer(const std::string &fragShaderPath, bool useToyTemplate = false,
-                std::optional<uint32_t> maxFrames = std::nullopt,
-                bool headless = false);
-    void setup();
-    void gameLoop();
+    // Some useful stuff to debug
+    std::optional<std::filesystem::path> debugDumpPPMDir;
+    uint32_t dumpedFrames = 0;
 };
 
 #endif // SDF_RENDERER_H

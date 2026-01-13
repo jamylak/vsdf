@@ -1,4 +1,4 @@
-name: Windows CI
+name: Windows Build & Test
 
 on:
   push:
@@ -6,12 +6,16 @@ on:
       - main
       - master
     paths-ignore:
-      - '.github/workflows/build.yml'
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
     branches:
       - main
     paths-ignore:
-      - '.github/workflows/build.yml'
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
 
 jobs:
   build-and-test-windows:
@@ -30,12 +34,9 @@ jobs:
       run: |
         Write-Host "Installing dependencies via vcpkg (faster and more reliable for CI)..."
         # vcpkg provides Vulkan headers/loader without needing full SDK installation
-        vcpkg install vulkan:x64-windows --recurse
-        vcpkg install glfw3:x64-windows
-        vcpkg install glslang:x64-windows
-        vcpkg install spdlog:x64-windows
-        vcpkg install glm:x64-windows
-        vcpkg install gtest:x64-windows
+        vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows --recurse
+        # This takes forever to build ffmpeg... TODO: Find workaround
+        # vcpkg install glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows ffmpeg[avcodec,avformat,swscale]:x64-windows
         vcpkg integrate install
         Write-Host "All dependencies installed successfully"
 
@@ -45,6 +46,7 @@ jobs:
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
           -DBUILD_TESTS=ON `
+          -DDISABLE_FFMPEG=ON `
           -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
           .
 
@@ -60,6 +62,10 @@ jobs:
         if (Test-Path $vsdfTestPath) {
           Write-Host "Running vsdf_tests..."
           & $vsdfTestPath
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "vsdf_tests failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
         } else {
           Write-Error "vsdf_tests not found at $vsdfTestPath"
           exit 1
@@ -69,6 +75,10 @@ jobs:
         if (Test-Path $filewatcherTestPath) {
           Write-Host "Running filewatcher_tests..."
           & $filewatcherTestPath
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "filewatcher_tests failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
         } else {
           Write-Error "filewatcher_tests not found at $filewatcherTestPath"
           exit 1

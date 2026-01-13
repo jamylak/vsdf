@@ -10,6 +10,8 @@
 , glslang
 , spirv-tools
 , llvmPackages_21
+, ffmpeg
+, pkg-config
 }:
 
 stdenv.mkDerivation {
@@ -22,6 +24,7 @@ stdenv.mkDerivation {
     cmake
     ninja
     llvmPackages_21.clang
+    pkg-config
   ];
 
   buildInputs = [
@@ -32,6 +35,7 @@ stdenv.mkDerivation {
     vulkan-headers
     glslang
     spirv-tools
+    ffmpeg
   ];
 
   cmakeFlags = [

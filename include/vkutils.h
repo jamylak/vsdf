@@ -4,16 +4,19 @@
 #ifndef VKUTILS_H
 #define VKUTILS_H
 // This is just to put the verbose vulkan stuff in its own place
-// but it will only be included once
+#include "readback_frame.h"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <ios>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
+#include <string>
 #include <sys/types.h>
 #include <vector>
 #include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
-#include "fileutils.h"
 #include <GLFW/glfw3.h>
 #include <array>
 #include <glm/glm.hpp>
@@ -26,7 +29,7 @@
             throw std::logic_error("Got a runtime_error");                     \
     } while (0);
 
-inline constexpr size_t MAX_SWAPCHAIN_IMAGES = 10;
+inline constexpr size_t MAX_FRAME_SLOTS = 10;
 
 namespace vkutils {
 struct PushConstants {
@@ -41,36 +44,89 @@ struct PushConstants {
  * unnesicarily. I want to sometimes avoid vector
  */
 struct SwapchainImages {
-    std::array<VkImage, MAX_SWAPCHAIN_IMAGES> images{};
+    std::array<VkImage, MAX_FRAME_SLOTS> images{};
     uint32_t count = 0;
 };
 
 struct SwapchainImageViews {
-    std::array<VkImageView, MAX_SWAPCHAIN_IMAGES> imageViews{};
+    std::array<VkImageView, MAX_FRAME_SLOTS> imageViews{};
     uint32_t count = 0;
 };
 
 struct CommandBuffers {
-    std::array<VkCommandBuffer, MAX_SWAPCHAIN_IMAGES> commandBuffers{};
+    std::array<VkCommandBuffer, MAX_FRAME_SLOTS> commandBuffers{};
     uint32_t count = 0;
 };
 
 struct Fences {
-    std::array<VkFence, MAX_SWAPCHAIN_IMAGES> fences{};
+    std::array<VkFence, MAX_FRAME_SLOTS> fences{};
     uint32_t count = 0;
 };
 
 struct Semaphores {
-    std::array<VkSemaphore, MAX_SWAPCHAIN_IMAGES> semaphores{};
+    std::array<VkSemaphore, MAX_FRAME_SLOTS> semaphores{};
     uint32_t count = 0;
 };
 
 struct FrameBuffers {
-    std::array<VkFramebuffer, MAX_SWAPCHAIN_IMAGES> framebuffers{};
+    std::array<VkFramebuffer, MAX_FRAME_SLOTS> framebuffers{};
     uint32_t count = 0;
 };
 
-[[nodiscard]] static VkInstance setupVulkanInstance() {
+/*
+ * Used to readback a buffer from GPU -> CPU.
+ * eg. to dump a frame as part of testing
+ *     or to encode frames in CPU with ffmpeg
+ */
+struct ReadbackBuffer {
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    VkDeviceSize size = 0;
+};
+
+struct ReadbackFormatInfo {
+    uint32_t bytesPerPixel = 0;
+    bool swapRB = false;
+};
+
+[[nodiscard]] static std::vector<uint32_t>
+loadSpvFile(const std::string &filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open())
+        throw std::runtime_error("Failed to open file: " + filename);
+
+    std::streamoff fileSize = file.tellg();
+    if (fileSize % static_cast<std::streamoff>(sizeof(uint32_t)) != 0)
+        throw std::runtime_error("SPIR-V file size is not a multiple of 4: " +
+                                 filename);
+
+    std::size_t byteSize = static_cast<std::size_t>(fileSize);
+    std::vector<uint32_t> buffer(byteSize / sizeof(uint32_t));
+
+    file.seekg(0);
+    file.read(reinterpret_cast<char *>(buffer.data()),
+              static_cast<std::streamsize>(byteSize));
+
+    if (file.gcount() != static_cast<std::streamsize>(byteSize))
+        throw std::runtime_error("Failed to read the complete file: " +
+                                 filename);
+
+    return buffer;
+};
+
+[[nodiscard]] inline ReadbackFormatInfo getReadbackFormatInfo(VkFormat format) {
+    switch (format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_SRGB:
+        return {4, true};
+    default:
+        throw std::runtime_error(
+            "Unsupported format for readback; expected BGRA8");
+    }
+}
+
+[[nodiscard]] static VkInstance setupVulkanInstance(bool offline = false) {
     const VkApplicationInfo appInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = nullptr,
@@ -82,13 +138,16 @@ struct FrameBuffers {
     };
     spdlog::info("Size of push constants {}", sizeof(PushConstants));
 
-    uint32_t extensionCount = 0;
-    const char **glfwExtensions =
-        glfwGetRequiredInstanceExtensions(&extensionCount);
-
-    // Use vector for convenience here, this is only run once at startup
-    std::vector<const char *> extensions(glfwExtensions,
-                                         glfwExtensions + extensionCount);
+    std::vector<const char *> extensions;
+    if (!offline) {
+        // Offline renders on GPU to an offscreen image for readback (future
+        // ffmpeg encoding), so it has no GLFW surface and doesn't need
+        // GLFW-provided instance extensions.
+        uint32_t extensionCount = 0;
+        const char **glfwExtensions =
+            glfwGetRequiredInstanceExtensions(&extensionCount);
+        extensions.assign(glfwExtensions, glfwExtensions + extensionCount);
+    }
 
 #ifdef __APPLE__
     extensions.push_back("VK_KHR_portability_enumeration");
@@ -227,8 +286,8 @@ getDeviceProperties(VkPhysicalDevice physicalDevice) {
 }
 
 [[nodiscard]] static uint32_t
-getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
-                            VkSurfaceKHR surface) {
+getVulkanGraphicsQueueIndexImpl(VkPhysicalDevice physicalDevice,
+                                VkSurfaceKHR surface, bool requirePresent) {
     uint32_t queueFamilyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount,
                                              nullptr);
@@ -258,23 +317,40 @@ getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
         spdlog::debug("Queue family {} supports protected: {} ", i,
                       queueFamilies[i].queueFlags & VK_QUEUE_PROTECTED_BIT);
 
-        VkBool32 supportsPresent;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface,
-                                             &supportsPresent);
-        spdlog::debug("Queue family {} supports present: {} ", i,
-                      supportsPresent);
-
-        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT &&
-            supportsPresent)
+        if (requirePresent) {
+            VkBool32 supportsPresent;
+            vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface,
+                                                 &supportsPresent);
+            spdlog::debug("Queue family {} supports present: {} ", i,
+                          supportsPresent);
+            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT &&
+                supportsPresent)
+                return i;
+        } else if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             return i;
+        }
     }
 
     throw std::runtime_error("Failed to find graphics queue");
 }
 
+[[nodiscard]] static uint32_t
+getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice) {
+    // For when present is not needed eg. for offline rendering of SDF
+    // to encode with FFMPEG
+    return getVulkanGraphicsQueueIndexImpl(physicalDevice, VK_NULL_HANDLE,
+                                           false);
+}
+
+[[nodiscard]] static uint32_t
+getVulkanGraphicsQueueIndex(VkPhysicalDevice physicalDevice,
+                            VkSurfaceKHR surface) {
+    return getVulkanGraphicsQueueIndexImpl(physicalDevice, surface, true);
+}
+
 [[nodiscard]] static VkDevice
 createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
-                          uint32_t graphicsQueueIndex) {
+                          uint32_t graphicsQueueIndex, bool offline = false) {
     float queuePriority = 1.0f;
 
     spdlog::debug("Create a queue...");
@@ -285,12 +361,13 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
         .pQueuePriorities = &queuePriority,
     };
 
-    static const char *requiredExtensions[] = {
-        "VK_KHR_swapchain",
+    std::vector<const char *> requiredExtensions;
+    if (!offline) {
+        requiredExtensions.push_back("VK_KHR_swapchain");
+    }
 #ifdef __APPLE__
-        "VK_KHR_portability_subset",
+    requiredExtensions.push_back("VK_KHR_portability_subset");
 #endif
-    };
 
     spdlog::debug("Create a logical device...");
     VkDevice device;
@@ -306,13 +383,15 @@ createVulkanLogicalDevice(VkPhysicalDevice physicalDevice,
         .pNext = &dynamicRenderingFeatures,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueInfo,
-        .enabledExtensionCount = std::size(requiredExtensions),
-        .ppEnabledExtensionNames = requiredExtensions,
+        .enabledExtensionCount =
+            static_cast<uint32_t>(requiredExtensions.size()),
+        .ppEnabledExtensionNames =
+            requiredExtensions.empty() ? nullptr : requiredExtensions.data(),
     };
 
     VK_CHECK(
         vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
-    spdlog::debug("Created logical device");
+    spdlog::debug("Created logical device (offline = {})", offline);
 
     return device;
 }
@@ -329,8 +408,8 @@ getSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
 
 [[nodiscard]] consteval auto getPreferredFormats() {
     return std::to_array({
-        VK_FORMAT_R8G8B8_SRGB,
-        VK_FORMAT_R8G8B8_UNORM,
+        VK_FORMAT_B8G8R8A8_SRGB,
+        VK_FORMAT_B8G8R8A8_UNORM,
     });
 }
 
@@ -355,8 +434,8 @@ selectSwapchainFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) {
     if (surfaceFormatCount == 1 &&
         surfaceFormats[0].format == VK_FORMAT_UNDEFINED) {
         spdlog::info("Surface format is undefined, selecting "
-                     "VK_FORMAT_R8G8B8A8_SRGB as default.");
-        return {VK_FORMAT_R8G8B8A8_SRGB, surfaceFormats[0].colorSpace};
+                     "VK_FORMAT_B8G8R8A8_SRGB as default.");
+        return {VK_FORMAT_B8G8R8A8_SRGB, surfaceFormats[0].colorSpace};
     }
 
     static constexpr auto preferredFormatArray = getPreferredFormats();
@@ -391,20 +470,27 @@ getSwapchainSize(GLFWwindow *window,
     return swapchainSize;
 }
 
+struct SwapchainConfig {
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+    VkExtent2D extent{};
+    VkSurfaceFormatKHR surfaceFormat{};
+    VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE;
+    bool enableReadback = false;
+};
+
 [[nodiscard]] static VkSwapchainKHR
 createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
-                VkSurfaceKHR surface,
-                const VkSurfaceCapabilitiesKHR &surfaceCapabilities,
-                VkExtent2D swapchainSize, VkSurfaceFormatKHR surfaceFormat,
-                VkSwapchainKHR oldSwapchain) {
+                const SwapchainConfig &config) {
     // Determine the number of VkImage's to use in the swapchain.
     // Ideally, we desire to own 1 image at a time, the rest of the images can
     // either be rendered to and/or being queued up for display.
-    uint32_t desiredSwapchainImages = surfaceCapabilities.minImageCount + 1;
-    if ((surfaceCapabilities.maxImageCount > 0) &&
-        (desiredSwapchainImages > surfaceCapabilities.maxImageCount)) {
+    uint32_t desiredSwapchainImages =
+        config.surfaceCapabilities.minImageCount + 1;
+    if ((config.surfaceCapabilities.maxImageCount > 0) &&
+        (desiredSwapchainImages > config.surfaceCapabilities.maxImageCount)) {
         // Application must settle for fewer images than desired.
-        desiredSwapchainImages = surfaceCapabilities.maxImageCount;
+        desiredSwapchainImages = config.surfaceCapabilities.maxImageCount;
     }
     spdlog::debug("Desired swapchain images: {}", desiredSwapchainImages);
 
@@ -414,7 +500,7 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
 
     // Query available present modes
     uint32_t presentModeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface,
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, config.surface,
                                               &presentModeCount, nullptr);
 
     static constexpr uint32_t presentModeCountMax = 30; // Safe upper bound
@@ -422,7 +508,7 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
 
     // Fill only the first presentModeCount elements
     vkGetPhysicalDeviceSurfacePresentModesKHR(
-        physicalDevice, surface, &presentModeCount, presentModes.data());
+        physicalDevice, config.surface, &presentModeCount, presentModes.data());
 
     // Log only the valid entries
     spdlog::info("Available present modes:");
@@ -447,16 +533,16 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
     }
 
     VkCompositeAlphaFlagBitsKHR composite = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    if (surfaceCapabilities.supportedCompositeAlpha &
+    if (config.surfaceCapabilities.supportedCompositeAlpha &
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
         composite = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    } else if (surfaceCapabilities.supportedCompositeAlpha &
+    } else if (config.surfaceCapabilities.supportedCompositeAlpha &
                VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
         composite = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
-    } else if (surfaceCapabilities.supportedCompositeAlpha &
+    } else if (config.surfaceCapabilities.supportedCompositeAlpha &
                VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR) {
         composite = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
-    } else if (surfaceCapabilities.supportedCompositeAlpha &
+    } else if (config.surfaceCapabilities.supportedCompositeAlpha &
                VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR) {
         composite = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
     }
@@ -464,31 +550,37 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
     spdlog::debug("Composite alpha: {}", static_cast<int>(composite));
 
     spdlog::debug("Selected surface format");
-    spdlog::info("Surface format: {}", static_cast<int>(surfaceFormat.format));
-    spdlog::info("Color space: {}", static_cast<int>(surfaceFormat.colorSpace));
+    spdlog::info("Surface format: {}",
+                 static_cast<int>(config.surfaceFormat.format));
+    spdlog::info("Color space: {}",
+                 static_cast<int>(config.surfaceFormat.colorSpace));
 
     // Create a swapchain
     spdlog::debug("Create a swapchain");
+    VkImageUsageFlags imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if (config.enableReadback) {
+        imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    }
     VkSwapchainCreateInfoKHR swapchainCreateInfo{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .pNext = nullptr,
-        .surface = surface,
+        .surface = config.surface,
         .minImageCount = desiredSwapchainImages,
-        .imageFormat = surfaceFormat.format,
-        .imageColorSpace = surfaceFormat.colorSpace,
+        .imageFormat = config.surfaceFormat.format,
+        .imageColorSpace = config.surfaceFormat.colorSpace,
         .imageExtent =
             {
-                .width = swapchainSize.width,
-                .height = swapchainSize.height,
+                .width = config.extent.width,
+                .height = config.extent.height,
             },
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage = imageUsage,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .preTransform = preTransform,
         .compositeAlpha = composite,
         .presentMode = swapchainPresentMode,
         .clipped = VK_TRUE,
-        .oldSwapchain = oldSwapchain,
+        .oldSwapchain = config.oldSwapchain,
     };
 
     VkSwapchainKHR swapchain;
@@ -507,11 +599,11 @@ getSwapchainImages(VkDevice device, VkSwapchainKHR swapchain) {
     spdlog::debug("Swapchain image count: {}", swapchainImageCount);
     swapchainImages.count = swapchainImageCount;
 
-    if (swapchainImageCount > MAX_SWAPCHAIN_IMAGES) {
+    if (swapchainImageCount > MAX_FRAME_SLOTS) {
         throw std::runtime_error(fmt::format("Swapchain image count {} exceeds "
                                              "maximum images {}",
                                              swapchainImageCount,
-                                             MAX_SWAPCHAIN_IMAGES));
+                                             MAX_FRAME_SLOTS));
     }
 
     VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount,
@@ -571,6 +663,66 @@ createCommandPool(VkDevice device, uint32_t graphicsQueueIndex) {
     VK_CHECK(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr,
                                  &commandPool));
     return commandPool;
+}
+
+[[nodiscard]] static uint32_t
+findMemoryTypeIndex(VkPhysicalDevice physicalDevice, uint32_t typeFilter,
+                    VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        if ((typeFilter & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & properties) ==
+                properties) {
+            return i;
+        }
+    }
+    throw std::runtime_error("Failed to find suitable memory type");
+}
+
+[[nodiscard]] static ReadbackBuffer
+createReadbackBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
+                     VkDeviceSize size, VkBufferUsageFlags usage,
+                     VkMemoryPropertyFlags properties) {
+    ReadbackBuffer buffer{
+        .size = size,
+    };
+    VkBufferCreateInfo bufferInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+
+    VK_CHECK(vkCreateBuffer(device, &bufferInfo, nullptr, &buffer.buffer));
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(device, buffer.buffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memRequirements.size,
+        .memoryTypeIndex = findMemoryTypeIndex(
+            physicalDevice, memRequirements.memoryTypeBits, properties),
+    };
+
+    VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &buffer.memory));
+    VK_CHECK(vkBindBufferMemory(device, buffer.buffer, buffer.memory, 0));
+
+    return buffer;
+}
+
+static void destroyReadbackBuffer(VkDevice device, ReadbackBuffer &buffer) {
+    if (buffer.buffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, buffer.buffer, nullptr);
+    }
+    if (buffer.memory != VK_NULL_HANDLE) {
+        vkFreeMemory(device, buffer.memory, nullptr);
+    }
+    buffer.buffer = VK_NULL_HANDLE;
+    buffer.memory = VK_NULL_HANDLE;
+    buffer.size = 0;
 }
 
 [[nodiscard]] static VkDescriptorSetLayout
@@ -643,6 +795,74 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
     return commandBuffers;
 }
 
+static void transitionImageLayout(VkDevice logicalDevice,
+                                  VkCommandPool commandPool, VkQueue queue,
+                                  VkImage image, VkImageLayout oldLayout,
+                                  VkImageLayout newLayout) {
+    VkCommandBufferAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = commandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer commandBuffer;
+    VK_CHECK(
+        vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer));
+
+    VkCommandBufferBeginInfo beginInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+    VkImageMemoryBarrier barrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    VkPipelineStageFlags dstStage =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+        newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        // No need to wait on prior writes; we don't care about old contents.
+        barrier.srcAccessMask = 0;
+        // Make color-attachment writes visible for subsequent render pass use.
+        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    } else {
+        throw std::runtime_error("Unsupported image layout transition");
+    }
+
+    vkCmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrier);
+
+    VK_CHECK(vkEndCommandBuffer(commandBuffer));
+
+    VkSubmitInfo submitInfo{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffer,
+    };
+
+    // Submit and wait so the image is ready before further use.
+    VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_CHECK(vkQueueWaitIdle(queue));
+    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+}
+
 [[nodiscard]] static Fences createFences(VkDevice device, uint32_t count) {
     spdlog::info("Create fences");
     Fences fences;
@@ -678,8 +898,8 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
     return semaphores;
 }
 
-[[nodiscard]] static VkRenderPass createRenderPass(VkDevice device,
-                                                   VkFormat format) {
+[[nodiscard]] static VkRenderPass
+createRenderPass(VkDevice device, VkFormat format, bool offline = false) {
     spdlog::debug("Create render pass");
     VkAttachmentDescription colorAttachment{
         .format = format,
@@ -688,8 +908,13 @@ createCommandBuffers(VkDevice device, VkCommandPool commandPool,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        // Offline keeps the image in COLOR_ATTACHMENT_OPTIMAL between passes,
+        // transitioning to TRANSFER_SRC_OPTIMAL only for readback.
+        // Swapchain rendering discards old contents and transitions to PRESENT.
+        .initialLayout = offline ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                                 : VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = offline ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                               : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
     };
 
     VkAttachmentReference colorAttachmentRef{
@@ -764,11 +989,25 @@ createFrameBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent,
 createShaderModule(VkDevice device, const std::string &filename) {
     spdlog::info("Create shader module");
     VkShaderModule shaderModule;
-    auto code = loadBinaryFile(filename);
+    auto code = loadSpvFile(filename);
     VkShaderModuleCreateInfo createinfo{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = code.size(),
-        .pCode = reinterpret_cast<const uint32_t *>(code.data()),
+        .codeSize = code.size() * sizeof(uint32_t),
+        .pCode = code.data(),
+    };
+
+    VK_CHECK(vkCreateShaderModule(device, &createinfo, nullptr, &shaderModule));
+    return shaderModule;
+}
+
+[[nodiscard]] static VkShaderModule
+createShaderModule(VkDevice device, const std::vector<uint32_t> &spirv) {
+    spdlog::info("Create shader module from SPIR-V");
+    VkShaderModule shaderModule;
+    VkShaderModuleCreateInfo createinfo{
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = spirv.size() * sizeof(uint32_t),
+        .pCode = spirv.data(),
     };
 
     VK_CHECK(vkCreateShaderModule(device, &createinfo, nullptr, &shaderModule));
@@ -983,7 +1222,168 @@ static void submitCommandBuffer(VkQueue queue, VkCommandBuffer commandBuffer,
         .pSignalSemaphores = &renderFinishedSemaphore,
     };
     VK_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence));
-} // namespace vkutils
+}
+
+struct ReadbackContext {
+    VkDevice device = VK_NULL_HANDLE;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+    VkQueue queue = VK_NULL_HANDLE;
+};
+
+[[nodiscard]] static ReadbackFrame
+debugReadbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
+                            VkFormat format, VkExtent2D extent) {
+    // Intended for quick validation/smoke tests of the presented swapchain
+    // path. You'd want to avoid swapchain if you just wanted to only encode
+    // video for example, to save time
+    const ReadbackFormatInfo formatInfo = getReadbackFormatInfo(format);
+
+    VkDeviceSize imageSize = static_cast<VkDeviceSize>(extent.width) *
+                             static_cast<VkDeviceSize>(extent.height) *
+                             formatInfo.bytesPerPixel;
+
+    ReadbackBuffer stagingBuffer =
+        createReadbackBuffer(context.device, context.physicalDevice, imageSize,
+                             VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    VkCommandBufferAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = context.commandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer commandBuffer;
+    VK_CHECK(
+        vkAllocateCommandBuffers(context.device, &allocInfo, &commandBuffer));
+
+    VkCommandBufferBeginInfo beginInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+    // This barrier moves from present → transfer‑src so we can read it.
+    VkImageMemoryBarrier barrierToTransfer{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = srcImage,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrierToTransfer);
+
+    VkBufferImageCopy region{
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        .imageOffset = {0, 0, 0},
+        .imageExtent = {extent.width, extent.height, 1},
+    };
+
+    vkCmdCopyImageToBuffer(commandBuffer, srcImage,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           stagingBuffer.buffer, 1, &region);
+
+    // This is the “undo” barrier after the copy.
+    // It transitions the swapchain image back to PRESENT_SRC_KHR so the
+    // presentation engine can display it. After the copy, you must move it back
+    // to present layout for vkQueuePresentKHR.
+    VkImageMemoryBarrier barrierToPresent{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = srcImage,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrierToPresent);
+
+    VK_CHECK(vkEndCommandBuffer(commandBuffer));
+
+    VkSubmitInfo submitInfo{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffer,
+    };
+
+    VK_CHECK(vkQueueSubmit(context.queue, 1, &submitInfo, VK_NULL_HANDLE));
+    VK_CHECK(vkQueueWaitIdle(context.queue));
+
+    void *data = nullptr;
+    VK_CHECK(vkMapMemory(context.device, stagingBuffer.memory, 0, imageSize, 0,
+                         &data));
+
+    ReadbackFrame frame;
+    frame.allocateRGB(extent.width, extent.height);
+    const uint8_t *src = static_cast<const uint8_t *>(data);
+    const size_t pixelCount =
+        static_cast<size_t>(extent.width) * static_cast<size_t>(extent.height);
+    for (size_t i = 0; i < pixelCount; ++i) {
+        const size_t srcOffset = i * formatInfo.bytesPerPixel;
+        const size_t dstOffset = i * 3;
+        uint8_t r = 0;
+        uint8_t g = 0;
+        uint8_t b = 0;
+        if (formatInfo.swapRB) {
+            r = src[srcOffset + 2];
+            g = src[srcOffset + 1];
+            b = src[srcOffset + 0];
+        } else {
+            r = src[srcOffset + 0];
+            g = src[srcOffset + 1];
+            b = src[srcOffset + 2];
+        }
+        frame.rgb[dstOffset + 0] = r;
+        frame.rgb[dstOffset + 1] = g;
+        frame.rgb[dstOffset + 2] = b;
+    }
+
+    vkUnmapMemory(context.device, stagingBuffer.memory);
+    vkFreeCommandBuffers(context.device, context.commandPool, 1,
+                         &commandBuffer);
+    destroyReadbackBuffer(context.device, stagingBuffer);
+
+    return frame;
+}
 
 static void presentImage(VkQueue queue, VkSwapchainKHR swapchain,
                          VkSemaphore renderFinishedSemaphore,

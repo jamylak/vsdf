@@ -11,7 +11,9 @@ on:
 jobs:
   build-linux:
     name: Build Linux Release
-    runs-on: ubuntu-latest
+    # Use Ubuntu 20.04 for maximum glibc/libstdc++ compatibility
+    # Binaries built here work on Ubuntu 20.04+ and most modern distros (Debian 11+, Fedora 32+, Arch, etc.)
+    runs-on: ubuntu-20.04
     timeout-minutes: 15
 
     steps:

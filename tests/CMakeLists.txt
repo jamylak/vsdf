@@ -9,7 +9,7 @@ set(TEST_SOURCES
 )
 
 # Common libraries for all platforms
-set(COMMON_LIBS GTest::gtest_main spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glfw Vulkan::Vulkan)
+set(COMMON_LIBS GTest::gtest_main spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glfw volk)
 
 if (VSDF_ENABLE_FFMPEG)
   list(APPEND TEST_SOURCES
@@ -20,7 +20,7 @@ endif()
 
 # Add test executable
 add_executable(${PROJECT_NAME} ${TEST_SOURCES})
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${Vulkan_INCLUDE_DIRS})
 
 # Platform-specific threading library
 if(UNIX)

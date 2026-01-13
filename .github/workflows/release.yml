@@ -45,7 +45,7 @@ jobs:
         tar -czf vsdf-linux-x86_64.tar.gz linux/
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: vsdf-linux-x86_64
         path: release/vsdf-linux-x86_64.tar.gz
@@ -80,7 +80,7 @@ jobs:
         tar -czf vsdf-macos-x86_64.tar.gz macos/
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: vsdf-macos-x86_64
         path: release/vsdf-macos-x86_64.tar.gz
@@ -124,7 +124,7 @@ jobs:
         Compress-Archive -Path release\windows\* -DestinationPath release\vsdf-windows-x86_64.zip
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: vsdf-windows-x86_64
         path: release/vsdf-windows-x86_64.zip
@@ -144,7 +144,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
 

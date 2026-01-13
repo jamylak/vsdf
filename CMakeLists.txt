@@ -105,11 +105,12 @@ if(APPLE)
   find_library(CORE_SERVICES_LIBRARY CoreServices)
   target_link_libraries(${PROJECT_NAME} PRIVATE ${CORE_SERVICES_LIBRARY})
   
-  # Volk will find Vulkan dynamically - no hardcoded paths needed
-  # But keep RPATH for potential dynamic FFmpeg if not statically linked
+  # RPATH settings for finding bundled libraries
+  # @executable_path/libs - for bundled dylibs in release packages
+  # /usr/local/lib, /opt/homebrew/lib - for development builds with Homebrew
   set_target_properties(${PROJECT_NAME} PROPERTIES
-      BUILD_RPATH "@executable_path;/usr/local/lib;/opt/homebrew/lib"
-      INSTALL_RPATH "@executable_path;/usr/local/lib;/opt/homebrew/lib"
+      BUILD_RPATH "@executable_path/libs;@executable_path;/usr/local/lib;/opt/homebrew/lib"
+      INSTALL_RPATH "@executable_path/libs;@executable_path;/usr/local/lib;/opt/homebrew/lib"
   )
   
   # When static linking GLFW on macOS, we need these frameworks

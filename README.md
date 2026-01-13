@@ -13,13 +13,26 @@ Vulkan SDF Renderer + Hot Reloader
 
 ## Runtime Requirements for Binary Releases
 
-To run the pre-built binaries, you only need:
-- **Vulkan 1.2+** runtime installed
+The pre-built binaries are **self-contained** and include all necessary libraries (glslang, FFmpeg) in the `libs/` folder.
+
+You only need to install:
+- **Vulkan 1.2+** runtime
   - macOS: Install [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) or `brew install molten-vk`
   - Linux: Install `libvulkan1` and GPU drivers (Mesa/NVIDIA/AMD)
-- **FFmpeg** (optional, for video export): `brew install ffmpeg` / `apt install ffmpeg`
 
 The binary uses [volk](https://github.com/zeux/volk) to dynamically find Vulkan at runtime, so it works regardless of installation location.
+
+**Package contents:**
+```
+vsdf-macos/
+├── vsdf          # Main binary (~1MB)
+├── libs/         # Bundled libraries (~64MB)
+│   ├── libglslang*.dylib
+│   ├── libSPIRV*.dylib  
+│   └── libav*.dylib (FFmpeg)
+├── shaders/      # Example shaders
+└── README.md
+```
 
 Quickstart: see [QUICKSTART.md](QUICKSTART.md) for install + first shader.
 

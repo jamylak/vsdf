@@ -78,10 +78,81 @@ jobs:
     - name: Build
       run: cmake --build build
 
+    - name: Bundle dependencies and fix paths
+      run: |
+        # Create libs directory
+        mkdir -p release/macos/libs
+        
+        # Copy the binary
+        cp build/vsdf release/macos/
+        
+        # Find and copy all non-system dylibs
+        echo "Bundling dynamic libraries..."
+        
+        # Get list of dynamic libraries (excluding system ones)
+        DYLIBS=$(otool -L build/vsdf | grep -E "(glslang|spirv-tools|ffmpeg|libav)" | awk '{print $1}')
+        
+        for lib in $DYLIBS; do
+          if [ -f "$lib" ]; then
+            libname=$(basename "$lib")
+            echo "Copying $libname"
+            cp "$lib" release/macos/libs/
+            
+            # Also copy any dependencies of this library
+            SUB_DYLIBS=$(otool -L "$lib" | grep -E "(glslang|spirv-tools|ffmpeg|libav)" | awk '{print $1}')
+            for sublib in $SUB_DYLIBS; do
+              if [ -f "$sublib" ]; then
+                sublibname=$(basename "$sublib")
+                if [ ! -f "release/macos/libs/$sublibname" ]; then
+                  echo "Copying dependency $sublibname"
+                  cp "$sublib" release/macos/libs/
+                fi
+              fi
+            done
+          fi
+        done
+        
+        # Fix all library paths to use @rpath
+        echo "Fixing library paths..."
+        
+        # Fix paths in the main binary
+        for lib in release/macos/libs/*.dylib; do
+          libname=$(basename "$lib")
+          # Find the original path in the binary
+          ORIG_PATH=$(otool -L release/macos/vsdf | grep "$libname" | awk '{print $1}')
+          if [ ! -z "$ORIG_PATH" ]; then
+            echo "Fixing $libname in vsdf"
+            install_name_tool -change "$ORIG_PATH" "@rpath/libs/$libname" release/macos/vsdf
+          fi
+        done
+        
+        # Fix inter-library dependencies
+        for lib in release/macos/libs/*.dylib; do
+          libname=$(basename "$lib")
+          echo "Fixing paths in $libname"
+          
+          # Fix the library's own id
+          install_name_tool -id "@rpath/libs/$libname" "$lib"
+          
+          # Fix references to other bundled libraries
+          for otherlib in release/macos/libs/*.dylib; do
+            othername=$(basename "$otherlib")
+            ORIG_PATH=$(otool -L "$lib" | grep "$othername" | awk '{print $1}')
+            if [ ! -z "$ORIG_PATH" ] && [ "$ORIG_PATH" != "@rpath/libs/$othername" ]; then
+              install_name_tool -change "$ORIG_PATH" "@rpath/libs/$othername" "$lib"
+            fi
+          done
+        done
+        
+        echo "Bundle complete!"
+        echo "Bundled libraries:"
+        ls -lh release/macos/libs/
+        
+        echo "Binary dependencies after fixing:"
+        otool -L release/macos/vsdf
+
     - name: Package binary
       run: |
-        mkdir -p release/macos
-        cp build/vsdf release/macos/
         cp -r shaders release/macos/
         cp README.md release/macos/
         cp LICENSE release/macos/

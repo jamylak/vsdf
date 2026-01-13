@@ -9,30 +9,7 @@ Vulkan SDF Renderer + Hot Reloader
 ![Preview](https://i.imgur.com/88KG4NL.gif)
 
 ## License
-**VSDF is licensed under GPL-3.0** (changed from MIT to enable static linking with GPL-licensed FFmpeg).
-
-## Runtime Requirements for Binary Releases
-
-The pre-built binaries are **self-contained** and include all necessary libraries (glslang, FFmpeg) in the `libs/` folder.
-
-You only need to install:
-- **Vulkan 1.2+** runtime
-  - macOS: Install [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) or `brew install molten-vk`
-  - Linux: Install `libvulkan1` and GPU drivers (Mesa/NVIDIA/AMD)
-
-The binary uses [volk](https://github.com/zeux/volk) to dynamically find Vulkan at runtime, so it works regardless of installation location.
-
-**Package contents:**
-```
-vsdf-macos/
-├── vsdf          # Main binary (~1MB)
-├── libs/         # Bundled libraries (~64MB)
-│   ├── libglslang*.dylib
-│   ├── libSPIRV*.dylib  
-│   └── libav*.dylib (FFmpeg)
-├── shaders/      # Example shaders
-└── README.md
-```
+**VSDF is licensed under GPL-3.0**
 
 Quickstart: see [QUICKSTART.md](QUICKSTART.md) for install + first shader.
 
@@ -217,6 +194,9 @@ cmake --build build --config Debug
 ```sh
 nix develop
 ```
+
+The binary uses [volk](https://github.com/zeux/volk) to dynamically find Vulkan at runtime, so it works regardless of installation location.
+
 
 ### Credits:
 - https://shadertoy.com

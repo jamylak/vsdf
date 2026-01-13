@@ -104,8 +104,8 @@ if(APPLE)
   # @executable_path/libs - for bundled dylibs in release packages
   # /usr/local/lib, /opt/homebrew/lib - for development builds with Homebrew
   set_target_properties(${PROJECT_NAME} PROPERTIES
-      BUILD_RPATH "@executable_path/libs;@executable_path;/usr/local/lib;/opt/homebrew/lib"
-      INSTALL_RPATH "@executable_path/libs;@executable_path;/usr/local/lib;/opt/homebrew/lib"
+      BUILD_RPATH "@executable_path/libs;/usr/local/lib;/opt/homebrew/lib"
+      INSTALL_RPATH "@executable_path/libs;/usr/local/lib;/opt/homebrew/lib"
   )
   
   # When static linking GLFW on macOS, we need these frameworks

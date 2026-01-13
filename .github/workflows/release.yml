@@ -29,8 +29,8 @@ jobs:
           pkg-config \
           libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
 
-    - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release .
+    - name: Configure
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja .
 
     - name: Build
       run: cmake --build build --config Release

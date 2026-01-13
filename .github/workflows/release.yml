@@ -33,7 +33,7 @@ jobs:
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja .
 
     - name: Build
-      run: cmake --build build --config Release
+      run: cmake --build build
 
     - name: Package binary
       run: |
@@ -73,10 +73,10 @@ jobs:
         brew install glfw glslang spdlog glm vulkan-tools ffmpeg pkg-config
 
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release .
+      run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} .
 
     - name: Build
-      run: cmake --build build --config Release
+      run: cmake --build build
 
     - name: Package binary
       run: |
@@ -86,13 +86,13 @@ jobs:
         cp README.md release/macos/
         cp LICENSE release/macos/
         cd release
-        tar -czf vsdf-macos-x86_64.tar.gz macos/
+        tar -czf vsdf-macos-${{ matrix.arch }}.tar.gz macos/
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: vsdf-macos-x86_64
-        path: release/vsdf-macos-x86_64.tar.gz
+        name: vsdf-macos-${{ matrix.arch }}
+        path: release/vsdf-macos-${{ matrix.arch }}.tar.gz
 
   build-windows:
     name: Build Windows Release
@@ -163,6 +163,7 @@ jobs:
         files: |
           artifacts/vsdf-linux-x86_64/vsdf-linux-x86_64.tar.gz
           artifacts/vsdf-macos-x86_64/vsdf-macos-x86_64.tar.gz
+          artifacts/vsdf-macos-arm64/vsdf-macos-arm64.tar.gz
         draft: false
         prerelease: false
       env:

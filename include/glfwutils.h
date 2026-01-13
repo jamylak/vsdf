@@ -15,17 +15,13 @@ namespace glfwutils {
 
 /**
  * Initializes GLFW library. Throws runtime_error if initialization fails.
- * Ensures GLFW is only initialized once.
+ * Must be called once before creating windows.
  */
 static void initGLFW() {
-    static bool isInitialized = false;
-    if (!isInitialized) {
-        if (!glfwInit()) {
-            throw std::runtime_error("Failed to initialize GLFW");
-        }
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL context
-        isInitialized = true;
+    if (!glfwInit()) {
+        throw std::runtime_error("Failed to initialize GLFW");
     }
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL context
 }
 
 /**

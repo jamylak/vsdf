@@ -128,23 +128,19 @@ loadSpvFile(const std::string &filename) {
 
 /**
  * Initializes volk meta-loader to find Vulkan dynamically.
- * Must be called before creating VkInstance.
+ * Must be called once before creating VkInstance.
  * Throws runtime_error if Vulkan loader not found.
  */
 static void initVolk() {
-    static bool isInitialized = false;
-    if (!isInitialized) {
-        VkResult result = volkInitialize();
-        if (result != VK_SUCCESS) {
-            spdlog::error("Failed to initialize volk: Vulkan loader not found");
-            spdlog::error("Please install Vulkan runtime:");
-            spdlog::error("  macOS: brew install molten-vk");
-            spdlog::error("  Linux: apt install libvulkan1");
-            throw std::runtime_error("Failed to initialize Vulkan loader (volk)");
-        }
-        spdlog::debug("volk initialized successfully");
-        isInitialized = true;
+    VkResult result = volkInitialize();
+    if (result != VK_SUCCESS) {
+        spdlog::error("Failed to initialize volk: Vulkan loader not found");
+        spdlog::error("Please install Vulkan runtime:");
+        spdlog::error("  macOS: brew install molten-vk");
+        spdlog::error("  Linux: apt install libvulkan1");
+        throw std::runtime_error("Failed to initialize Vulkan loader (volk)");
     }
+    spdlog::debug("volk initialized successfully");
 }
 
 [[nodiscard]] static VkInstance setupVulkanInstance(bool offline = false) {

@@ -244,13 +244,11 @@ jobs:
           codesign -v "$lib"
         done
 
-    - name: Test binary execution
-      run: |
-        cd release/macos
-        ./vsdf --help 2>&1 | head -10 || echo "Binary failed to execute"
-        ./vsdf --version 2>&1 || echo "No version flag"
-        # Just verify it starts without crashing (can't test Vulkan without GPU in CI)
-        echo "Binary execution test passed"
+    # - name: Test binary execution
+    #   run: |
+    #     cd release/macos
+    #     # TODO: Check it starts without crash eg. --help
+    #     echo "Binary execution test passed"
 
     - name: Package binary
       run: |

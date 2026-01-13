@@ -22,7 +22,7 @@ jobs:
       run: |
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        apt-get install -y --no-install-recommends git
+        apt-get install -y --no-install-recommends git ca-certificates
 
     - name: Checkout code
       uses: actions/checkout@v4

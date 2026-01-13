@@ -26,6 +26,7 @@ jobs:
           libspdlog-dev \
           libglfw3 libglfw3-dev libvulkan-dev \
           glslang-tools glslang-dev libglm-dev \
+          pkg-config \
           libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
 
     - name: Configure CMake

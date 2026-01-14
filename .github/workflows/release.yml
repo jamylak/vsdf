@@ -5,16 +5,16 @@ on:
     tags:
       - 'v*'
     branches:
-      - 'copilot/add-cicd-workflow-for-builds'
+      - 'release-binaries-04'
   workflow_dispatch:
 
 jobs:
   build-linux:
     name: Build Linux Release
-    # Use Ubuntu 20.04 for maximum glibc/libstdc++ compatibility
-    # Binaries built here work on Ubuntu 20.04+ and most modern distros (Debian 11+, Fedora 32+, Arch, etc.)
-    runs-on: ubuntu-20.04
-    timeout-minutes: 15
+    # Use ubuntu-latest (currently 24.04) to build with modern toolchain
+    # Bundle dependencies and test on multiple distros to ensure compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
     - name: Checkout code
@@ -25,13 +25,13 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt-get install -y --no-install-recommends \
           build-essential cmake ninja-build \
           libspdlog-dev \
           libglfw3 libglfw3-dev libvulkan-dev \
           glslang-tools glslang-dev libglm-dev \
           pkg-config \
-          libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+          libavcodec-dev libavformat-dev libavutil-dev libswscale-dev patchelf
 
     - name: Configure
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-Wno-error=array-bounds" -G Ninja .
@@ -39,8 +39,10 @@ jobs:
     - name: Build
       run: cmake --build build
 
-    - name: Install patchelf for fixing library paths
-      run: sudo apt-get install -y patchelf
+    - name: Show libraries before bundling
+      run: |
+        echo "📋 Libraries linked BEFORE bundling/patching:"
+        ldd build/vsdf
 
     - name: Bundle dependencies and fix paths
       run: |
@@ -48,30 +50,23 @@ jobs:
         cp build/vsdf release/linux/
         chmod +x release/linux/vsdf
         
-        echo "Bundling dynamic libraries..."
+        echo "Finding and copying non-system libraries..."
         
-        # Find non-system libraries
-        ldd build/vsdf | grep -E "(glslang|SPIRV|ffmpeg|libav)" | awk '{print $3}' | while read lib; do
+        # Find and copy all non-system libraries
+        ldd build/vsdf | grep -v 'linux-vdso\|libc\.so\|libm\.so\|libpthread\|libdl\|librt\|libstdc++\|libgcc\|/lib/ld-' | grep '=>' | awk '{print $3}' | grep '^/' > /tmp/libs_to_copy.txt
+        
+        cat /tmp/libs_to_copy.txt | while read lib; do
           if [ -f "$lib" ]; then
             libname=$(basename "$lib")
-            echo "Copying $libname"
-            cp "$lib" release/linux/libs/
-            
-            # Also copy dependencies of this library
-            ldd "$lib" 2>/dev/null | grep -E "(glslang|SPIRV|ffmpeg|libav)" | awk '{print $3}' | while read sublib; do
-              if [ -f "$sublib" ]; then
-                sublibname=$(basename "$sublib")
-                if [ ! -f "release/linux/libs/$sublibname" ]; then
-                  echo "  -> Copying dependency $sublibname"
-                  cp "$sublib" release/linux/libs/
-                fi
-              fi
-            done
+            echo "  → Copying $libname"
+            cp "$lib" release/linux/libs/ 2>/dev/null || true
           fi
         done
         
-        echo "Fixing library paths..."
+        BUNDLED_COUNT=$(ls release/linux/libs/*.so* 2>/dev/null | wc -l)
+        echo "Total libraries bundled: $BUNDLED_COUNT"
         
+        echo "Setting RPATH..."
         # Set RPATH on main binary to look in libs/ folder
         patchelf --set-rpath '$ORIGIN/libs' release/linux/vsdf
         
@@ -80,15 +75,28 @@ jobs:
           [ -f "$lib" ] && patchelf --set-rpath '$ORIGIN' "$lib" 2>/dev/null || true
         done
         
-        echo "Bundle complete!"
-        echo "Bundled libraries:"
-        ls -lh release/linux/libs/
-        
-        echo "Binary RPATH:"
+        echo "✓ Bundling complete"
+        echo ""
+        echo "📦 Binary info:"
+        file release/linux/vsdf
+        ls -lh release/linux/vsdf
+        echo ""
+        echo "🔗 RPATH configuration:"
         patchelf --print-rpath release/linux/vsdf
-        
-        echo "Binary dependencies:"
-        ldd release/linux/vsdf | head -20
+        echo ""
+        echo "📚 Bundled libraries:"
+        ls -lh release/linux/libs/
+        echo ""
+        echo "🔍 Binary dependencies after bundling:"
+        ldd release/linux/vsdf
+        echo ""
+        echo "⚠️  Checking for missing dependencies:"
+        if ldd release/linux/vsdf | grep 'not found'; then
+          echo "❌ ERROR: Missing dependencies found!"
+          exit 1
+        else
+          echo "✅ No missing dependencies"
+        fi
 
     - name: Package binary
       run: |
@@ -103,6 +111,98 @@ jobs:
       with:
         name: vsdf-linux-x86_64
         path: release/vsdf-linux-x86_64.tar.gz
+
+  test-linux-ubuntu-24:
+    name: Test on Ubuntu 24.04
+    needs: build-linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: vsdf-linux-x86_64
+
+    - name: Extract binary
+      run: |
+        tar -xzf vsdf-linux-x86_64.tar.gz
+        cd linux
+        chmod +x vsdf
+
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          xvfb mesa-vulkan-drivers \
+          libglfw3 libvulkan1 \
+          libavcodec60 libavformat60 libavutil58 libswscale7
+
+    - name: Test version
+      run: |
+        cd linux
+        echo "→ Testing --version..."
+        ./vsdf --version
+        echo "✓ --version works"
+
+    - name: Test 1-frame headless render
+      run: |
+        cd linux
+        echo "→ Testing 1-frame headless render (requires Vulkan)..."
+        xvfb-run -s '-screen 0 1024x768x24' \
+          ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
+        echo "✓ Headless render works"
+
+    - name: Test offline render
+      run: |
+        cd linux
+        echo "→ Testing offline render (FFmpeg, requires Vulkan)..."
+        xvfb-run -s '-screen 0 1024x768x24' \
+          ./vsdf --toy shaders/testtoyshader.frag --frames 10 --ffmpeg-output out-test.mp4 --log-level info
+        if [ -f out-test.mp4 ]; then
+          echo "✓ Offline render works (created out-test.mp4)"
+          rm -f out-test.mp4
+        else
+          echo "❌ Failed to create out-test.mp4"
+          exit 1
+        fi
+
+  test-linux-debian-13:
+    name: Test on Debian 13 (Trixie)
+    needs: build-linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container:
+      image: debian:trixie
+
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: vsdf-linux-x86_64
+
+    - name: Extract binary
+      run: |
+        tar -xzf vsdf-linux-x86_64.tar.gz
+        cd linux
+        chmod +x vsdf
+
+    - name: Install runtime dependencies
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends \
+          xvfb xauth mesa-vulkan-drivers \
+          libglfw3 libvulkan1 \
+          libavcodec61 libavformat61 libavutil59 libswscale8
+
+    - name: Test version
+      run: |
+        cd linux
+        echo "→ Testing --version..."
+        ./vsdf --version
+        echo "✓ --version works"
 
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
@@ -149,9 +249,13 @@ jobs:
         for lib in $DYLIBS; do
           if [ -f "$lib" ]; then
             libname=$(basename "$lib")
-            echo "Copying $libname"
-            cp "$lib" release/macos/libs/
-            
+            if [ -f "release/macos/libs/$libname" ]; then
+              echo "Already copied $libname"
+            else
+              echo "Copying $libname"
+              cp "$lib" release/macos/libs/
+            fi
+
             # Also copy any dependencies of this library
             SUB_DYLIBS=$(otool -L "$lib" | grep -E "(glslang|spirv-tools|ffmpeg|libav)" | awk '{print $1}')
             for sublib in $SUB_DYLIBS; do
@@ -168,6 +272,9 @@ jobs:
         
         # Fix all library paths to use @rpath
         echo "Fixing library paths..."
+        
+        # Set rpath on the binary to look next to the executable
+        install_name_tool -add_rpath "@executable_path" release/macos/vsdf
         
         # Fix paths in the main binary
         for lib in release/macos/libs/*.dylib; do
@@ -204,6 +311,31 @@ jobs:
         
         echo "Binary dependencies after fixing:"
         otool -L release/macos/vsdf
+
+    - name: Code sign binaries
+      run: |
+        echo "Ad-hoc signing binary and libraries..."
+        # Ad-hoc sign all libraries
+        for lib in release/macos/libs/*.dylib; do
+          echo "Signing $(basename "$lib")"
+          codesign --force --sign - "$lib"
+        done
+        
+        # Ad-hoc sign the main binary
+        echo "Signing vsdf"
+        codesign --force --sign - release/macos/vsdf
+        
+        echo "Verifying signatures..."
+        codesign -v release/macos/vsdf
+        for lib in release/macos/libs/*.dylib; do
+          codesign -v "$lib"
+        done
+
+    - name: Test binary execution
+      run: |
+        cd release/macos
+        ./vsdf --version
+        echo "Binary execution test passed"
 
     - name: Package binary
       run: |
@@ -268,7 +400,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     # Note: build-windows temporarily excluded from needs due to issue #33
-    needs: [build-linux, build-macos]
+    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     

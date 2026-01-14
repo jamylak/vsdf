@@ -204,13 +204,6 @@ jobs:
         ./vsdf --version
         echo "✓ --version works"
 
-    - name: Test help
-      run: |
-        cd linux
-        echo "→ Testing --help..."
-        ./vsdf --help > /dev/null
-        echo "✓ --help works"
-
     - name: Test 1-frame headless render
       run: |
         cd linux

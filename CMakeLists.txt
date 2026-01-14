@@ -19,10 +19,12 @@ if (ENABLE_FUZZING)
   target_link_options(fuzz_target PRIVATE -fsanitize=fuzzer,address,undefined)
 endif()
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.11)
 
 set(CMAKE_CXX_STANDARD 20)
 project(vsdf)
+
+include(FetchContent)
 
 # Prefer static libraries for Release builds (except FFmpeg which has too many deps)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -79,7 +81,14 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
 endif()
 
 # Add volk for Vulkan meta-loader
-add_subdirectory(external/volk)
+if(NOT TARGET volk)
+  FetchContent_Declare(
+    volk
+    GIT_REPOSITORY https://github.com/zeux/volk.git
+    GIT_SHALLOW TRUE
+  )
+  FetchContent_MakeAvailable(volk)
+endif()
 
 add_executable(${PROJECT_NAME} src/main.cpp src/shader_utils.cpp src/sdf_renderer.cpp src/online_sdf_renderer.cpp src/image_dump.cpp)
 

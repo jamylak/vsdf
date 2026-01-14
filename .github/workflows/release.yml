@@ -11,10 +11,10 @@ on:
 jobs:
   build-linux:
     name: Build Linux Release
-    # Use ubuntu-latest (currently 24.04) with modern packages that work out of the box.
-    # Binaries built here work on Ubuntu 24.04+ and most modern distros.
+    # Use ubuntu-latest (currently 24.04) to build with modern toolchain
+    # Bundle dependencies and test on multiple distros to ensure compatibility
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
     - name: Checkout code

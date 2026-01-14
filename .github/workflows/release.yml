@@ -170,12 +170,12 @@ jobs:
         fi
 
   test-linux-debian-13:
-    name: Test on Debian 13
+    name: Test on Debian 13 (Trixie)
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
     container:
-      image: debian:bookworm
+      image: debian:trixie
 
     steps:
     - name: Download artifact
@@ -195,7 +195,7 @@ jobs:
         apt-get install -y --no-install-recommends \
           xvfb mesa-vulkan-drivers \
           libglfw3 libvulkan1 \
-          libavcodec59 libavformat59 libavutil57 libswscale6
+          libavcodec61 libavformat61 libavutil59 libswscale8
 
     - name: Test version
       run: |
@@ -203,6 +203,13 @@ jobs:
         echo "→ Testing --version..."
         ./vsdf --version
         echo "✓ --version works"
+
+    - name: Test help
+      run: |
+        cd linux
+        echo "→ Testing --help..."
+        ./vsdf --help > /dev/null
+        echo "✓ --help works"
 
     - name: Test 1-frame headless render
       run: |

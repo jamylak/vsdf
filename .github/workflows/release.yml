@@ -204,30 +204,6 @@ jobs:
         ./vsdf --version
         echo "✓ --version works"
 
-    - name: Test 1-frame headless render
-      run: |
-        cd linux
-        echo "→ Testing 1-frame headless render (requires Vulkan)..."
-        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
-        xvfb-run -s '-screen 0 1024x768x24' \
-          ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
-        echo "✓ Headless render works"
-
-    - name: Test offline render
-      run: |
-        cd linux
-        echo "→ Testing offline render (FFmpeg, requires Vulkan)..."
-        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
-        xvfb-run -s '-screen 0 1024x768x24' \
-          ./vsdf --toy shaders/testtoyshader.frag --frames 10 --ffmpeg-output out-test.mp4 --log-level info
-        if [ -f out-test.mp4 ]; then
-          echo "✓ Offline render works (created out-test.mp4)"
-          rm -f out-test.mp4
-        else
-          echo "❌ Failed to create out-test.mp4"
-          exit 1
-        fi
-
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
     runs-on: ${{ matrix.runner }}

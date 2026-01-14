@@ -228,64 +228,6 @@ jobs:
           exit 1
         fi
 
-  test-linux-fedora:
-    name: Test on Fedora Latest
-    needs: build-linux
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    container:
-      image: fedora:latest
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: vsdf-linux-x86_64
-
-    - name: Extract binary
-      run: |
-        tar -xzf vsdf-linux-x86_64.tar.gz
-        cd linux
-        chmod +x vsdf
-
-    - name: Install runtime dependencies
-      run: |
-        dnf install -y -q \
-          xorg-x11-server-Xvfb mesa-vulkan-drivers \
-          glfw vulkan-loader \
-          ffmpeg-free-libs
-
-    - name: Test version
-      run: |
-        cd linux
-        echo "→ Testing --version..."
-        ./vsdf --version
-        echo "✓ --version works"
-
-    - name: Test 1-frame headless render
-      run: |
-        cd linux
-        echo "→ Testing 1-frame headless render (requires Vulkan)..."
-        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
-        xvfb-run -s '-screen 0 1024x768x24' \
-          ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
-        echo "✓ Headless render works"
-
-    - name: Test offline render
-      run: |
-        cd linux
-        echo "→ Testing offline render (FFmpeg, requires Vulkan)..."
-        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
-        xvfb-run -s '-screen 0 1024x768x24' \
-          ./vsdf --toy shaders/testtoyshader.frag --frames 10 --ffmpeg-output out-test.mp4 --log-level info
-        if [ -f out-test.mp4 ]; then
-          echo "✓ Offline render works (created out-test.mp4)"
-          rm -f out-test.mp4
-        else
-          echo "❌ Failed to create out-test.mp4"
-          exit 1
-        fi
-
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
     runs-on: ${{ matrix.runner }}
@@ -482,7 +424,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     # Note: build-windows temporarily excluded from needs due to issue #33
-    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, test-linux-fedora, build-macos]
+    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     

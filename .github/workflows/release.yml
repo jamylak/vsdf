@@ -171,7 +171,7 @@ jobs:
 
   test-linux-debian-12:
     name: Test on Debian 12
-    needs: build
+    needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
     container:
@@ -230,7 +230,7 @@ jobs:
 
   test-linux-fedora:
     name: Test on Fedora Latest
-    needs: build
+    needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
     container:

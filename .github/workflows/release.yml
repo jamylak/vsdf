@@ -169,8 +169,8 @@ jobs:
           exit 1
         fi
 
-  test-linux-debian-12:
-    name: Test on Debian 12
+  test-linux-debian-13:
+    name: Test on Debian 13
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -482,7 +482,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     # Note: build-windows temporarily excluded from needs due to issue #33
-    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-12, test-linux-fedora, build-macos]
+    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, test-linux-fedora, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     

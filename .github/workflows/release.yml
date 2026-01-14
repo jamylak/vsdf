@@ -193,7 +193,7 @@ jobs:
       run: |
         apt-get update
         apt-get install -y --no-install-recommends \
-          xvfb mesa-vulkan-drivers \
+          xvfb xauth mesa-vulkan-drivers \
           libglfw3 libvulkan1 \
           libavcodec61 libavformat61 libavutil59 libswscale8
 

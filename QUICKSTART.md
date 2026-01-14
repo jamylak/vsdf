@@ -2,11 +2,6 @@
 
 Go from zero to your first shader in minutes.
 
-## 0) Populate submodules
-```sh
-git submodule update --init --recursive
-```
-
 ## 1) Install + Build
 
 ### macOS (Homebrew)

@@ -75,7 +75,6 @@ sudo apt-get install -y \
 ### Linux/macOS
 ```sh
 # FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
-git submodule update --init --recursive
 cmake -B build .
 cmake --build build
 ./build/vsdf {filepath}.frag
@@ -84,7 +83,6 @@ cmake --build build
 ### Windows
 ```powershell
 # FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
-git submodule update --init --recursive
 cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" .
 cmake --build build --config Release
 .\build\Release\vsdf.exe {filepath}.frag
@@ -178,7 +176,6 @@ Also by running the test suite it will check this automatically
 
 ### Linux/macOS
 ```sh
-git submodule update --init --recursive
 cmake -B build -DBUILD_TESTS=ON -DDEBUG=ON
 cmake --build build
 ./build/tests/vsdf_tests
@@ -187,7 +184,6 @@ cmake --build build
 
 ### Windows
 ```powershell
-git submodule update --init --recursive
 cmake -B build -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" .
 cmake --build build --config Debug
 .\build\tests\vsdf_tests\Debug\vsdf_tests.exe

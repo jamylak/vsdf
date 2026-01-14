@@ -244,11 +244,11 @@ jobs:
           codesign -v "$lib"
         done
 
-    # - name: Test binary execution
-    #   run: |
-    #     cd release/macos
-    #     # TODO: Check it starts without crash eg. --help
-    #     echo "Binary execution test passed"
+    - name: Test binary execution
+      run: |
+        cd release/macos
+        ./vsdf --version
+        echo "Binary execution test passed"
 
     - name: Package binary
       run: |

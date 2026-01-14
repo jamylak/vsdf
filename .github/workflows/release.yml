@@ -39,36 +39,34 @@ jobs:
     - name: Build
       run: cmake --build build
 
+    - name: Show libraries before bundling
+      run: |
+        echo "📋 Libraries linked BEFORE bundling/patching:"
+        ldd build/vsdf
+
     - name: Bundle dependencies and fix paths
       run: |
         mkdir -p release/linux/libs
         cp build/vsdf release/linux/
         chmod +x release/linux/vsdf
         
-        echo "Bundling dynamic libraries..."
+        echo "Finding and copying non-system libraries..."
         
-        # Find non-system libraries
-        ldd build/vsdf | grep -E "(glslang|SPIRV|ffmpeg|libav)" | awk '{print $3}' | while read lib; do
+        # Find and copy all non-system libraries
+        ldd build/vsdf | grep -v 'linux-vdso\|libc\.so\|libm\.so\|libpthread\|libdl\|librt\|libstdc++\|libgcc\|/lib/ld-' | grep '=>' | awk '{print $3}' | grep '^/' > /tmp/libs_to_copy.txt
+        
+        cat /tmp/libs_to_copy.txt | while read lib; do
           if [ -f "$lib" ]; then
             libname=$(basename "$lib")
-            echo "Copying $libname"
-            cp "$lib" release/linux/libs/
-            
-            # Also copy dependencies of this library
-            ldd "$lib" 2>/dev/null | grep -E "(glslang|SPIRV|ffmpeg|libav)" | awk '{print $3}' | while read sublib; do
-              if [ -f "$sublib" ]; then
-                sublibname=$(basename "$sublib")
-                if [ ! -f "release/linux/libs/$sublibname" ]; then
-                  echo "  -> Copying dependency $sublibname"
-                  cp "$sublib" release/linux/libs/
-                fi
-              fi
-            done
+            echo "  → Copying $libname"
+            cp "$lib" release/linux/libs/ 2>/dev/null || true
           fi
         done
         
-        echo "Fixing library paths..."
+        BUNDLED_COUNT=$(ls release/linux/libs/*.so* 2>/dev/null | wc -l)
+        echo "Total libraries bundled: $BUNDLED_COUNT"
         
+        echo "Setting RPATH..."
         # Set RPATH on main binary to look in libs/ folder
         patchelf --set-rpath '$ORIGIN/libs' release/linux/vsdf
         
@@ -77,17 +75,30 @@ jobs:
           [ -f "$lib" ] && patchelf --set-rpath '$ORIGIN' "$lib" 2>/dev/null || true
         done
         
-        echo "Bundle complete!"
-        echo "Bundled libraries:"
-        ls -lh release/linux/libs/
-        
-        echo "Binary RPATH:"
+        echo "✓ Bundling complete"
+        echo ""
+        echo "📦 Binary info:"
+        file release/linux/vsdf
+        ls -lh release/linux/vsdf
+        echo ""
+        echo "🔗 RPATH configuration:"
         patchelf --print-rpath release/linux/vsdf
-        
-        echo "Binary dependencies:"
-        ldd release/linux/vsdf | head -20
+        echo ""
+        echo "📚 Bundled libraries:"
+        ls -lh release/linux/libs/
+        echo ""
+        echo "🔍 Binary dependencies after bundling:"
+        ldd release/linux/vsdf
+        echo ""
+        echo "⚠️  Checking for missing dependencies:"
+        if ldd release/linux/vsdf | grep 'not found'; then
+          echo "❌ ERROR: Missing dependencies found!"
+          exit 1
+        else
+          echo "✅ No missing dependencies"
+        fi
 
-    - name: Package binary first (needed for isolated test)
+    - name: Package binary
       run: |
         cp -r shaders release/linux/
         cp README.md release/linux/
@@ -95,27 +106,185 @@ jobs:
         cd release
         tar -czf vsdf-linux-x86_64.tar.gz linux/
 
-    - name: Test binary in clean isolated container
-      run: |
-        # Test in a clean Ubuntu container with ONLY runtime deps (no dev packages)
-        docker run --rm -v $(pwd)/release/linux:/test ubuntu:latest bash -c "
-          apt-get update -qq && \
-          apt-get install -y --no-install-recommends \
-            xvfb mesa-vulkan-drivers \
-            libglfw3 libvulkan1 \
-            libavcodec60 libavformat60 libavutil58 libswscale7 && \
-          cd /test && \
-          export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json && \
-          xvfb-run -s '-screen 0 1024x768x24' \
-            ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
-        "
-        echo "✅ Binary works in clean environment!"
-
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: vsdf-linux-x86_64
         path: release/vsdf-linux-x86_64.tar.gz
+
+  test-linux-ubuntu-24:
+    name: Test on Ubuntu 24.04
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: vsdf-linux-x86_64
+
+    - name: Extract binary
+      run: |
+        tar -xzf vsdf-linux-x86_64.tar.gz
+        cd linux
+        chmod +x vsdf
+
+    - name: Install runtime dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          xvfb mesa-vulkan-drivers \
+          libglfw3 libvulkan1 \
+          libavcodec60 libavformat60 libavutil58 libswscale7
+
+    - name: Test version
+      run: |
+        cd linux
+        echo "→ Testing --version..."
+        ./vsdf --version
+        echo "✓ --version works"
+
+    - name: Test 1-frame headless render
+      run: |
+        cd linux
+        echo "→ Testing 1-frame headless render (requires Vulkan)..."
+        xvfb-run -s '-screen 0 1024x768x24' \
+          ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
+        echo "✓ Headless render works"
+
+    - name: Test offline render
+      run: |
+        cd linux
+        echo "→ Testing offline render (FFmpeg, requires Vulkan)..."
+        xvfb-run -s '-screen 0 1024x768x24' \
+          ./vsdf --toy shaders/testtoyshader.frag --frames 10 --offline out-test.mp4 --log-level info
+        if [ -f out-test.mp4 ]; then
+          echo "✓ Offline render works (created out-test.mp4)"
+          rm -f out-test.mp4
+        else
+          echo "❌ Failed to create out-test.mp4"
+          exit 1
+        fi
+
+  test-linux-debian-12:
+    name: Test on Debian 12
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container:
+      image: debian:bookworm
+
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: vsdf-linux-x86_64
+
+    - name: Extract binary
+      run: |
+        tar -xzf vsdf-linux-x86_64.tar.gz
+        cd linux
+        chmod +x vsdf
+
+    - name: Install runtime dependencies
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends \
+          xvfb mesa-vulkan-drivers \
+          libglfw3 libvulkan1 \
+          libavcodec59 libavformat59 libavutil57 libswscale6
+
+    - name: Test version
+      run: |
+        cd linux
+        echo "→ Testing --version..."
+        ./vsdf --version
+        echo "✓ --version works"
+
+    - name: Test 1-frame headless render
+      run: |
+        cd linux
+        echo "→ Testing 1-frame headless render (requires Vulkan)..."
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+        xvfb-run -s '-screen 0 1024x768x24' \
+          ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
+        echo "✓ Headless render works"
+
+    - name: Test offline render
+      run: |
+        cd linux
+        echo "→ Testing offline render (FFmpeg, requires Vulkan)..."
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+        xvfb-run -s '-screen 0 1024x768x24' \
+          ./vsdf --toy shaders/testtoyshader.frag --frames 10 --offline out-test.mp4 --log-level info
+        if [ -f out-test.mp4 ]; then
+          echo "✓ Offline render works (created out-test.mp4)"
+          rm -f out-test.mp4
+        else
+          echo "❌ Failed to create out-test.mp4"
+          exit 1
+        fi
+
+  test-linux-fedora:
+    name: Test on Fedora Latest
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container:
+      image: fedora:latest
+
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: vsdf-linux-x86_64
+
+    - name: Extract binary
+      run: |
+        tar -xzf vsdf-linux-x86_64.tar.gz
+        cd linux
+        chmod +x vsdf
+
+    - name: Install runtime dependencies
+      run: |
+        dnf install -y -q \
+          xorg-x11-server-Xvfb mesa-vulkan-drivers \
+          glfw vulkan-loader \
+          ffmpeg-free-libs
+
+    - name: Test version
+      run: |
+        cd linux
+        echo "→ Testing --version..."
+        ./vsdf --version
+        echo "✓ --version works"
+
+    - name: Test 1-frame headless render
+      run: |
+        cd linux
+        echo "→ Testing 1-frame headless render (requires Vulkan)..."
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+        xvfb-run -s '-screen 0 1024x768x24' \
+          ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
+        echo "✓ Headless render works"
+
+    - name: Test offline render
+      run: |
+        cd linux
+        echo "→ Testing offline render (FFmpeg, requires Vulkan)..."
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+        xvfb-run -s '-screen 0 1024x768x24' \
+          ./vsdf --toy shaders/testtoyshader.frag --frames 10 --offline out-test.mp4 --log-level info
+        if [ -f out-test.mp4 ]; then
+          echo "✓ Offline render works (created out-test.mp4)"
+          rm -f out-test.mp4
+        else
+          echo "❌ Failed to create out-test.mp4"
+          exit 1
+        fi
 
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
@@ -313,7 +482,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     # Note: build-windows temporarily excluded from needs due to issue #33
-    needs: [build-linux, build-macos]
+    needs: [build, test-linux-ubuntu-24, test-linux-debian-12, test-linux-fedora, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     

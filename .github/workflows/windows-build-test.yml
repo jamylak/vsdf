@@ -6,6 +6,7 @@ on:
       - main
       - master
     paths-ignore:
+      - 'scripts/**'
       - '**.md'
       - 'LICENSE'
       - '.gitignore'
@@ -14,6 +15,7 @@ on:
     branches:
       - main
     paths-ignore:
+      - 'scripts/**'
       - '**.md'
       - 'LICENSE'
       - '.gitignore'

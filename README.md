@@ -1,5 +1,5 @@
 # VSDF
-Vulkan SDF Renderer + Hot Reloader
+Vulkan SDF Renderer + Video Recorder + Hot Reloader
 
 [![Linux Docker CI](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-ci.yml)
 [![macOS CI](https://github.com/jamylak/vsdf/actions/workflows/macos-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/macos-ci.yml)

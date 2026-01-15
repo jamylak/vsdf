@@ -1,5 +1,5 @@
 # VSDF
-Vulkan SDF Renderer + Hot Reloader
+Vulkan SDF Renderer + Video Recorder + Hot Reloader
 
 [![Linux Docker CI](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/linux-docker-ci.yml)
 [![macOS CI](https://github.com/jamylak/vsdf/actions/workflows/macos-ci.yml/badge.svg)](https://github.com/jamylak/vsdf/actions/workflows/macos-ci.yml)
@@ -30,6 +30,8 @@ Supports macOS, Linux, and Windows with native file watcher implementations for 
 ## Mac Setup (Homebrew)
 
 **Easiest way to install vsdf:**
+
+This will install MoltenVK
 ```sh
 brew install jamylak/vsdf/vsdf
 ```
@@ -54,6 +56,7 @@ Then follow the steps to do `sudo ./install_vulkan.py` in *SDK System Paths* sec
 
 Pre-built binaries for Linux are available in the [GitHub Releases](https://github.com/jamylak/vsdf/releases) page.
 Download the latest `vsdf-linux` binary, make it executable, and move it to a directory in your `PATH`.
+The only dependency is Vulkan.
 
 ```sh
 LATEST_RELEASE_TAG=$(curl -sL https://api.github.com/repos/jamylak/vsdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')

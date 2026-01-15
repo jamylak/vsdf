@@ -2,43 +2,30 @@
 
 Go from zero to your first shader in minutes.
 
-## 0) Populate submodules
+## 1) Install
+
+### macOS
+Install vsdf and its dependencies with Homebrew:
 ```sh
-git submodule update --init --recursive
+brew install jamylak/vsdf/vsdf
 ```
 
-## 1) Install + Build
+### Linux
 
-### macOS (Homebrew)
-Install Vulkan + deps with Homebrew:
-```sh
-brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools ffmpeg
-```
+**Easiest way to install vsdf:**
+Pre-built binaries for Linux are available in the [GitHub Releases](https://github.com/jamylak/vsdf/releases) page.
 
-Build:
-```sh
-cmake -B build .
-cmake --build build
-```
+To get the **latest release**:
 
-### Linux (Ubuntu/Debian)
-Install dependencies, then build:
 ```sh
-sudo apt-get update
-sudo apt-get install -y \
-  build-essential cmake ninja-build \
-  libgtest-dev libspdlog-dev \
-  libglfw3 libglfw3-dev libvulkan-dev \
-  glslang-tools glslang-dev libglm-dev \
-  # (Optional) set -DDISABLE_FFMPEG=ON to skip \
-  libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
-```
-
-Build:
-```sh
-# FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
-cmake -B build .
-cmake --build build
+LATEST_RELEASE_TAG=$(curl -sL https://api.github.com/repos/jamylak/vsdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+DOWNLOAD_URL="https://github.com/jamylak/vsdf/releases/download/${LATEST_RELEASE_TAG}/vsdf-linux-x86_64.tar.gz"
+echo "Downloading from: ${DOWNLOAD_URL}"
+curl -LO "${DOWNLOAD_URL}"
+tar -xzf vsdf-linux-x86_64.tar.gz
+chmod +x linux/vsdf
+sudo mv linux/vsdf /usr/local/bin/vsdf
+rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 ```
 
 ### Windows (vcpkg)
@@ -57,39 +44,49 @@ cmake --build build
    ```
 3. Build:
    ```powershell
+   git submodule update --init --recursive
    # FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
-   cmake -B build -DCMAKE_TOOLCHAIN_FILE="<path-to-vcpkg>/scripts/buildsystems/vcpkg.cmake" .
+   cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" .
    cmake --build build --config Release
    ```
 
-## 2) Launch the sample shader
+## 2) Quick Start - INSTANT shader development!
+
+The fastest way to get started is by using the `vsdf` command line tool directly.
+
+1. Create a new shader file:
+
 ```sh
-./build/vsdf --toy shaders/testtoyshader.frag
+vsdf --new-toy example.frag               # Creates 'example.frag' with a default template
+vsdf --new-toy plot.frag --template plot  # Creates 'plot.frag' with the 2D plot template
 ```
 
-## 3) Make your own shader (copy and run)
-Saving your file hot reloads.
+2. Open the newly created shader file in your favorite editor (e.g., VS Code, Neovim, Sublime Text) and start editing!
 
-### ShaderToy-style
 ```sh
-cp shaders/testtoyshader.frag shaders/myshader.frag
-./build/vsdf --toy shaders/myshader.frag
+code example.frag          # VS Code
+# or: nvim example.frag    # Neovim
+# or: subl example.frag    # Sublime Text
 ```
 
-### Vulkan-style
+3. While you're editing, run `vsdf` in another terminal to see your changes hot-reload:
 ```sh
-cp shaders/vulktemplate.frag shaders/myshader.frag
-./build/vsdf shaders/myshader.frag
+vsdf --toy example.frag
 ```
 
-## 4) Record video with FFMPEG (offline MP4 encoding)
+For a more integrated and faster *experimental* workflow with a shell function that creates the shader, opens the editor, and launches `vsdf` in one command, see the [Shell Integration Guide](SHELL_INTEGRATION.md).
+
+## 3) Record video with FFMPEG (offline MP4 encoding)
 ```sh
-./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --ffmpeg-output out.mp4
+./build/vsdf --toy example.frag --frames 100 --ffmpeg-output out.mp4
 ```
 
 ## Notes
-- `--toy` prepends `shaders/toytemplate.frag` to set up push constants in the format
+- `--toy` sets up push constants and other things in the format
 ShaderToy uses, e.g., `iTime` as well as `main()` etc.
+- `--new-toy` creates an example shader file starting point
+- **Hot reload**: Saving your shader file automatically reloads it in vsdf!
+- Available templates: `default` (colorful animation), `plot` (2D function plotter)
 
 ## Example: save a ShaderToy and run it locally
 1. Open the ShaderToy and copy the fragment shader code:
@@ -99,3 +96,7 @@ ShaderToy uses, e.g., `iTime` as well as `main()` etc.
 ```sh
 ./build/vsdf --toy shaders/raymarching_primitives.frag
 ```
+
+## Recommendations
+I would recommend visiting https://www.shadertoy.com to see their amazing shaders.
+Also check out https://iquilezles.org/

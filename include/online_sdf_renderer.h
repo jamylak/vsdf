@@ -35,6 +35,7 @@ class OnlineSDFRenderer : public SDFRenderer {
     vkutils::SwapchainImageViews swapchainImageViews;
     vkutils::FrameBuffers frameBuffers;
     bool headless = false;
+    bool noFocus = false;
     std::optional<uint32_t> maxFrames;
 
     // Timing
@@ -60,7 +61,8 @@ class OnlineSDFRenderer : public SDFRenderer {
     OnlineSDFRenderer(
         const std::string &fragShaderPath, bool useToyTemplate = false,
         std::optional<uint32_t> maxFrames = std::nullopt, bool headless = false,
-        std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt);
+        std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt,
+        bool noFocus = false);
     void setup();
     void gameLoop();
 };

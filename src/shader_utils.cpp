@@ -6,14 +6,46 @@
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 #include <glslang/SPIRV/Logger.h>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
 
-static constexpr char FRAG_SHADER_TEMPLATE[] = "shaders/toytemplate.frag";
+static constexpr char TOY_TEMPLATE_FRAG_SOURCE[] = R"(#version 450
+
+// ALl setup needed to make most things work
+// eg. for a shader toy shader.
+// Not everything yet...
+
+layout (push_constant) uniform PushConstants {
+    float iTime;
+    int iFrame;
+    vec2 iResolution;
+    vec2 iMouse;
+} pc;
+
+layout (location = 0) in vec2 TexCoord;
+layout (location = 0) out vec4 color;
+
+#define iTime pc.iTime
+#define iResolution pc.iResolution
+#define iFrame pc.iFrame
+#define iMouse pc.iMouse
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord);
+void main() {
+    // Call your existing mainImage function
+    vec4 fragColor;
+    // Convert from vulkan to glsl
+    mainImage(fragColor, vec2(gl_FragCoord.x, iResolution.y - gl_FragCoord.y));
+    // Output color
+    color = fragColor;
+}
+
+)";
+
 static constexpr char FULLSCREEN_QUAD_VERT_SOURCE[] = R"(#version 450
 
 layout(location = 0) out vec2 texCoord;
@@ -63,19 +95,16 @@ EShLanguage getShaderLang(const std::string &extension) {
 namespace shader_utils {
 // Read shader source code from file
 std::string readShaderSource(const std::string &filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        spdlog::error("Failed to open shader source file: {}", filename);
-        return "";
-    }
-
-    file.seekg(0, std::ios::end);
-    auto size = file.tellg();
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    if (!file)
+        throw std::runtime_error(
+            fmt::format("Failed to open shader source file: {}", filename));
+    const std::size_t size = static_cast<std::size_t>(file.tellg());
     file.seekg(0);
 
     std::string result;
-    result.resize(static_cast<size_t>(size));
-    file.read(result.data(), size);
+    result.resize(size);
+    file.read(result.data(), static_cast<long long>(size));
 
     return result;
 }
@@ -83,27 +112,27 @@ std::string readShaderSource(const std::string &filename) {
 // Apply our template to the shader which includes things
 // like iTime, iMouse and redefined main to allow
 // running shadertoy shaders
-std::string readShaderSourceWithTemplate(const std::string &templateFilename,
-                                         const std::string &userFilename) {
-    std::ifstream templateFile(templateFilename);
-    std::ifstream userFile(userFilename);
+std::string readShaderToySource(const std::string &filename) {
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    if (!file)
+        throw std::runtime_error(
+            fmt::format("Failed to open shader source file: {}", filename));
 
-    if (!templateFile.is_open()) {
-        spdlog::error("Failed to open template shader source file: {}",
-                      templateFilename);
-        return "";
-    }
+    const std::size_t file_size = static_cast<std::size_t>(file.tellg());
+    file.seekg(0);
 
-    if (!userFile.is_open()) {
-        spdlog::error("Failed to open user shader source file: {}",
-                      userFilename);
-        return "";
-    }
+    constexpr std::size_t prefix_size =
+        sizeof(TOY_TEMPLATE_FRAG_SOURCE) - 1; // strip '\0'
 
-    std::stringstream shaderSourceStream;
-    shaderSourceStream << templateFile.rdbuf() << '\n' << userFile.rdbuf();
+    std::string result;
+    result.resize(prefix_size + file_size);
 
-    return shaderSourceStream.str();
+    // copy template
+    std::memcpy(result.data(), TOY_TEMPLATE_FRAG_SOURCE, prefix_size);
+
+    // read file directly after template
+    file.read(result.data() + prefix_size, static_cast<long long>(file_size));
+    return result;
 }
 
 static std::vector<uint32_t> compileToSpirv(const char *shaderSource,
@@ -137,6 +166,9 @@ static std::vector<uint32_t> compileToSpirv(const char *shaderSource,
     spdlog::info("Shader parsed: {}", result);
     spdlog::info("Shader info log: {}", shader.getInfoLog());
     spdlog::debug("Shader source: {}", shaderSource);
+
+    if (!result)
+        throw std::runtime_error("Failed to parse shader");
 
     glslang::TProgram program;
     program.addShader(&shader);
@@ -180,8 +212,7 @@ std::filesystem::path compileToPath(const std::string &shaderFilename,
     EShLanguage lang = getShaderLang(shaderExtension);
     if (useToyTemplate) {
         spdlog::debug("Using template for fragment shader {}", shaderFilename);
-        shaderString =
-            readShaderSourceWithTemplate(FRAG_SHADER_TEMPLATE, shaderFilename);
+        shaderString = readShaderToySource(shaderFilename);
     } else {
         shaderString = readShaderSource(shaderFilename);
     }

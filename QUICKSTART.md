@@ -70,13 +70,13 @@ cmake --build build
 ## 3) Make your own shader (copy and run)
 Saving your file hot reloads.
 
-### ShaderToy-style (template prepended)
+### ShaderToy-style
 ```sh
-cp shaders/toytemplate.frag shaders/myshader.frag
+cp shaders/testtoyshader.frag shaders/myshader.frag
 ./build/vsdf --toy shaders/myshader.frag
 ```
 
-### Vulkan-style (no template)
+### Vulkan-style
 ```sh
 cp shaders/vulktemplate.frag shaders/myshader.frag
 ./build/vsdf shaders/myshader.frag

@@ -34,6 +34,7 @@ endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE
   VSDF_BINARY_PATH="${CMAKE_BINARY_DIR}/vsdf"
   VSDF_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+  SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders/"
 )
 
 if (VSDF_ENABLE_FFMPEG)

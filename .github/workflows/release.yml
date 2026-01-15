@@ -240,41 +240,65 @@ jobs:
         # Copy the binary
         cp build/vsdf release/macos/
         
-        # Find and copy all non-system dylibs
-        echo "Bundling dynamic libraries..."
+        echo "📋 Libraries linked BEFORE bundling:"
+        otool -L build/vsdf
+        echo ""
         
-        # Get list of dynamic libraries (excluding system ones)
-        DYLIBS=$(otool -L build/vsdf | grep -E "(glslang|spirv-tools|ffmpeg|libav)" | awk '{print $1}')
+        # Recursively find and copy all non-system dylibs
+        echo "🔍 Finding and bundling dynamic libraries..."
         
-        for lib in $DYLIBS; do
+        # Function to copy a library and its dependencies
+        copy_lib_recursive() {
+          local lib="$1"
+          local libname=$(basename "$lib")
+          
+          # Skip if already copied
+          if [ -f "release/macos/libs/$libname" ]; then
+            return
+          fi
+          
+          # Skip system libraries
+          if [[ "$lib" == /System/* ]] || [[ "$lib" == /usr/lib/* ]] || [[ "$lib" == /Library/Apple/* ]]; then
+            return
+          fi
+          
+          # Copy the library
           if [ -f "$lib" ]; then
-            libname=$(basename "$lib")
-            if [ -f "release/macos/libs/$libname" ]; then
-              echo "Already copied $libname"
-            else
-              echo "Copying $libname"
-              cp "$lib" release/macos/libs/
-            fi
-
-            # Also copy any dependencies of this library
-            SUB_DYLIBS=$(otool -L "$lib" | grep -E "(glslang|spirv-tools|ffmpeg|libav)" | awk '{print $1}')
-            for sublib in $SUB_DYLIBS; do
-              if [ -f "$sublib" ]; then
-                sublibname=$(basename "$sublib")
-                if [ ! -f "release/macos/libs/$sublibname" ]; then
-                  echo "Copying dependency $sublibname"
-                  cp "$sublib" release/macos/libs/
-                fi
+            echo "  → Copying $libname"
+            cp "$lib" release/macos/libs/
+            
+            # Recursively copy dependencies of this library
+            otool -L "$lib" | tail -n +2 | awk '{print $1}' | while read -r dep; do
+              if [ -f "$dep" ]; then
+                copy_lib_recursive "$dep"
               fi
             done
           fi
+        }
+        
+        # Get initial list of libraries from the binary
+        otool -L build/vsdf | tail -n +2 | awk '{print $1}' | while read -r lib; do
+          if [ -f "$lib" ]; then
+            copy_lib_recursive "$lib"
+          fi
         done
         
-        # Fix all library paths to use @rpath
-        echo "Fixing library paths..."
+        BUNDLED_COUNT=$(ls release/macos/libs/*.dylib 2>/dev/null | wc -l | xargs)
+        echo ""
+        echo "Total libraries bundled: $BUNDLED_COUNT"
+        echo ""
         
-        # Set rpath on the binary to look next to the executable
-        install_name_tool -add_rpath "@executable_path" release/macos/vsdf
+        # Fix all library paths to use @rpath
+        echo "🔧 Fixing library paths..."
+        
+        # Set rpath on the binary to look in libs/ folder next to the executable
+        # Only add if it doesn't already exist
+        if ! otool -l release/macos/vsdf | grep -q "@executable_path/libs"; then
+          echo "  Adding @executable_path/libs to rpath"
+          install_name_tool -add_rpath "@executable_path/libs" release/macos/vsdf
+        else
+          echo "  @executable_path/libs already in rpath"
+        fi
         
         # Fix paths in the main binary
         for lib in release/macos/libs/*.dylib; do
@@ -282,34 +306,40 @@ jobs:
           # Find the original path in the binary
           ORIG_PATH=$(otool -L release/macos/vsdf | grep "$libname" | awk '{print $1}')
           if [ ! -z "$ORIG_PATH" ]; then
-            echo "Fixing $libname in vsdf"
-            install_name_tool -change "$ORIG_PATH" "@rpath/libs/$libname" release/macos/vsdf
+            echo "  Fixing $libname in vsdf: $ORIG_PATH -> @rpath/$libname"
+            install_name_tool -change "$ORIG_PATH" "@rpath/$libname" release/macos/vsdf
           fi
         done
         
         # Fix inter-library dependencies
         for lib in release/macos/libs/*.dylib; do
           libname=$(basename "$lib")
-          echo "Fixing paths in $libname"
           
           # Fix the library's own id
-          install_name_tool -id "@rpath/libs/$libname" "$lib"
+          install_name_tool -id "@rpath/$libname" "$lib"
           
           # Fix references to other bundled libraries
           for otherlib in release/macos/libs/*.dylib; do
             othername=$(basename "$otherlib")
             ORIG_PATH=$(otool -L "$lib" | grep "$othername" | awk '{print $1}')
-            if [ ! -z "$ORIG_PATH" ] && [ "$ORIG_PATH" != "@rpath/libs/$othername" ]; then
-              install_name_tool -change "$ORIG_PATH" "@rpath/libs/$othername" "$lib"
+            if [ ! -z "$ORIG_PATH" ] && [ "$ORIG_PATH" != "@rpath/$othername" ]; then
+              echo "  Fixing $othername in $libname: $ORIG_PATH -> @rpath/$othername"
+              install_name_tool -change "$ORIG_PATH" "@rpath/$othername" "$lib"
             fi
           done
         done
         
-        echo "Bundle complete!"
-        echo "Bundled libraries:"
+        echo ""
+        echo "✓ Bundling complete"
+        echo ""
+        echo "📦 Binary info:"
+        file release/macos/vsdf
+        ls -lh release/macos/vsdf
+        echo ""
+        echo "📚 Bundled libraries:"
         ls -lh release/macos/libs/
-        
-        echo "Binary dependencies after fixing:"
+        echo ""
+        echo "🔗 Binary dependencies after fixing:"
         otool -L release/macos/vsdf
 
     - name: Code sign binaries

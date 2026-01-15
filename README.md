@@ -11,7 +11,9 @@ Vulkan SDF Renderer + Hot Reloader
 ## License
 **VSDF is licensed under GPL-3.0**
 
-Quickstart: see [QUICKSTART.md](QUICKSTART.md) for install + first shader.
+**Quickstart:** See [QUICKSTART.md](QUICKSTART.md) for installation and your first shader in minutes.
+
+**Shell Integration:** (Experimental) See [SHELL_INTEGRATION.md](SHELL_INTEGRATION.md) for instant shader development with one command.
 
 Render an SDF like ShaderToy using Vulkan and hot reload based on frag shader changes.
 That way you can use your favourite editor / LSP and also utilise git.
@@ -25,8 +27,15 @@ Supports macOS, Linux, and Windows with native file watcher implementations for 
 | Linux | ✅ Supported |
 | macOS | ✅ Supported |
 
-## Mac Dev Setup (Homebrew)
-Install Vulkan + deps with Homebrew (Quickstart + macOS CI):
+## Mac Setup (Homebrew)
+
+**Easiest way to install vsdf:**
+```sh
+brew install jamylak/vsdf/vsdf
+```
+
+**For building from source or manual dependency management:**
+Install Vulkan + deps with Homebrew:
 ```sh
 brew install molten-vk vulkan-loader glslang glfw glm spdlog vulkan-tools googletest ffmpeg
 # Note: FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`)
@@ -40,6 +49,22 @@ Then follow the steps to do `sudo ./install_vulkan.py` in *SDK System Paths* sec
 
 #### Example `VULKAN_SDK` Env Var
 `VULKAN_SDK $HOME/VulkanSDK/1.4.328.1/macOS`
+
+## Linux Binary Installation
+
+Pre-built binaries for Linux are available in the [GitHub Releases](https://github.com/jamylak/vsdf/releases) page.
+Download the latest `vsdf-linux` binary, make it executable, and move it to a directory in your `PATH`.
+
+```sh
+LATEST_RELEASE_TAG=$(curl -sL https://api.github.com/repos/jamylak/vsdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+DOWNLOAD_URL="https://github.com/jamylak/vsdf/releases/download/${LATEST_RELEASE_TAG}/vsdf-linux-x86_64.tar.gz"
+echo "Downloading from: ${DOWNLOAD_URL}"
+curl -LO "${DOWNLOAD_URL}"
+tar -xzf vsdf-linux-x86_64.tar.gz
+chmod +x linux/vsdf
+sudo mv linux/vsdf /usr/local/bin/vsdf
+rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
+```
 
 ## Linux Dev Setup (Ubuntu/Debian)
 Install dependencies:
@@ -85,7 +110,7 @@ cmake --build build
 ```powershell
 # FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
 git submodule update --init --recursive
-cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake" .
+cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" .
 cmake --build build --config Release
 .\build\Release\vsdf.exe {filepath}.frag
 ```
@@ -108,21 +133,22 @@ On Windows, you can also install to a custom location and add that location to y
 ## Usage
 ### With shader toy shaders (most seem to work)
 ```sh
-./build/vsdf --toy path/to/shader.frag
+vsdf --new-toy example.frag
+vsdf --toy example.frag
 ```
 
 ### Offline MP4 encoding (FFmpeg / H.264 via libx264):
 ```sh
-./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --ffmpeg-output out.mp4
+vsdf --toy example.frag --frames 100 --ffmpeg-output out.mp4
 ```
 
 ### Example test command using a sample shader in this repo
 ```sh
-./build/vsdf --toy shaders/testtoyshader.frag
+vsdf --toy example.frag
 ```
 
 Note: That if you use `--toy` we will prepend a template
-which sets up the push constants
+which links up the push constants
 like `iTime` and we will also follow this logic.
 
 ```cpp
@@ -135,22 +161,16 @@ if (useToyTemplate) {
 }
 ```
 
-### Manually create your own vulkan compatible shader
-If you don't want any template prepended or you have issues
-loading that way, I recommend copying `shaders/vulktemplate.frag`
-and adjusting it to your liking
-
-- See `shaders/vulktemplate.frag` to see how push constants
-  are passed in
-```sh
-./build/vsdf path/to/shader.frag
-```
-
 ### CLI Flags
-- `--toy` Prepend the ShaderToy-compatible template
-- `--frames <N>` Render N frames then exit (helps CI)
+- `--help` Show this help message
+- `--version` Show version information
+- `--new-toy [name]` Create a new shader file with starter template. Prints the filename and exits. Generates random name like my_new_toy_12345.frag if not provided.
+- `--template <name>` Template to use with `--new-toy` (default, plot)
+- `--toy` Use ShaderToy-style template wrapper
+- `--no-focus` Don't steal window focus on startup and float
 - `--headless` Hide the GLFW window (pair with `xvfb-run` in CI)
-- `--log-level <trace|debug|info|warn|error|critical|off>` Set spdlog verbosity (default: info)
+- `--frames <N>` Render N frames then exit
+- `--log-level <trace|debug|info|warn|error|critical|off>` Set `spdlog` verbosity (default: info)
 - `--debug-dump-ppm <dir>` Copy the swapchain image before present (adds a stall); mainly for smoke tests or debugging
 - `--ffmpeg-output <file>` Enable offline encoding; output file path (requires `--frames`)
 - `--ffmpeg-fps <N>` Output FPS (default: 30)
@@ -160,19 +180,6 @@ and adjusting it to your liking
 - `--ffmpeg-width <N>` Output width (default: 1280)
 - `--ffmpeg-height <N>` Output height (default: 720)
 - `--ffmpeg-ring-buffer-size <N>` Ring buffer size for offline render (default: 2)
-
-### Test Dumping 1 frame
-```sh
-./build/vsdf shaders/debug_quadrants.frag --toy --headless --frames 1 --debug-dump-ppm out_ppm
-```
-
-Now in `out_ppm/` you should see an image with 4 quadrants:
-- bottom-left: black
-- bottom-right: blue
-- top-left: red
-- top-right: green
-
-Also by running the test suite it will check this automatically
 
 ## Test Build
 
@@ -197,6 +204,19 @@ cmake --build build --config Debug
 ## Nix Develop Shell
 ```sh
 nix develop
+```
+
+### Manually create your own vulkan compatible shader
+If you don't want any template prepended or you want
+to use a Vulkan shader directly you can copy `shaders/vulktemplate.frag`
+and adjust it to your liking
+
+- See `shaders/vulktemplate.frag` to see how push constants
+  are passed in
+
+```sh
+# Then call it without the --toy flag
+vsdf path/to/shader.frag
 ```
 
 The binary uses [volk](https://github.com/zeux/volk) to dynamically find Vulkan at runtime, so it works regardless of installation location.

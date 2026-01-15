@@ -17,9 +17,9 @@ void framebufferResizeCallback(GLFWwindow *window, int width,
 OnlineSDFRenderer::OnlineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
     std::optional<uint32_t> maxFrames, bool headless,
-    std::optional<std::filesystem::path> debugDumpPPMDir)
+    std::optional<std::filesystem::path> debugDumpPPMDir, bool noFocus)
     : SDFRenderer(fragShaderPath, useToyTemplate, debugDumpPPMDir),
-      headless(headless), maxFrames(maxFrames) {}
+      headless(headless), noFocus(noFocus), maxFrames(maxFrames) {}
 
 void OnlineSDFRenderer::setup() {
     glfwSetup();
@@ -33,6 +33,11 @@ void OnlineSDFRenderer::glfwSetup() {
     // GLFW Setup
     glfwutils::initGLFW();
     glfwWindowHint(GLFW_VISIBLE, headless ? GLFW_FALSE : GLFW_TRUE);
+    if (noFocus) {
+        glfwWindowHint(GLFW_FLOATING, GLFW_TRUE); // Always on top
+        glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
+        glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+    }
     window =
         glfwutils::createGLFWwindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
     glfwSetWindowUserPointer(window, &app);

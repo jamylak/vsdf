@@ -6,12 +6,12 @@
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 #include <glslang/SPIRV/Logger.h>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <spdlog/fmt/fmt.h>
 
 static constexpr char TOY_TEMPLATE_FRAG_SOURCE[] = R"(#version 450
 
@@ -97,8 +97,8 @@ namespace shader_utils {
 std::string readShaderSource(const std::string &filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     if (!file)
-        throw std::runtime_error(fmt::format("Failed to open shader source file: {}",                               filename));
-
+        throw std::runtime_error(
+            fmt::format("Failed to open shader source file: {}", filename));
     const std::size_t size = static_cast<std::size_t>(file.tellg());
     file.seekg(0);
 
@@ -115,7 +115,8 @@ std::string readShaderSource(const std::string &filename) {
 std::string readShaderToySource(const std::string &filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     if (!file)
-        throw std::runtime_error(fmt::format("Failed to open shader source file: {}",                               filename));
+        throw std::runtime_error(
+            fmt::format("Failed to open shader source file: {}", filename));
 
     const std::size_t file_size = static_cast<std::size_t>(file.tellg());
     file.seekg(0);

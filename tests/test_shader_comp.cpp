@@ -18,12 +18,11 @@ TEST(ShaderUtilsTest, CompileTest) {
     ASSERT_TRUE(fileExists);
 }
 
-TEST(ShaderUtilsTest2, CompileTestBadVersion) {
+TEST(ShaderUtilsTest, CompileTestBadVersion) {
     TempShaderFile tempShader(
         "temp_shader.frag", "// GLSL Fragment shader example\nvoid main() {}");
-    ASSERT_TRUE(1); // Replace with actual error-checking logic
-
-    // Simulate the compilation process and validate the error handling
+    ASSERT_THROW(shader_utils::compileToPath(tempShader.filename()),
+                 std::runtime_error);
 }
 
 TEST(ShaderUtilsTest, CompileVertexShader) {
@@ -62,6 +61,48 @@ TEST(ShaderUtilsTest, CompileGLSLESTest) {
     std::remove(expectedSpvFilename.c_str());
 
     ASSERT_TRUE(fileExists);
+}
+
+TEST(ShaderUtilsTest, CompileToyShaderTest) {
+    // This shader should compile successfully
+    shader_utils::compileToPath(SHADER_DIR "testtoyshader.frag", true);
+
+    std::string expectedSpvFilename = std::string(SHADER_DIR) + "testtoyshader.spv";
+    std::ifstream spvFile(expectedSpvFilename);
+    bool fileExists = spvFile.good();
+    spvFile.close();
+    std::remove(expectedSpvFilename.c_str());
+
+    ASSERT_TRUE(fileExists);
+}
+
+TEST(ShaderUtilsTest, CompileToyShaderFailTest) {
+    // This shader is missing the mainImage function, so it should fail to
+    // compile
+    TempShaderFile tempShader("temp_shader_fail.frag",
+                              "void main() {}");
+
+    ASSERT_THROW(shader_utils::compileToPath(tempShader.filename(), true),
+                 std::runtime_error);
+}
+
+TEST(ShaderUtilsTest, FileNotFoundTest) {
+    ASSERT_THROW(shader_utils::compileToPath("non_existent_shader.frag"),
+                 std::runtime_error);
+}
+
+TEST(ShaderUtilsTest, CompileEmptyFile) {
+    TempShaderFile tempShader("empty.frag", "");
+    ASSERT_THROW(shader_utils::compileToPath(tempShader.filename()),
+                 std::runtime_error);
+}
+
+TEST(ShaderUtilsTest, CompileWithUnknownExtension) {
+    TempShaderFile tempShader("shader.txt", "#version 450\nvoid main() {}");
+    // glslc typically fails if it can't determine the shader stage from the
+    // extension
+    ASSERT_THROW(shader_utils::compileToPath(tempShader.filename()),
+                 std::runtime_error);
 }
 
 int main(int argc, char **argv) {

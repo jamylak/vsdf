@@ -4,22 +4,23 @@ on:
   push:
     branches:
       - main
-      - master
-    paths-ignore:
-      - 'scripts/**'
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - '.github/workflows/release.yml'
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
+      - 'CMakeLists.txt'
+      - 'linux-tests.Dockerfile'
+      - '.github/workflows/linux-docker-ci.yml'
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - 'scripts/**'
-      - '**.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - '.github/workflows/release.yml'
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
+      - 'CMakeLists.txt'
+      - 'linux-tests.Dockerfile'
+      - '.github/workflows/linux-docker-ci.yml'
 
 jobs:
   build-and-test-linux:

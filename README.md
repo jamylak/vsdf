@@ -121,8 +121,8 @@ On Windows, you can also install to a custom location and add that location to y
 ./build/vsdf --toy shaders/testtoyshader.frag
 ```
 
-Note: That if you use `--toy` we will prepend a template in
-`shaders/toytemplate.frag` which sets up the push constants
+Note: That if you use `--toy` we will prepend a template
+which sets up the push constants
 like `iTime` and we will also follow this logic.
 
 ```cpp

@@ -1,5 +1,6 @@
-#include "online_sdf_renderer.h"
 #include "ffmpeg_encode_settings.h"
+#include "online_sdf_renderer.h"
+#include "shader_templates.h"
 #if defined(VSDF_ENABLE_FFMPEG)
 #include "offline_sdf_renderer.h"
 #endif
@@ -7,7 +8,9 @@
 #include <cctype>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <optional>
+#include <random>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -17,12 +20,66 @@ namespace {
 constexpr const char kVersion[] = "vsdf dev";
 
 void printHelp(const char *exe) {
-    fmt::print("Usage: {} [options] <shader.frag>\nExample: {} --toy "
-               "shaders/testtoyshader.frag\n",
-               exe, exe);
+    fmt::print(
+        "Usage: {} [options] <shader.frag>\n"
+        "Example: {} --toy shaders/testtoyshader.frag\n\n"
+        "Options:\n"
+        "  --new-toy [name]        Create a new shader file with starter "
+        "template.\n"
+        "                          Prints the filename and exits.\n"
+        "                          Generates random name like "
+        "my_new_toy_12345.frag if not provided.\n"
+        "  --template <name>       Template to use with --new-toy (default, "
+        "plot)\n"
+        "  --toy                   Use ShaderToy-style template wrapper\n"
+        "  --no-focus              Don't steal window focus on startup\n"
+        "  --help                  Show this help message\n"
+        "  --version               Show version information\n",
+        exe, exe);
 }
 
 void printVersion() { fmt::print("{}\n", kVersion); }
+
+std::filesystem::path createNewToyShader(const std::string &name,
+                                         const std::string &templateName) {
+    std::filesystem::path shaderPath;
+    if (name.empty()) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(10000, 99999);
+        shaderPath = fmt::format("my_new_toy_{}.frag", dis(gen));
+    } else {
+        shaderPath = name;
+        if (shaderPath.extension() != ".frag") {
+            shaderPath += ".frag";
+        }
+    }
+
+    if (std::filesystem::exists(shaderPath)) {
+        throw std::runtime_error(
+            fmt::format("File already exists: {}", shaderPath.string()));
+    }
+
+    const char *templateBody;
+    if (templateName == "plot") {
+        templateBody = shader_templates::kPlotTemplate;
+    } else {
+        templateBody = shader_templates::kDefaultTemplate;
+    }
+
+    std::ofstream file(shaderPath);
+    if (!file) {
+        throw std::runtime_error(
+            fmt::format("Failed to create file: {}", shaderPath.string()));
+    }
+
+    file << templateBody;
+    file.close();
+
+    fmt::print("{}\n", shaderPath.string());
+
+    return shaderPath;
+}
 
 spdlog::level::level_enum parseLogLevel(const std::string &levelStr) {
     static const std::unordered_map<std::string, spdlog::level::level_enum>
@@ -35,8 +92,9 @@ spdlog::level::level_enum parseLogLevel(const std::string &levelStr) {
                    {"off", spdlog::level::off}};
 
     std::string normalized(levelStr);
-    std::transform(normalized.begin(), normalized.end(), normalized.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(
+        normalized.begin(), normalized.end(), normalized.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
     const auto it = kLevels.find(normalized);
     if (it == kLevels.end()) {
@@ -50,6 +108,7 @@ int main(int argc, char **argv) {
     bool useToyTemplate = false;
     std::optional<uint32_t> maxFrames;
     bool headless = false;
+    bool noFocus = false;
     std::optional<std::filesystem::path> debugDumpPPMDir;
 #if defined(VSDF_ENABLE_FFMPEG)
     uint32_t offlineRingSize = OFFSCREEN_DEFAULT_RING_SIZE;
@@ -59,6 +118,12 @@ int main(int argc, char **argv) {
 #endif
     auto logLevel = spdlog::level::info;
     std::filesystem::path shaderFile;
+
+    // Quick ways to make a new template
+    // Exits and returns the template filename
+    bool createNewToy = false;
+    std::string newToyName;
+    std::string templateName = "default";
 
     if (argc < 2)
         throw std::runtime_error("No shader file provided.");
@@ -72,33 +137,55 @@ int main(int argc, char **argv) {
         } else if (arg == "--version") {
             printVersion();
             return 0;
+        } else if (arg == "--new-toy") {
+            createNewToy = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                newToyName = argv[++i];
+            }
+            continue;
+        } else if (arg == "--template") {
+            if (i + 1 >= argc) {
+                throw std::runtime_error(
+                    "--template requires a template name (default, plot)");
+            }
+            templateName = argv[++i];
+            continue;
         } else if (arg == "--toy") {
             useToyTemplate = true;
+            continue;
+        } else if (arg == "--no-focus") {
+            noFocus = true;
             continue;
         } else if (arg == "--headless") {
             headless = true;
             continue;
         } else if (arg == "--frames") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--frames requires a positive integer value");
+                throw std::runtime_error(
+                    "--frames requires a positive integer value");
             }
             try {
                 maxFrames = static_cast<uint32_t>(std::stoul(argv[++i]));
-            } catch (const std::invalid_argument&) {
-                throw std::runtime_error("--frames requires a valid positive integer value");
-            } catch (const std::out_of_range&) {
-                throw std::runtime_error("--frames value is out of range for a positive integer");
+            } catch (const std::invalid_argument &) {
+                throw std::runtime_error(
+                    "--frames requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw std::runtime_error(
+                    "--frames value is out of range for a positive integer");
             }
             continue;
         } else if (arg == "--log-level") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--log-level requires a value (trace|debug|info|warn|error|critical|off)");
+                throw std::runtime_error(
+                    "--log-level requires a value "
+                    "(trace|debug|info|warn|error|critical|off)");
             }
             logLevel = parseLogLevel(argv[++i]);
             continue;
         } else if (arg == "--debug-dump-ppm") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--debug-dump-ppm requires a directory path");
+                throw std::runtime_error(
+                    "--debug-dump-ppm requires a directory path");
             }
             debugDumpPPMDir = argv[++i];
             continue;
@@ -116,8 +203,8 @@ int main(int argc, char **argv) {
                 throw std::runtime_error(
                     "--ffmpeg-width requires a valid positive integer value");
             } catch (const std::out_of_range &) {
-                throw std::runtime_error(
-                    "--ffmpeg-width value is out of range for a positive integer");
+                throw std::runtime_error("--ffmpeg-width value is out of range "
+                                         "for a positive integer");
             }
             if (offlineWidth == 0) {
                 throw std::runtime_error(
@@ -135,8 +222,8 @@ int main(int argc, char **argv) {
                 throw std::runtime_error(
                     "--ffmpeg-height requires a valid positive integer value");
             } catch (const std::out_of_range &) {
-                throw std::runtime_error(
-                    "--ffmpeg-height value is out of range for a positive integer");
+                throw std::runtime_error("--ffmpeg-height value is out of "
+                                         "range for a positive integer");
             }
             if (offlineHeight == 0) {
                 throw std::runtime_error(
@@ -145,57 +232,63 @@ int main(int argc, char **argv) {
             continue;
         } else if (arg == "--ffmpeg-ring-buffer-size") {
             if (i + 1 >= argc) {
-                throw std::runtime_error(
-                    "--ffmpeg-ring-buffer-size requires a positive integer value");
+                throw std::runtime_error("--ffmpeg-ring-buffer-size requires a "
+                                         "positive integer value");
             }
             try {
-                offlineRingSize =
-                    static_cast<uint32_t>(std::stoul(argv[++i]));
+                offlineRingSize = static_cast<uint32_t>(std::stoul(argv[++i]));
             } catch (const std::invalid_argument &) {
-                throw std::runtime_error(
-                    "--ffmpeg-ring-buffer-size requires a valid positive integer value");
+                throw std::runtime_error("--ffmpeg-ring-buffer-size requires a "
+                                         "valid positive integer value");
             } catch (const std::out_of_range &) {
-                throw std::runtime_error(
-                    "--ffmpeg-ring-buffer-size value is out of range for a positive integer");
+                throw std::runtime_error("--ffmpeg-ring-buffer-size value is "
+                                         "out of range for a positive integer");
             }
             if (offlineRingSize == 0) {
-                throw std::runtime_error(
-                    "--ffmpeg-ring-buffer-size requires a positive integer value");
+                throw std::runtime_error("--ffmpeg-ring-buffer-size requires a "
+                                         "positive integer value");
             }
             continue;
         } else if (arg == "--ffmpeg-output" || arg == "--output-path") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--ffmpeg-output requires a file path");
+                throw std::runtime_error(
+                    "--ffmpeg-output requires a file path");
             }
             encodeSettings.outputPath = argv[++i];
             continue;
         } else if (arg == "--ffmpeg-fps") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--ffmpeg-fps requires a positive integer value");
+                throw std::runtime_error(
+                    "--ffmpeg-fps requires a positive integer value");
             }
             try {
                 encodeSettings.fps = std::stoi(argv[++i]);
             } catch (const std::exception &) {
-                throw std::runtime_error("--ffmpeg-fps requires a valid integer value");
+                throw std::runtime_error(
+                    "--ffmpeg-fps requires a valid integer value");
             }
             if (encodeSettings.fps <= 0) {
-                throw std::runtime_error("--ffmpeg-fps requires a positive integer value");
+                throw std::runtime_error(
+                    "--ffmpeg-fps requires a positive integer value");
             }
             continue;
         } else if (arg == "--ffmpeg-codec") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--ffmpeg-codec requires a codec name");
+                throw std::runtime_error(
+                    "--ffmpeg-codec requires a codec name");
             }
             encodeSettings.codec = argv[++i];
             continue;
         } else if (arg == "--ffmpeg-crf") {
             if (i + 1 >= argc) {
-                throw std::runtime_error("--ffmpeg-crf requires an integer value");
+                throw std::runtime_error(
+                    "--ffmpeg-crf requires an integer value");
             }
             try {
                 encodeSettings.crf = std::stoi(argv[++i]);
             } catch (const std::exception &) {
-                throw std::runtime_error("--ffmpeg-crf requires a valid integer value");
+                throw std::runtime_error(
+                    "--ffmpeg-crf requires a valid integer value");
             }
             continue;
         } else if (arg == "--ffmpeg-preset") {
@@ -214,6 +307,11 @@ int main(int argc, char **argv) {
             continue;
         }
         throw std::runtime_error("Unknown flag: " + arg);
+    }
+
+    if (createNewToy) {
+        createNewToyShader(newToyName, templateName);
+        return 0;
     }
 
     if (!std::filesystem::exists(shaderFile))
@@ -238,20 +336,22 @@ int main(int argc, char **argv) {
 #if defined(VSDF_ENABLE_FFMPEG)
     if (useFfmpeg) {
         OfflineSDFRenderer renderer{shaderFile.string(), *maxFrames,
-                                    useToyTemplate, debugDumpPPMDir,
-                                    offlineWidth, offlineHeight,
-                                    offlineRingSize, encodeSettings};
+                                    useToyTemplate,      debugDumpPPMDir,
+                                    offlineWidth,        offlineHeight,
+                                    offlineRingSize,     encodeSettings};
         renderer.setup();
         renderer.renderFrames();
     } else {
         OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
-                                   maxFrames, headless, debugDumpPPMDir};
+                                   maxFrames,           headless,
+                                   debugDumpPPMDir,     noFocus};
         renderer.setup();
         renderer.gameLoop();
     }
 #else
     OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
-                               maxFrames, headless, debugDumpPPMDir};
+                               maxFrames,           headless,
+                               debugDumpPPMDir,     noFocus};
     renderer.setup();
     renderer.gameLoop();
 #endif

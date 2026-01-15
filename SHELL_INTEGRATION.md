@@ -36,7 +36,6 @@ vsdf-toy() {
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jamylak/vsdf/main/shell/bash/vsdf-toy.sh >> ~/.bashrc && source ~/.bashrc
 ```
-*(Note: Update URL when merged)*
 
 Or manually:
 ```bash
@@ -81,7 +80,6 @@ end
 ```fish
 mkdir -p ~/.config/fish/functions && curl -fsSL https://raw.githubusercontent.com/jamylak/vsdf/main/shell/fish/vsdf-toy.fish > ~/.config/fish/functions/vsdf-toy.fish
 ```
-*(Note: Update URL when merged)*
 
 Or manually:
 ```fish
@@ -127,7 +125,6 @@ vsdf-toy() {
 ```zsh
 curl -fsSL https://raw.githubusercontent.com/jamylak/vsdf/main/shell/zsh/vsdf-toy.sh >> ~/.zshrc && source ~/.zshrc
 ```
-*(Note: Update URL when merged)*
 
 ## Usage
 

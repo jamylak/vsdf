@@ -24,6 +24,8 @@ void printHelp(const char *exe) {
         "Usage: {} [options] <shader.frag>\n"
         "Example: {} --toy shaders/testtoyshader.frag\n\n"
         "Options:\n"
+        "  --help                  Show this help message\n"
+        "  --version               Show version information\n"
         "  --new-toy [name]        Create a new shader file with starter "
         "template.\n"
         "                          Prints the filename and exits.\n"
@@ -32,9 +34,26 @@ void printHelp(const char *exe) {
         "  --template <name>       Template to use with --new-toy (default, "
         "plot)\n"
         "  --toy                   Use ShaderToy-style template wrapper\n"
-        "  --no-focus              Don't steal window focus on startup\n"
-        "  --help                  Show this help message\n"
-        "  --version               Show version information\n",
+        "  --no-focus              Don't steal window focus on startup and "
+        "float\n"
+        "  --headless              Hide the GLFW window (pair with xvfb-run in "
+        "CI)\n"
+        "  --frames <N>            Render N frames then exit\n"
+        "  --log-level <trace|debug|info|warn|error|critical|off> Set spdlog "
+        "verbosity (default: info)\n"
+        "  --debug-dump-ppm <dir>  Copy the swapchain image before present "
+        "(adds a stall); mainly for smoke tests or debugging\n"
+        "  --ffmpeg-output <file>  Enable offline encoding; "
+        "output file path (requires --frames)\n"
+        "  --ffmpeg-fps <N>        Output FPS (default: 30)\n"
+        "  --ffmpeg-crf <N>        Quality for libx264 (default: 20; lower is "
+        "higher quality)\n"
+        "  --ffmpeg-preset <name>  libx264 preset (default: slow)\n"
+        "  --ffmpeg-codec <name>   FFmpeg codec (default: libx264)\n"
+        "  --ffmpeg-width <N>      Output width (default: 1280)\n"
+        "  --ffmpeg-height <N>     Output height (default: 720)\n"
+        "  --ffmpeg-ring-buffer-size <N> Ring buffer size for offline render "
+        "(default: 2)\n",
         exe, exe);
 }
 
@@ -249,7 +268,7 @@ int main(int argc, char **argv) {
                                          "positive integer value");
             }
             continue;
-        } else if (arg == "--ffmpeg-output" || arg == "--output-path") {
+        } else if (arg == "--ffmpeg-output") {
             if (i + 1 >= argc) {
                 throw std::runtime_error(
                     "--ffmpeg-output requires a file path");

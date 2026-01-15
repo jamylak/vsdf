@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
     branches:
-      - 'release-binaries-04'
+      - 'mac-binary-02'
   workflow_dispatch:
 
 jobs:

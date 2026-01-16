@@ -69,6 +69,20 @@ sudo mv linux/vsdf /usr/local/bin/vsdf
 rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 ```
 
+## Windows Binary Installation (no FFmpeg)
+
+Pre-built Windows binaries (built without FFmpeg) are available on the [GitHub Releases](https://github.com/jamylak/vsdf/releases) page.
+Download the latest release zip and run `vsdf.exe` from the extracted folder.
+
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/jamylak/vsdf/releases/latest).tag_name
+$zip = "vsdf-windows-x86_64-disable_ffmpeg.zip"
+$url = "https://github.com/jamylak/vsdf/releases/download/$tag/$zip"
+Invoke-WebRequest -Uri $url -OutFile $zip
+Expand-Archive $zip -DestinationPath vsdf
+.\vsdf\vsdf.exe --version
+```
+
 ## Linux Dev Setup (Ubuntu/Debian)
 Install dependencies:
 ```sh

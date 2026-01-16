@@ -143,6 +143,14 @@ void WindowsFileWatcher::startWatching(const std::string &filepath,
     this->callback = cb;
 
     std::filesystem::path path(std::filesystem::absolute(filepath));
+    std::error_code ec;
+    if (!std::filesystem::exists(path, ec) || ec) {
+        throw std::runtime_error("File does not exist: " + path.string());
+    }
+    if (!std::filesystem::is_regular_file(path, ec) || ec) {
+        throw std::runtime_error("Path is not a regular file: " +
+                                 path.string());
+    }
     dirPath = path.parent_path().string();
     filename = path.filename().string();
 

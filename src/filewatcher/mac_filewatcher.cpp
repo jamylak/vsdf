@@ -3,6 +3,7 @@
 #include <dispatch/dispatch.h>
 #include <filesystem>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 
 // LATENCY
 // ### function `FSEventStreamCreate`
@@ -47,36 +48,28 @@ void MacFileWatcher::fsEventsCallback(
 void MacFileWatcher::startWatching(const std::string &path,
                                    FileChangeCallback cb) {
     this->callback = cb;
-    running = true;
     std::filesystem::path abspath(std::filesystem::absolute(path));
-    
-    // Use canonical path if file exists to resolve symlinks (e.g., /tmp -> /private/tmp)
-    // Otherwise use absolute path to support watching files that don't exist yet
-    std::filesystem::path resolvedPath;
     std::error_code ec;
-    if (std::filesystem::exists(abspath, ec)) {
-        resolvedPath = std::filesystem::canonical(abspath, ec);
-        if (ec) {
-            // If canonical fails, fall back to absolute
-            resolvedPath = abspath;
-        }
-    } else {
-        // File doesn't exist yet, use absolute and try to canonicalize parent
-        auto parentPath = abspath.parent_path();
-        if (std::filesystem::exists(parentPath, ec)) {
-            auto canonicalParent = std::filesystem::canonical(parentPath, ec);
-            if (!ec) {
-                resolvedPath = canonicalParent / abspath.filename();
-            } else {
-                resolvedPath = abspath;
-            }
-        } else {
-            resolvedPath = abspath;
-        }
+
+    if (!std::filesystem::exists(abspath, ec) || ec) {
+        throw std::runtime_error("File does not exist: " + abspath.string());
     }
-    
-    std::string dirPath = resolvedPath.parent_path();
-    filename = resolvedPath.string();
+    if (!std::filesystem::is_regular_file(abspath, ec) || ec) {
+        throw std::runtime_error("Path is not a regular file: " +
+                                 abspath.string());
+    }
+
+    // Use canonical path to resolve symlinks (e.g., /tmp -> /private/tmp).
+    std::filesystem::path canonicalPath =
+        std::filesystem::canonical(abspath, ec);
+    if (ec) {
+        throw std::runtime_error("Failed to canonicalize path: " +
+                                 abspath.string());
+    }
+
+    std::string dirPath = canonicalPath.parent_path();
+    filename = canonicalPath.string();
+    running = true;
     watchThread = std::thread([this, dirPath]() {
         spdlog::info("Watching file: {}", dirPath);
         CFStringRef pathToWatch = CFStringCreateWithCString(

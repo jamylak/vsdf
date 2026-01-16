@@ -74,6 +74,14 @@ void LinuxFileWatcher::startWatching(const std::string &filepath,
     // created and recreated, or else we'd lose
     // track of the inode
     std::filesystem::path path(std::filesystem::absolute(filepath));
+    std::error_code ec;
+    if (!std::filesystem::exists(path, ec) || ec) {
+        throw std::runtime_error("File does not exist: " + path.string());
+    }
+    if (!std::filesystem::is_regular_file(path, ec) || ec) {
+        throw std::runtime_error("Path is not a regular file: " +
+                                 path.string());
+    }
     std::string dirPath = path.parent_path();
     filename = path.filename();
     spdlog::info("Watching dirPath: {} for file path {}", dirPath,

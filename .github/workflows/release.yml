@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - 'windows-release'
   workflow_dispatch:
 
 jobs:

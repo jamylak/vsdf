@@ -382,6 +382,7 @@ jobs:
         path: release/vsdf-macos-${{ matrix.arch }}.tar.gz
 
   build-windows:
+    # Note: build-windows builds WITHOUT FFMPEG due to issue #33
     name: Build Windows Release
     runs-on: windows-latest
     timeout-minutes: 30
@@ -498,8 +499,8 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    # Note: build-windows temporarily excluded from needs due to issue #33
-    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, build-macos, build-windows]
+    # Note: build-windows builds WITHOUT FFMPEG due to issue #33
+    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, build-macos, build-windows, test-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     

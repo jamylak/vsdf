@@ -433,7 +433,7 @@ jobs:
         Copy-Item -Recurse shaders release\windows\
         Copy-Item README.md release\windows\
         Copy-Item LICENSE release\windows\
-        Compress-Archive -Path release\windows\* -DestinationPath release\vsdf-windows-x86_64.zip
+        Compress-Archive -Path release\windows\* -DestinationPath release\vsdf-windows-x86_64-disable_ffmpeg.zip
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

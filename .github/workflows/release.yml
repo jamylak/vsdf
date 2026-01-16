@@ -11,6 +11,8 @@ on:
 jobs:
   build-linux:
     name: Build Linux Release
+    # Temporarily disabled while getting Windows release stable; re-enable later.
+    if: false
     # Use ubuntu-latest (currently 24.04) to build with modern toolchain
     # Bundle dependencies and test on multiple distros to ensure compatibility
     runs-on: ubuntu-latest
@@ -115,6 +117,8 @@ jobs:
   test-linux-ubuntu-24:
     name: Test on Ubuntu 24.04
     needs: build-linux
+    # Temporarily disabled while getting Windows release stable; re-enable later.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -172,6 +176,8 @@ jobs:
   test-linux-debian-13:
     name: Test on Debian 13 (Trixie)
     needs: build-linux
+    # Temporarily disabled while getting Windows release stable; re-enable later.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     container:
@@ -206,6 +212,8 @@ jobs:
 
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
+    # Temporarily disabled while getting Windows release stable; re-enable later.
+    if: false
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:

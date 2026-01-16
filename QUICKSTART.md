@@ -4,6 +4,18 @@ Go from zero to your first shader in minutes.
 
 ## 1) Install
 
+### Windows (binary, no FFmpeg)
+Download the pre-built Windows release (built without FFmpeg):
+
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/jamylak/vsdf/releases/latest).tag_name
+$zip = "vsdf-windows-x86_64-disable_ffmpeg.zip"
+$url = "https://github.com/jamylak/vsdf/releases/download/$tag/$zip"
+Invoke-WebRequest -Uri $url -OutFile $zip
+Expand-Archive $zip -DestinationPath vsdf
+.\vsdf\vsdf.exe --version
+```
+
 ### macOS
 Install vsdf and its dependencies with Homebrew:
 ```sh
@@ -28,7 +40,7 @@ sudo mv linux/vsdf /usr/local/bin/vsdf
 rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 ```
 
-### Windows (vcpkg)
+### Windows (vcpkg, build from source)
 1. Install vcpkg:
    ```powershell
    git clone https://github.com/Microsoft/vcpkg.git

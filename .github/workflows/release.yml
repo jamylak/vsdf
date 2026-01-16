@@ -425,6 +425,8 @@ jobs:
         New-Item -ItemType Directory -Force -Path release\windows | Out-Null
         Copy-Item build\Release\vsdf.exe release\windows\
         Copy-Item -Path C:\vcpkg\installed\x64-windows\bin\*.dll -Destination release\windows\ -Force
+        # Prefer system Vulkan loader; avoid shipping vulkan-1.dll.
+        Remove-Item -ErrorAction SilentlyContinue release\windows\vulkan-1.dll
 
         Write-Host "Bundled DLLs:"
         Get-ChildItem release\windows\*.dll | ForEach-Object { Write-Host "  - $($_.Name)" }

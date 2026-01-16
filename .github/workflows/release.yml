@@ -492,7 +492,7 @@ jobs:
           artifacts/vsdf-linux-x86_64/vsdf-linux-x86_64.tar.gz
           artifacts/vsdf-macos-x86_64/vsdf-macos-x86_64.tar.gz
           artifacts/vsdf-macos-arm64/vsdf-macos-arm64.tar.gz
-          artifacts/vsdf-windows-x86_64/vsdf-windows-x86_64.zip
+          artifacts/vsdf-windows-x86_64-disable_ffmpeg/vsdf-windows-x86_64-disable_ffmpeg.zip
         draft: false
         prerelease: false
       env:

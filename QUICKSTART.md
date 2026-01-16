@@ -14,6 +14,7 @@ brew install jamylak/vsdf/vsdf
 
 **Easiest way to install vsdf:**
 Pre-built binaries for Linux are available in the [GitHub Releases](https://github.com/jamylak/vsdf/releases) page.
+The only dependency is Vulkan.
 
 To get the **latest release**:
 
@@ -28,7 +29,24 @@ sudo mv linux/vsdf /usr/local/bin/vsdf
 rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 ```
 
-### Windows (vcpkg)
+### Windows (binary, no `ffmpeg`)
+
+The only dependency is Vulkan.
+Download the pre-built Windows release (built without `ffmpeg`):
+
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/jamylak/vsdf/releases/latest).tag_name
+$zip = "vsdf-windows-x86_64-disable_ffmpeg.zip"
+$url = "https://github.com/jamylak/vsdf/releases/download/$tag/$zip"
+Invoke-WebRequest -Uri $url -OutFile $zip
+Expand-Archive $zip -DestinationPath vsdf
+.\vsdf\vsdf.exe --version
+```
+
+### Windows (vcpkg, build from source)
+
+If you want to build from source or if you want `ffmpeg` integration to save videos.
+
 1. Install vcpkg:
    ```powershell
    git clone https://github.com/Microsoft/vcpkg.git
@@ -45,7 +63,7 @@ rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 3. Build:
    ```powershell
    git submodule update --init --recursive
-   # FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
+   # ffmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
    cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" .
    cmake --build build --config Release
    ```
@@ -76,9 +94,9 @@ vsdf --toy example.frag
 
 For a more integrated and faster *experimental* workflow with a shell function that creates the shader, opens the editor, and launches `vsdf` in one command, see the [Shell Integration Guide](SHELL_INTEGRATION.md).
 
-## 3) Record video with FFMPEG (offline MP4 encoding)
+## 3) Record video with `ffmpeg` (offline MP4 encoding)
 ```sh
-./build/vsdf --toy example.frag --frames 100 --ffmpeg-output out.mp4
+vsdf --toy example.frag --frames 100 --ffmpeg-output out.mp4
 ```
 
 ## Notes
@@ -94,7 +112,7 @@ ShaderToy uses, e.g., `iTime` as well as `main()` etc.
 2. Save it as `shaders/raymarching_primitives.frag`.
 3. Run it with the template prepended:
 ```sh
-./build/vsdf --toy shaders/raymarching_primitives.frag
+vsdf --toy shaders/raymarching_primitives.frag
 ```
 
 ## Recommendations

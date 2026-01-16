@@ -69,6 +69,20 @@ sudo mv linux/vsdf /usr/local/bin/vsdf
 rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 ```
 
+## Windows Binary Installation (no `ffmpeg`)
+
+Pre-built Windows binaries (built without `ffmpeg`) are available on the [GitHub Releases](https://github.com/jamylak/vsdf/releases) page.
+Download the latest release zip and run `vsdf.exe` from the extracted folder.
+
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/jamylak/vsdf/releases/latest).tag_name
+$zip = "vsdf-windows-x86_64-disable_ffmpeg.zip"
+$url = "https://github.com/jamylak/vsdf/releases/download/$tag/$zip"
+Invoke-WebRequest -Uri $url -OutFile $zip
+Expand-Archive $zip -DestinationPath vsdf
+.\vsdf\vsdf.exe --version
+```
+
 ## Linux Dev Setup (Ubuntu/Debian)
 Install dependencies:
 ```sh
@@ -93,7 +107,7 @@ sudo apt-get install -y \
 2. Install dependencies using vcpkg (includes Vulkan):
    ```powershell
    vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
-   # Note: FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it
+   # Note: ffmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it
    vcpkg install ffmpeg[avcodec,avformat,swscale]:x64-windows
    vcpkg integrate install
    ```
@@ -102,7 +116,7 @@ sudo apt-get install -y \
 
 ### Linux/macOS
 ```sh
-# FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
+# ffmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
 git submodule update --init --recursive
 cmake -B build .
 cmake --build build
@@ -111,7 +125,7 @@ cmake --build build
 
 ### Windows
 ```powershell
-# FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
+# ffmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
 git submodule update --init --recursive
 cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" .
 cmake --build build --config Release
@@ -140,7 +154,7 @@ vsdf --new-toy example.frag
 vsdf --toy example.frag
 ```
 
-### Offline MP4 encoding (FFmpeg / H.264 via libx264):
+### Offline MP4 encoding (`ffmpeg` / H.264 via libx264):
 ```sh
 vsdf --toy example.frag --frames 100 --ffmpeg-output out.mp4
 ```

@@ -428,6 +428,26 @@ jobs:
         # Prefer system Vulkan loader; avoid shipping vulkan-1.dll.
         Remove-Item -ErrorAction SilentlyContinue release\windows\vulkan-1.dll
 
+        # Bundle MSVC runtime DLLs for zero-install on clean systems.
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $vsInstall = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if (-not $vsInstall) {
+          Write-Error "Visual Studio Build Tools not found"
+          exit 1
+        }
+        $redistRoot = Join-Path $vsInstall "VC\Redist\MSVC"
+        $crtDir = Get-ChildItem $redistRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1 | ForEach-Object {
+          Join-Path $_.FullName "x64\Microsoft.VC143.CRT"
+        }
+        if (Test-Path $crtDir) {
+          Copy-Item -Path (Join-Path $crtDir "msvcp140.dll") -Destination release\windows\ -Force
+          Copy-Item -Path (Join-Path $crtDir "vcruntime140.dll") -Destination release\windows\ -Force
+          Copy-Item -Path (Join-Path $crtDir "vcruntime140_1.dll") -Destination release\windows\ -Force
+        } else {
+          Write-Error "MSVC CRT directory not found under $redistRoot"
+          exit 1
+        }
+
         Write-Host "Bundled DLLs:"
         Get-ChildItem release\windows\*.dll | ForEach-Object { Write-Host "  - $($_.Name)" }
 

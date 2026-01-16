@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
     branches:
-      - 'mac-binary-02'
+      - 'windows-release'
   workflow_dispatch:
 
 jobs:
@@ -383,8 +383,6 @@ jobs:
 
   build-windows:
     name: Build Windows Release
-    # Temporarily disabled - see https://github.com/jamylak/vsdf/issues/33
-    if: false
     runs-on: windows-latest
     timeout-minutes: 30
 
@@ -398,7 +396,7 @@ jobs:
       timeout-minutes: 25
       run: |
         Write-Host "Installing dependencies via vcpkg..."
-        vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows ffmpeg[avcodec,avformat,swscale]:x64-windows --recurse
+        vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows --recurse
         vcpkg integrate install
         Write-Host "Dependencies installed successfully"
 
@@ -406,16 +404,24 @@ jobs:
       run: |
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
+          -DDISABLE_FFMPEG=ON `
           -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
           .
 
     - name: Build
       run: cmake --build build --config Release
 
+    - name: Bundle runtime DLLs
+      run: |
+        New-Item -ItemType Directory -Force -Path release\windows | Out-Null
+        Copy-Item build\Release\vsdf.exe release\windows\
+        Copy-Item -Path C:\vcpkg\installed\x64-windows\bin\*.dll -Destination release\windows\ -Force
+
+        Write-Host "Bundled DLLs:"
+        Get-ChildItem release\windows\*.dll | ForEach-Object { Write-Host "  - $($_.Name)" }
+
     - name: Package binary
       run: |
-        New-Item -ItemType Directory -Force -Path release\windows
-        Copy-Item build\Release\vsdf.exe release\windows\
         Copy-Item -Recurse shaders release\windows\
         Copy-Item README.md release\windows\
         Copy-Item LICENSE release\windows\
@@ -430,7 +436,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     # Note: build-windows temporarily excluded from needs due to issue #33
-    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, build-macos]
+    needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, build-macos, build-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     
@@ -453,6 +459,7 @@ jobs:
           artifacts/vsdf-linux-x86_64/vsdf-linux-x86_64.tar.gz
           artifacts/vsdf-macos-x86_64/vsdf-macos-x86_64.tar.gz
           artifacts/vsdf-macos-arm64/vsdf-macos-arm64.tar.gz
+          artifacts/vsdf-windows-x86_64/vsdf-windows-x86_64.zip
         draft: false
         prerelease: false
       env:

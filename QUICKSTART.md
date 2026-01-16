@@ -4,8 +4,8 @@ Go from zero to your first shader in minutes.
 
 ## 1) Install
 
-### Windows (binary, no FFmpeg)
-Download the pre-built Windows release (built without FFmpeg):
+### Windows (binary, no `ffmpeg`)
+Download the pre-built Windows release (built without `ffmpeg`):
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/jamylak/vsdf/releases/latest).tag_name
@@ -57,7 +57,7 @@ rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 3. Build:
    ```powershell
    git submodule update --init --recursive
-   # FFmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
+   # ffmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
    cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" .
    cmake --build build --config Release
    ```
@@ -88,7 +88,7 @@ vsdf --toy example.frag
 
 For a more integrated and faster *experimental* workflow with a shell function that creates the shader, opens the editor, and launches `vsdf` in one command, see the [Shell Integration Guide](SHELL_INTEGRATION.md).
 
-## 3) Record video with FFMPEG (offline MP4 encoding)
+## 3) Record video with `ffmpeg` (offline MP4 encoding)
 ```sh
 ./build/vsdf --toy example.frag --frames 100 --ffmpeg-output out.mp4
 ```

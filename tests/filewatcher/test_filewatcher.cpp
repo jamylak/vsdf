@@ -4,6 +4,7 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include <ios>
+#include <stdexcept>
 #include <thread>
 
 // Platform-specific headers for directory operations
@@ -123,22 +124,16 @@ TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
     EXPECT_GE(callbackCount, 10); // Ensure callback was called at least once
 }
 
-// Test creating a file after starting to watch it
-TEST_F(FileWatcherTest, FileCreatedAfterWatchingCallbackCalled) {
+// Test watching a non-existent file fails fast
+TEST_F(FileWatcherTest, WatchingMissingFileThrows) {
     bool callbackCalled = false;
     auto callback = [&callbackCalled]() { callbackCalled = true; };
 
-    // Start watching before file exists
-    auto watcher = filewatcher_factory::createFileWatcher();
-    watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
-    
-    // Now create the file
-    createFile(testFilePath, "Initial content");
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
-    watcher->stopWatching();
+    std::remove(testFilePath.c_str());
 
-    EXPECT_TRUE(callbackCalled);
+    auto watcher = filewatcher_factory::createFileWatcher();
+    EXPECT_THROW(watcher->startWatching(testFilePath, callback),
+                 std::runtime_error);
 }
 
 // Test stopping watcher multiple times is safe (idempotent)
@@ -219,25 +214,7 @@ TEST_F(FileWatcherTest, FileInSubdirectoryWatched) {
     EXPECT_TRUE(callbackCalled);
 }
 
-// Test file creation specifically (not modification or replacement)
-TEST_F(FileWatcherTest, NewFileCreationCallbackCalled) {
-    bool callbackCalled = false;
-    auto callback = [&callbackCalled]() { callbackCalled = true; };
-    
-    // Ensure file doesn't exist
-    std::remove(testFilePath.c_str());
-    
-    auto watcher = filewatcher_factory::createFileWatcher();
-    watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
-    
-    // Create new file (not modifying existing)
-    createFile(testFilePath, "Brand new file");
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
-    watcher->stopWatching();
-    
-    EXPECT_TRUE(callbackCalled);
-}
+
 
 // Test multiple separate modifications with proper spacing
 TEST_F(FileWatcherTest, MultipleModificationsWithSpacing) {

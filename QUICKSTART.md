@@ -4,18 +4,6 @@ Go from zero to your first shader in minutes.
 
 ## 1) Install
 
-### Windows (binary, no `ffmpeg`)
-Download the pre-built Windows release (built without `ffmpeg`):
-
-```powershell
-$tag = (Invoke-RestMethod https://api.github.com/repos/jamylak/vsdf/releases/latest).tag_name
-$zip = "vsdf-windows-x86_64-disable_ffmpeg.zip"
-$url = "https://github.com/jamylak/vsdf/releases/download/$tag/$zip"
-Invoke-WebRequest -Uri $url -OutFile $zip
-Expand-Archive $zip -DestinationPath vsdf
-.\vsdf\vsdf.exe --version
-```
-
 ### macOS
 Install vsdf and its dependencies with Homebrew:
 ```sh
@@ -26,6 +14,7 @@ brew install jamylak/vsdf/vsdf
 
 **Easiest way to install vsdf:**
 Pre-built binaries for Linux are available in the [GitHub Releases](https://github.com/jamylak/vsdf/releases) page.
+The only dependency is Vulkan.
 
 To get the **latest release**:
 
@@ -40,7 +29,24 @@ sudo mv linux/vsdf /usr/local/bin/vsdf
 rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 ```
 
+### Windows (binary, no `ffmpeg`)
+
+The only dependency is Vulkan.
+Download the pre-built Windows release (built without `ffmpeg`):
+
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/jamylak/vsdf/releases/latest).tag_name
+$zip = "vsdf-windows-x86_64-disable_ffmpeg.zip"
+$url = "https://github.com/jamylak/vsdf/releases/download/$tag/$zip"
+Invoke-WebRequest -Uri $url -OutFile $zip
+Expand-Archive $zip -DestinationPath vsdf
+.\vsdf\vsdf.exe --version
+```
+
 ### Windows (vcpkg, build from source)
+
+If you want to build from source or if you want `ffmpeg` integration to save videos.
+
 1. Install vcpkg:
    ```powershell
    git clone https://github.com/Microsoft/vcpkg.git

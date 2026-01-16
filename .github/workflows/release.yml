@@ -438,8 +438,33 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: vsdf-windows-x86_64
-        path: release/vsdf-windows-x86_64.zip
+        name: vsdf-windows-x86_64-disable_ffmpeg
+        path: release/vsdf-windows-x86_64-disable_ffmpeg.zip
+
+  test-windows:
+    name: Test Windows Release Binary
+    needs: build-windows
+    runs-on: windows-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: vsdf-windows-x86_64-disable_ffmpeg
+
+    - name: Extract zip
+      run: |
+        Expand-Archive -Path vsdf-windows-x86_64-disable_ffmpeg.zip -DestinationPath extracted -Force
+
+    - name: Test --version
+      run: |
+        $exePath = ".\extracted\vsdf.exe"
+        if (!(Test-Path $exePath)) {
+          Write-Error "vsdf.exe not found at $exePath"
+          exit 1
+        }
+        & $exePath --version
 
   create-release:
     name: Create GitHub Release

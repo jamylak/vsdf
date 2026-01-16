@@ -96,7 +96,7 @@ For a more integrated and faster *experimental* workflow with a shell function t
 
 ## 3) Record video with `ffmpeg` (offline MP4 encoding)
 ```sh
-./build/vsdf --toy example.frag --frames 100 --ffmpeg-output out.mp4
+vsdf --toy example.frag --frames 100 --ffmpeg-output out.mp4
 ```
 
 ## Notes
@@ -112,7 +112,7 @@ ShaderToy uses, e.g., `iTime` as well as `main()` etc.
 2. Save it as `shaders/raymarching_primitives.frag`.
 3. Run it with the template prepended:
 ```sh
-./build/vsdf --toy shaders/raymarching_primitives.frag
+vsdf --toy shaders/raymarching_primitives.frag
 ```
 
 ## Recommendations

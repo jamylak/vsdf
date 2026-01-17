@@ -119,6 +119,7 @@ void OnlineSDFRenderer::tryRecreatePipeline() {
     } catch (const std::runtime_error &err) {
         spdlog::warn("Shader compile failed, keeping previous pipeline: {}",
                      err.what());
+        return;
     }
 
     VK_CHECK(vkDeviceWaitIdle(logicalDevice));

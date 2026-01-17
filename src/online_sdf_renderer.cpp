@@ -3,6 +3,7 @@
 #include "glfwutils.h"
 #include "shader_utils.h"
 #include "vkutils.h"
+#include <atomic>
 #include <cstdint>
 #include <spdlog/spdlog.h>
 
@@ -102,19 +103,28 @@ void OnlineSDFRenderer::setupRenderContext() {
 
 void OnlineSDFRenderer::createPipeline() {
     createPipelineLayoutCommon();
-    std::filesystem::path fragSpirvPath;
+    auto fragSpirv =
+        shader_utils::compileFileToSpirv(fragShaderPath, useToyTemplate);
+    fragShaderModule = vkutils::createShaderModule(logicalDevice, fragSpirv);
+    pipeline = vkutils::createGraphicsPipeline(
+        logicalDevice, renderPass, pipelineLayout, swapchainSize,
+        vertShaderModule, fragShaderModule);
+}
+
+void OnlineSDFRenderer::tryRecreatePipeline() {
+    std::vector<uint32_t> fragSpirv;
     try {
-        fragSpirvPath =
-            shader_utils::compileToPath(fragShaderPath, useToyTemplate);
-    } catch (const std::runtime_error &) {
-        // An error occured while compiling the shader
-        // This can happen while doing live edits
-        // Just try find the old one until the error is fixed
-        fragSpirvPath = fragShaderPath;
-        fragSpirvPath.replace_extension(".spv");
+        fragSpirv =
+            shader_utils::compileFileToSpirv(fragShaderPath, useToyTemplate);
+    } catch (const std::runtime_error &err) {
+        spdlog::warn("Shader compile failed, keeping previous pipeline: {}",
+                     err.what());
     }
-    fragShaderModule =
-        vkutils::createShaderModule(logicalDevice, fragSpirvPath.string());
+
+    VK_CHECK(vkDeviceWaitIdle(logicalDevice));
+    destroyPipeline();
+    createPipelineLayoutCommon();
+    fragShaderModule = vkutils::createShaderModule(logicalDevice, fragSpirv);
     pipeline = vkutils::createGraphicsPipeline(
         logicalDevice, renderPass, pipelineLayout, swapchainSize,
         vertShaderModule, fragShaderModule);
@@ -178,10 +188,11 @@ void OnlineSDFRenderer::calcTimestamps(uint32_t imageIndex) {
 void OnlineSDFRenderer::gameLoop() {
     uint32_t currentFrame = 0;
     uint32_t frameIndex = 0;
-    bool pipelineUpdated = false;
+    std::atomic<bool> pipelineUpdated{false};
     auto filewatcher = filewatcher_factory::createFileWatcher();
-    filewatcher->startWatching(fragShaderPath,
-                               [&]() { pipelineUpdated = true; });
+    filewatcher->startWatching(fragShaderPath, [&]() {
+        pipelineUpdated.store(true, std::memory_order_relaxed);
+    });
     while (!glfwWindowShouldClose(window)) {
         if (maxFrames && currentFrame >= *maxFrames) {
             spdlog::info("Reached max frames {}, exiting.", *maxFrames);
@@ -197,12 +208,9 @@ void OnlineSDFRenderer::gameLoop() {
             frameIndex = 0;
             spdlog::info("Framebuffer resized!");
         }
-        if (pipelineUpdated) {
+        if (pipelineUpdated.exchange(false, std::memory_order_relaxed)) {
             spdlog::info("Recreating pipeline");
-            VK_CHECK(vkDeviceWaitIdle(logicalDevice));
-            destroyPipeline();
-            createPipeline();
-            pipelineUpdated = false;
+            tryRecreatePipeline();
         }
 
         VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[frameIndex],

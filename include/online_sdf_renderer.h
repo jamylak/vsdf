@@ -47,6 +47,7 @@ class OnlineSDFRenderer : public SDFRenderer {
     void setupRenderContext();
     void createCommandBuffers();
     void createPipeline();
+    void tryRecreatePipeline();
     void calcTimestamps(uint32_t imageIndex);
     void destroyRenderContext();
     void destroyPipeline();

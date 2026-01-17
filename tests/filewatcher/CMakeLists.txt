@@ -20,7 +20,7 @@ endif()
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(${PROJECT_NAME} GTest::gtest_main ${EXTRA_LIBS} spdlog::spdlog_header_only)
+target_link_libraries(${PROJECT_NAME} GTest::gtest_main ${EXTRA_LIBS} spdlog::spdlog)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT MSVC)
   target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)

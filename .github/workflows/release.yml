@@ -417,10 +417,7 @@ jobs:
     - name: Bundle runtime DLLs
       run: |
         New-Item -ItemType Directory -Force -Path release\windows | Out-Null
-        Copy-Item build\RelWithDebInfo\vsdf.exe release\windows\
-        if (Test-Path build\RelWithDebInfo\vsdf.pdb) {
-          Copy-Item build\RelWithDebInfo\vsdf.pdb release\windows\
-        }
+        Copy-Item build\Release\vsdf.exe release\windows\
         Get-ChildItem -Path C:\vcpkg\installed\x64-windows-static\bin\*.dll -ErrorAction SilentlyContinue | Copy-Item -Destination release\windows\ -Force
         # Prefer system Vulkan loader; avoid shipping vulkan-1.dll.
         Remove-Item -ErrorAction SilentlyContinue release\windows\vulkan-1.dll

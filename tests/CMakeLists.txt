@@ -9,7 +9,7 @@ set(TEST_SOURCES
 )
 
 # Common libraries for all platforms
-set(COMMON_LIBS GTest::gtest_main spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glfw volk)
+set(COMMON_LIBS GTest::gtest_main spdlog::spdlog_header_only glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glfw volk)
 
 if (VSDF_ENABLE_FFMPEG)
   list(APPEND TEST_SOURCES

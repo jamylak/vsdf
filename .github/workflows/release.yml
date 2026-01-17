@@ -408,7 +408,7 @@ jobs:
     - name: Configure CMake
       run: |
         cmake -B build `
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+          -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_CXX_FLAGS="/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR" `
           -DDISABLE_FFMPEG=ON `
           -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `

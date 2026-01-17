@@ -4,14 +4,11 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - 'win-debug'
   workflow_dispatch:
 
 jobs:
   build-linux:
     name: Build Linux Release
-    if: ${{ false }} # temporarily disabled
     # Use ubuntu-latest (currently 24.04) to build with modern toolchain
     # Bundle dependencies and test on multiple distros to ensure compatibility
     runs-on: ubuntu-latest
@@ -115,7 +112,6 @@ jobs:
 
   test-linux-ubuntu-24:
     name: Test on Ubuntu 24.04
-    if: ${{ false }} # temporarily disabled
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -173,7 +169,6 @@ jobs:
 
   test-linux-debian-13:
     name: Test on Debian 13 (Trixie)
-    if: ${{ false }} # temporarily disabled
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -209,7 +204,6 @@ jobs:
 
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
-    if: ${{ false }} # temporarily disabled
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
@@ -448,7 +442,6 @@ jobs:
 
   test-windows:
     name: Test Windows Release Binary
-    if: ${{ false }} # temporarily disabled
     needs: build-windows
     runs-on: windows-latest
     timeout-minutes: 5

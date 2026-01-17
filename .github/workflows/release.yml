@@ -412,7 +412,7 @@ jobs:
 
     - name: Build
       timeout-minutes: 10
-      run: cmake --build build --config RelWithDebInfo
+      run: cmake --build build --config Release
 
     - name: Bundle runtime DLLs
       run: |

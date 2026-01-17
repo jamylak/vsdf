@@ -401,7 +401,7 @@ jobs:
       timeout-minutes: 25
       run: |
         Write-Host "Installing dependencies via vcpkg..."
-        vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows --recurse
+        vcpkg install vulkan:x64-windows-static glfw3:x64-windows-static glslang:x64-windows-static spdlog:x64-windows-static glm:x64-windows-static --recurse
         vcpkg integrate install
         Write-Host "Dependencies installed successfully"
 
@@ -409,9 +409,11 @@ jobs:
       run: |
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
           -DCMAKE_CXX_FLAGS="/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR" `
           -DDISABLE_FFMPEG=ON `
           -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_TARGET_TRIPLET=x64-windows-static `
           .
 
     - name: Build
@@ -425,7 +427,7 @@ jobs:
         if (Test-Path build\RelWithDebInfo\vsdf.pdb) {
           Copy-Item build\RelWithDebInfo\vsdf.pdb release\windows\
         }
-        Copy-Item -Path C:\vcpkg\installed\x64-windows\bin\*.dll -Destination release\windows\ -Force
+        Get-ChildItem -Path C:\vcpkg\installed\x64-windows-static\bin\*.dll -ErrorAction SilentlyContinue | Copy-Item -Destination release\windows\ -Force
         # Prefer system Vulkan loader; avoid shipping vulkan-1.dll.
         Remove-Item -ErrorAction SilentlyContinue release\windows\vulkan-1.dll
 

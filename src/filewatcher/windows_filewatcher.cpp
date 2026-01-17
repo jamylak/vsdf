@@ -1,5 +1,6 @@
 #include "filewatcher/windows_filewatcher.h"
 #include <chrono>
+#include <cctype>
 #include <filesystem>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
@@ -99,16 +100,21 @@ void WindowsFileWatcher::watchFile() {
                 spdlog::debug("File change detected: {}", changedFile);
                 spdlog::debug("Comparing with target: {}", filename);
 
-                // Check if this is the file we're watching
-                if (changedFile == filename) {
+                const bool isTarget = changedFile == filename;
+                const bool isRelevantAction =
+                    fni->Action == FILE_ACTION_MODIFIED ||
+                    fni->Action == FILE_ACTION_ADDED ||
+                    fni->Action == FILE_ACTION_RENAMED_NEW_NAME;
+
+                if (isTarget && isRelevantAction) {
                     auto currentTime = steady_clock::now();
                     auto elapsedTime = currentTime - lastEventTime;
-                    lastEventTime = currentTime;
 
                     if (elapsedTime < DEBOUNCE_THRESHOLD_MS) {
                         spdlog::debug(
                             "Skipping event as it may be duplicate write");
                     } else {
+                        lastEventTime = currentTime;
                         spdlog::info("Tracked file change: {}", filename);
                         callback();
                     }

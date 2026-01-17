@@ -7,21 +7,14 @@
 TEST(ShaderUtilsTest, CompileTest) {
     TempShaderFile tempShader("temp_shader.frag",
                               "#version 450\nvoid main() {}");
-    shader_utils::compileToPath(tempShader.filename());
-
-    std::string expectedSpvFilename = "temp_shader.spv";
-    std::ifstream spvFile(expectedSpvFilename);
-    bool fileExists = spvFile.good();
-    spvFile.close();
-    std::remove(expectedSpvFilename.c_str());
-
-    ASSERT_TRUE(fileExists);
+    auto spirv = shader_utils::compileFileToSpirv(tempShader.filename());
+    ASSERT_FALSE(spirv.empty());
 }
 
 TEST(ShaderUtilsTest, CompileTestBadVersion) {
     TempShaderFile tempShader(
         "temp_shader.frag", "// GLSL Fragment shader example\nvoid main() {}");
-    ASSERT_THROW(shader_utils::compileToPath(tempShader.filename()),
+    ASSERT_THROW(shader_utils::compileFileToSpirv(tempShader.filename()),
                  std::runtime_error);
 }
 
@@ -29,15 +22,8 @@ TEST(ShaderUtilsTest, CompileVertexShader) {
     TempShaderFile tempShader(
         "temp_vertex.vert",
         "#version 450\nvoid main() { gl_Position = vec4(0.0); }");
-    shader_utils::compileToPath(tempShader.filename());
-
-    std::string expectedSpvFilename = "temp_vertex.spv";
-    std::ifstream spvFile(expectedSpvFilename);
-    bool fileExists = spvFile.good();
-    spvFile.close();
-    std::remove(expectedSpvFilename.c_str());
-
-    ASSERT_TRUE(fileExists);
+    auto spirv = shader_utils::compileFileToSpirv(tempShader.filename());
+    ASSERT_FALSE(spirv.empty());
 }
 
 TEST(ShaderUtilsTest, CompileGLSLESTest) {
@@ -52,28 +38,16 @@ TEST(ShaderUtilsTest, CompileGLSLESTest) {
         "    fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red\n"
         "}");
 
-    shader_utils::compileToPath(tempShader.filename(), true);
-
-    std::string expectedSpvFilename = "temp_glsl_es.spv";
-    std::ifstream spvFile(expectedSpvFilename);
-    bool fileExists = spvFile.good();
-    spvFile.close();
-    std::remove(expectedSpvFilename.c_str());
-
-    ASSERT_TRUE(fileExists);
+    auto spirv =
+        shader_utils::compileFileToSpirv(tempShader.filename(), true);
+    ASSERT_FALSE(spirv.empty());
 }
 
 TEST(ShaderUtilsTest, CompileToyShaderTest) {
     // This shader should compile successfully
-    shader_utils::compileToPath(SHADER_DIR "testtoyshader.frag", true);
-
-    std::string expectedSpvFilename = std::string(SHADER_DIR) + "testtoyshader.spv";
-    std::ifstream spvFile(expectedSpvFilename);
-    bool fileExists = spvFile.good();
-    spvFile.close();
-    std::remove(expectedSpvFilename.c_str());
-
-    ASSERT_TRUE(fileExists);
+    auto spirv = shader_utils::compileFileToSpirv(
+        SHADER_DIR "testtoyshader.frag", true);
+    ASSERT_FALSE(spirv.empty());
 }
 
 TEST(ShaderUtilsTest, CompileToyShaderFailTest) {
@@ -82,18 +56,19 @@ TEST(ShaderUtilsTest, CompileToyShaderFailTest) {
     TempShaderFile tempShader("temp_shader_fail.frag",
                               "void main() {}");
 
-    ASSERT_THROW(shader_utils::compileToPath(tempShader.filename(), true),
+    ASSERT_THROW(
+        shader_utils::compileFileToSpirv(tempShader.filename(), true),
                  std::runtime_error);
 }
 
 TEST(ShaderUtilsTest, FileNotFoundTest) {
-    ASSERT_THROW(shader_utils::compileToPath("non_existent_shader.frag"),
+    ASSERT_THROW(shader_utils::compileFileToSpirv("non_existent_shader.frag"),
                  std::runtime_error);
 }
 
 TEST(ShaderUtilsTest, CompileEmptyFile) {
     TempShaderFile tempShader("empty.frag", "");
-    ASSERT_THROW(shader_utils::compileToPath(tempShader.filename()),
+    ASSERT_THROW(shader_utils::compileFileToSpirv(tempShader.filename()),
                  std::runtime_error);
 }
 
@@ -101,7 +76,7 @@ TEST(ShaderUtilsTest, CompileWithUnknownExtension) {
     TempShaderFile tempShader("shader.txt", "#version 450\nvoid main() {}");
     // glslc typically fails if it can't determine the shader stage from the
     // extension
-    ASSERT_THROW(shader_utils::compileToPath(tempShader.filename()),
+    ASSERT_THROW(shader_utils::compileFileToSpirv(tempShader.filename()),
                  std::runtime_error);
 }
 

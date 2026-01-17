@@ -199,12 +199,11 @@ static std::vector<uint32_t> compileToSpirv(const char *shaderSource,
     return spirv;
 }
 
-std::filesystem::path compileToPath(const std::string &shaderFilename,
-                                    bool useToyTemplate = false) {
-    // Used to compile shaders to a path
-    // With .frag shaders we sometimes use the toy template
-    // which does old school GLSL ShaderToy style format
-    // also eg. with iTime and so on...
+std::vector<uint32_t> compileFileToSpirv(const std::string &shaderFilename,
+                                         bool useToyTemplate) {
+    // Used to compile shaders from a file directly to SPIR-V in memory.
+    // With .frag shaders we sometimes use the toy template which does
+    // old school GLSL ShaderToy style format (eg. iTime and so on).
     spdlog::info("Compiling shader: {}", shaderFilename);
     std::string shaderString;
     std::string shaderExtension =
@@ -217,14 +216,7 @@ std::filesystem::path compileToPath(const std::string &shaderFilename,
         shaderString = readShaderSource(shaderFilename);
     }
 
-    auto spirv = compileToSpirv(shaderString.data(), lang, useToyTemplate);
-
-    // Save to file
-    std::filesystem::path outputPath = shaderFilename;
-    outputPath.replace_extension(".spv");
-    // Convert to string to ensure char* path (Windows uses wchar_t* for paths)
-    glslang::OutputSpvBin(spirv, outputPath.string().c_str());
-    return outputPath;
+    return compileToSpirv(shaderString.data(), lang, useToyTemplate);
 }
 
 std::vector<uint32_t> compileFullscreenQuadVertSpirv() {

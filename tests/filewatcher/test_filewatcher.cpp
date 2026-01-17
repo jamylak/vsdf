@@ -1,9 +1,12 @@
 // #include "file_watcher.h"
 #include "filewatcher/filewatcher_factory.h"
+#include <atomic>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <ios>
+#include <stdexcept>
 #include <thread>
 
 // How long to wait for the callback to be called
@@ -31,6 +34,22 @@ void appendToFile(const std::string &path, const std::string &content) {
 void replaceFile(const std::string &path, const std::string &content) {
     std::remove(path.c_str()); // Delete the file
     createFile(path, content); // Create a new file with content
+}
+
+void safeSaveFile(const std::string &path, const std::string &content) {
+    std::filesystem::path original(path);
+    std::filesystem::path tempPath = original;
+    tempPath += ".tmp";
+    createFile(tempPath.string(), content);
+
+    std::error_code ec;
+    std::filesystem::remove(original, ec);
+    ec.clear();
+    std::filesystem::rename(tempPath, original, ec);
+    if (ec) {
+        throw std::runtime_error("Failed to rename temp file: " +
+                                 ec.message());
+    }
 }
 
 class FileWatcherTest : public ::testing::Test {
@@ -114,3 +133,46 @@ TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
 
     EXPECT_GE(callbackCount, 10); // Ensure callback was called at least once
 }
+
+TEST_F(FileWatcherTest, FileDeletedDoesNotTriggerCallback) {
+    bool callbackCalled = false;
+    auto callback = [&callbackCalled]() { callbackCalled = true; };
+    createFile(testFilePath, "Initial content");
+
+    auto watcher = filewatcher_factory::createFileWatcher();
+    watcher->startWatching(testFilePath, callback);
+    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::remove(testFilePath.c_str());
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(THREAD_WAIT_TIME_MS * 2));
+    watcher->stopWatching();
+
+    EXPECT_FALSE(callbackCalled);
+}
+
+#if defined(_WIN32)
+TEST_F(FileWatcherTest, SafeSaveRenameCallbackSeesFile) {
+    std::atomic<int> callbackCount{0};
+    std::atomic<int> failedOpenCount{0};
+    auto callback = [&]() {
+        std::ifstream file(testFilePath, std::ios::binary);
+        if (file.is_open()) {
+            callbackCount.fetch_add(1);
+        } else {
+            failedOpenCount.fetch_add(1);
+        }
+    };
+
+    createFile(testFilePath, "Initial content");
+    auto watcher = filewatcher_factory::createFileWatcher();
+    watcher->startWatching(testFilePath, callback);
+    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    safeSaveFile(testFilePath, "Updated content");
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(THREAD_WAIT_TIME_MS * 4));
+    watcher->stopWatching();
+
+    EXPECT_EQ(failedOpenCount.load(), 0);
+    EXPECT_GE(callbackCount.load(), 1);
+}
+#endif

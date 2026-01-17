@@ -6,9 +6,9 @@
 
 namespace shader_utils {
 // Take a shader file eg. planet.frag
-// and produce planet.spv
-std::filesystem::path compileToPath(const std::string &shaderFilename,
-                              bool useToyTemplate = false);
+// and produce SPIR-V in memory.
+std::vector<uint32_t> compileFileToSpirv(const std::string &shaderFilename,
+                                         bool useToyTemplate = false);
 
 // Compile the embedded fullscreen quad vertex shader directly to SPIR-V.
 std::vector<uint32_t> compileFullscreenQuadVertSpirv();

@@ -151,10 +151,9 @@ void OfflineSDFRenderer::setupRenderContext() {
 
 void OfflineSDFRenderer::createPipeline() {
     createPipelineLayoutCommon();
-    std::filesystem::path fragSpirvPath =
-        shader_utils::compileToPath(fragShaderPath, useToyTemplate);
-    fragShaderModule =
-        vkutils::createShaderModule(logicalDevice, fragSpirvPath.string());
+    auto fragSpirv =
+        shader_utils::compileFileToSpirv(fragShaderPath, useToyTemplate);
+    fragShaderModule = vkutils::createShaderModule(logicalDevice, fragSpirv);
     pipeline = vkutils::createGraphicsPipeline(
         logicalDevice, renderPass, pipelineLayout, imageSize, vertShaderModule,
         fragShaderModule);

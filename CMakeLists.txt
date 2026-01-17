@@ -139,7 +139,13 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE volk)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog_header_only)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(SPDLOG_TARGET spdlog::spdlog_header_only)
+else()
+    set(SPDLOG_TARGET spdlog::spdlog)
+endif()
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ${SPDLOG_TARGET})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
 

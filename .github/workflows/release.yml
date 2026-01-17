@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
     branches:
-      win-debug
+      - win-debug
   workflow_dispatch:
 
 jobs:

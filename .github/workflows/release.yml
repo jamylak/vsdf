@@ -409,6 +409,7 @@ jobs:
       run: |
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_POLICY_DEFAULT_CMP0091=NEW `
           -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
           -DCMAKE_CXX_FLAGS="/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR" `
           -DDISABLE_FFMPEG=ON `

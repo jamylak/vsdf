@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      win-debug
   workflow_dispatch:
 
 jobs:

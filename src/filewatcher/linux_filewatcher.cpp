@@ -80,7 +80,7 @@ void LinuxFileWatcher::startWatching(const std::string &filepath,
                  path.string());
 
     wd = inotify_add_watch(fd, dirPath.c_str(),
-                           IN_MODIFY | IN_MOVED_TO | IN_CREATE);
+                           IN_CLOSE_WRITE | IN_MOVED_TO);
     if (wd == -1) {
         close(fd);
         throw std::runtime_error("Failed to initialize watch " +

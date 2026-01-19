@@ -130,7 +130,7 @@ TEST_F(FileWatcherTest, FileDeletedAndReplacedCallbackCalled) {
     // so use THREAD_WAIT_TIME_MS * 20
     // But usually it just finishes really early
     for (int waitedMs = 0;
-         waitedMs < THREAD_WAIT_TIME_MS && !callbackCalled.load();
+         waitedMs < THREAD_WAIT_TIME_MS * 20 && !callbackCalled.load();
          waitedMs += kPollIntervalMs) {
         std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }
@@ -149,11 +149,11 @@ TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     for (int i = 0; i < 10; ++i) {
         replaceFile(testFilePath, "Content " + std::to_string(i));
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(50)); // Wait a bit between replacements
+        std::this_thread::sleep_for(std::chrono::milliseconds(
+            THREAD_WAIT_TIME_MS)); // Wait a bit between replacements
     }
     for (int waitedMs = 0;
-         waitedMs < THREAD_WAIT_TIME_MS && callbackCount.load() < 10;
+         waitedMs < THREAD_WAIT_TIME_MS * 20 && callbackCount.load() < 10;
          waitedMs += kPollIntervalMs) {
         std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }

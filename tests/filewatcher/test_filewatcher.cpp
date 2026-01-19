@@ -10,7 +10,9 @@
 #include <thread>
 
 // How long to wait for the callback to be called
-#define THREAD_WAIT_TIME_MS 50
+constexpr int THREAD_WAIT_TIME_MS = 50;
+// Polling avoids a fixed long sleep so tests can finish early when callbacks are fast.
+constexpr int kPollIntervalMs = 5;
 
 // Helper function to simulate file modification
 

@@ -47,7 +47,7 @@ void MacFileWatcher::fsEventsCallback(
 void MacFileWatcher::startWatching(const std::string &path,
                                    FileChangeCallback cb) {
     this->callback = cb;
-    running = true;
+    running.store(true, std::memory_order_relaxed);
     std::filesystem::path abspath(std::filesystem::absolute(path));
     // So /tmp -> /private/tmp and matchs with the fseventstream paths
     std::filesystem::path canonicalPath = std::filesystem::canonical(abspath);
@@ -76,7 +76,9 @@ void MacFileWatcher::startWatching(const std::string &path,
         FSEventStreamStart(stream);
 
         std::unique_lock<std::mutex> lock(mtx);
-        cv.wait(lock, [this] { return !running; });
+        cv.wait(lock, [this] {
+            return !running.load(std::memory_order_relaxed);
+        });
 
         FSEventStreamStop(stream);
         FSEventStreamInvalidate(stream);
@@ -89,7 +91,7 @@ void MacFileWatcher::startWatching(const std::string &path,
 }
 
 void MacFileWatcher::stopWatching() {
-    running = false;
+    running.store(false, std::memory_order_relaxed);
     cv.notify_one(); // Signal the condition variable to unblock the thread
 
     if (watchThread.joinable()) {

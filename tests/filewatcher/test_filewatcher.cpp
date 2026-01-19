@@ -9,8 +9,22 @@
 #include <stdexcept>
 #include <thread>
 
-// How long to wait for the callback to be called
-#define THREAD_WAIT_TIME_MS 50
+// A unit for small waits in test actions.
+constexpr int kThreadWaitTimeMs = 50;
+// Wait long enough to confirm no change occurred.
+constexpr int kNoChangeWaitMs = kThreadWaitTimeMs * 2;
+// Max wait to confirm a change occurred.
+// We don't have to wait this long due to kPollIntervalMs below,
+// So early stoppage on an action almost always make tests faster.
+constexpr int kCallbackMaxWaitMs = kThreadWaitTimeMs * 20;
+// A small delay between repeated file replacements.
+constexpr int kBetweenReplacementsWaitMs = kThreadWaitTimeMs;
+// Wait long enough for safe-save rename callback to occur.
+constexpr int kSafeSaveWaitMs = kThreadWaitTimeMs * 4;
+// Polling avoids a fixed long sleep so tests can finish early when callbacks
+// are fast. eg. we dont need to wait for the full kCallbackMaxWaitMs
+// if action returns true early.
+constexpr int kPollIntervalMs = 5;
 
 // Helper function to simulate file modification
 
@@ -47,8 +61,7 @@ void safeSaveFile(const std::string &path, const std::string &content) {
     ec.clear();
     std::filesystem::rename(tempPath, original, ec);
     if (ec) {
-        throw std::runtime_error("Failed to rename temp file: " +
-                                 ec.message());
+        throw std::runtime_error("Failed to rename temp file: " + ec.message());
     }
 }
 
@@ -71,73 +84,98 @@ class FileWatcherTest : public ::testing::Test {
 };
 
 TEST_F(FileWatcherTest, NoChangeCallbackNotCalled) {
-    bool callbackCalled = false;
-    auto callback = [&callbackCalled]() { callbackCalled = true; };
+    std::atomic<bool> callbackCalled{false};
+    auto callback = [&callbackCalled]() { callbackCalled.store(true); };
     createFile(testFilePath, "New content");
     createFile(differentFilePath, "Different content");
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kNoChangeWaitMs));
 
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
     appendToFile(differentFilePath, "New content");
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kNoChangeWaitMs));
     watcher->stopWatching();
 
-    EXPECT_FALSE(callbackCalled);
+    EXPECT_FALSE(callbackCalled.load());
 }
 
 TEST_F(FileWatcherTest, FileModifiedCallbackCalled) {
-    bool callbackCalled = false;
-    auto callback = [&callbackCalled]() { callbackCalled = true; };
+    std::atomic<bool> callbackCalled{false};
+    auto callback = [&callbackCalled]() { callbackCalled.store(true); };
     createFile(testFilePath, "New content");
 
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     appendToFile(testFilePath, "New content");
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
-    watcher->stopWatching();
 
-    EXPECT_TRUE(callbackCalled);
-}
-
-TEST_F(FileWatcherTest, FileDeletedAndReplacedCallbackCalled) {
-    bool callbackCalled = false;
-    auto callback = [&callbackCalled]() { callbackCalled = true; };
-    createFile(testFilePath, "New content");
-
-    auto watcher = filewatcher_factory::createFileWatcher();
-    watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
-    replaceFile(testFilePath, "Replacement content");
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
-    watcher->stopWatching();
-
-    EXPECT_TRUE(callbackCalled);
-}
-
-TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
-    int callbackCount = 0;
-    auto callback = [&callbackCount]() { callbackCount++; };
-
-    createFile(testFilePath, "New content");
-    auto watcher = filewatcher_factory::createFileWatcher();
-    watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    for (int i = 0; i < 10; ++i) {
-        replaceFile(testFilePath, "Content " + std::to_string(i));
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(50)); // Wait a bit between replacements
+    // This one sometimes takes a bit longer to trigger eg. on Mac
+    // so use kCallbackMaxWaitMs.
+    // But usually it just finishes really early
+    for (int waitedMs = 0;
+         waitedMs < kCallbackMaxWaitMs && !callbackCalled.load();
+         waitedMs += kPollIntervalMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }
     watcher->stopWatching();
 
-    EXPECT_GE(callbackCount, 10); // Ensure callback was called at least once
+    EXPECT_TRUE(callbackCalled.load());
 }
 
-// This can be Windows only for now
+TEST_F(FileWatcherTest, FileDeletedAndReplacedCallbackCalled) {
+    std::atomic<bool> callbackCalled{false};
+    auto callback = [&callbackCalled]() { callbackCalled.store(true); };
+    createFile(testFilePath, "New content");
+
+    auto watcher = filewatcher_factory::createFileWatcher();
+    watcher->startWatching(testFilePath, callback);
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
+    replaceFile(testFilePath, "Replacement content");
+
+    // This one sometimes takes a bit longer to trigger eg. on Mac
+    // so use kCallbackMaxWaitMs.
+    // But usually it just finishes really early
+    for (int waitedMs = 0;
+         waitedMs < kCallbackMaxWaitMs && !callbackCalled.load();
+         waitedMs += kPollIntervalMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
+    }
+    watcher->stopWatching();
+
+    EXPECT_TRUE(callbackCalled.load());
+}
+
+TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
+    std::atomic<int> callbackCount{0};
+    auto callback = [&callbackCount]() { callbackCount.fetch_add(1); };
+
+    createFile(testFilePath, "New content");
+    auto watcher = filewatcher_factory::createFileWatcher();
+    watcher->startWatching(testFilePath, callback);
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
+    for (int i = 0; i < 10; ++i) {
+        replaceFile(testFilePath, "Content " + std::to_string(i));
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(kBetweenReplacementsWaitMs));
+    }
+    for (int waitedMs = 0;
+         waitedMs < kCallbackMaxWaitMs && callbackCount.load() < 10;
+         waitedMs += kPollIntervalMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
+    }
+    watcher->stopWatching();
+
+    EXPECT_GE(callbackCount.load(),
+              10); // Ensure callback was called at least once
+}
+
+// Windows/Linux only for now.
 // In any case the Shader Compiler will raise if it can't find the file
-// So this doesn't seem to be too important eg. on Mac
-#if defined(_WIN32)
+// So this doesn't seem to be too important eg. on Mac.
+// maybe macOS FSEvents stream doesn’t guarantee a clean “removed” flag for
+// every delete, and deletes are maybe reported as a rename (move to trash) or
+// maybe a metadata change before the remove flag appears??
+#if defined(_WIN32) || defined(__linux__)
 TEST_F(FileWatcherTest, FileDeletedDoesNotTriggerCallback) {
     bool callbackCalled = false;
     auto callback = [&callbackCalled]() { callbackCalled = true; };
@@ -145,16 +183,16 @@ TEST_F(FileWatcherTest, FileDeletedDoesNotTriggerCallback) {
 
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     std::remove(testFilePath.c_str());
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(THREAD_WAIT_TIME_MS * 2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kNoChangeWaitMs));
     watcher->stopWatching();
 
     EXPECT_FALSE(callbackCalled);
 }
 
 TEST_F(FileWatcherTest, SafeSaveRenameCallbackSeesFile) {
+    // expects at least one callback and no “file couldn’t open” failures
     std::atomic<int> callbackCount{0};
     std::atomic<int> failedOpenCount{0};
     auto callback = [&]() {
@@ -169,10 +207,14 @@ TEST_F(FileWatcherTest, SafeSaveRenameCallbackSeesFile) {
     createFile(testFilePath, "Initial content");
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     safeSaveFile(testFilePath, "Updated content");
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(THREAD_WAIT_TIME_MS * 4));
+    for (int waitedMs = 0;
+         waitedMs < kSafeSaveWaitMs && callbackCount.load() == 0 &&
+         failedOpenCount.load() == 0;
+         waitedMs += kPollIntervalMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
+    }
     watcher->stopWatching();
 
     EXPECT_EQ(failedOpenCount.load(), 0);

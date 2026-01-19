@@ -1,6 +1,7 @@
 #ifndef LINUX_FILEWATCHER_H
 #define LINUX_FILEWATCHER_H
 #include "filewatcher.h"
+#include <atomic>
 #include <string>
 #include <thread>
 
@@ -18,6 +19,6 @@ class LinuxFileWatcher : public FileWatcher {
     std::string filename; // Relative filname we watch
     int fd = -1;          // File descriptor
     int wd = -1;          // Watch descriptor
-    bool running = true;
+    std::atomic<bool> running{true};
 };
 #endif

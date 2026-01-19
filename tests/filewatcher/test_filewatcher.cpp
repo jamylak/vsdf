@@ -169,10 +169,13 @@ TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
               10); // Ensure callback was called at least once
 }
 
-// This can be Windows only for now
+// Windows/Linux only for now.
 // In any case the Shader Compiler will raise if it can't find the file
-// So this doesn't seem to be too important eg. on Mac
-#if defined(_WIN32)
+// So this doesn't seem to be too important eg. on Mac.
+// maybe macOS FSEvents stream doesn’t guarantee a clean “removed” flag for every delete,
+// and deletes are maybe reported as a rename (move to trash)
+// or maybe a metadata change before the remove flag appears??
+#if defined(_WIN32) || defined(__linux__)
 TEST_F(FileWatcherTest, FileDeletedDoesNotTriggerCallback) {
     bool callbackCalled = false;
     auto callback = [&callbackCalled]() { callbackCalled = true; };

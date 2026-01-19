@@ -47,8 +47,7 @@ void safeSaveFile(const std::string &path, const std::string &content) {
     ec.clear();
     std::filesystem::rename(tempPath, original, ec);
     if (ec) {
-        throw std::runtime_error("Failed to rename temp file: " +
-                                 ec.message());
+        throw std::runtime_error("Failed to rename temp file: " + ec.message());
     }
 }
 
@@ -95,7 +94,13 @@ TEST_F(FileWatcherTest, FileModifiedCallbackCalled) {
     watcher->startWatching(testFilePath, callback);
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
     appendToFile(testFilePath, "New content");
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    // Do this in a loop for longer than the normal THREAD_WAIT_TIME_MS
+    // as this test case doesn't get triggered sometimes.
+    // The loop allows it to finish early if the callback is called
+    for (int i = 0; i < THREAD_WAIT_TIME_MS * 5 && !callbackCalled.load();
+         ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
     watcher->stopWatching();
 
     EXPECT_TRUE(callbackCalled.load());

@@ -39,7 +39,7 @@ void WindowsFileWatcher::watchFile() {
     auto lastEventTime = std::chrono::steady_clock::now() - INITIAL_TIME_OFFSET;
 
     // Main loop runs until stopWatching flips the running flag.
-    while (running) {
+    while (running.load(std::memory_order_relaxed)) {
         // Kick off async directory monitoring for writes and renames.
         BOOL success = ReadDirectoryChangesW(
             hDirectory, buffer, BUFFER_SIZE, FALSE,
@@ -184,16 +184,16 @@ void WindowsFileWatcher::startWatching(const std::string &filepath,
                                  std::to_string(GetLastError()));
     }
 
-    running = true;
+    running.store(true, std::memory_order_relaxed);
     watcherThread = std::thread{&WindowsFileWatcher::watchFile, this};
 }
 
 void WindowsFileWatcher::stopWatching() {
     spdlog::debug("Stop watching (Windows)");
-    if (!running)
+    if (!running.load(std::memory_order_relaxed))
         return;
 
-    running = false;
+    running.store(false, std::memory_order_relaxed);
 
     // Signal the stop event to wake up the watching thread
     if (hStopEvent != INVALID_HANDLE_VALUE) {

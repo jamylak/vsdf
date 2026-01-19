@@ -25,7 +25,7 @@ void LinuxFileWatcher::watchFile() {
     auto lastEventTime =
         std::chrono::steady_clock::now() - std::chrono::seconds(100);
 
-    while (running) {
+    while (running.load(std::memory_order_relaxed)) {
         char buffer[BUF_LEN];
         ssize_t length = read(fd, buffer, BUF_LEN);
         if (length < 0)
@@ -92,7 +92,7 @@ void LinuxFileWatcher::startWatching(const std::string &filepath,
 
 void LinuxFileWatcher::stopWatching() {
     spdlog ::debug("Stop watching");
-    running = false;
+    running.store(false, std::memory_order_relaxed);
     if (wd != -1)
         inotify_rm_watch(fd, wd);
     // Now it should receive 1 final event which is the

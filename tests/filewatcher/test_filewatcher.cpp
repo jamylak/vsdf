@@ -9,10 +9,13 @@
 #include <stdexcept>
 #include <thread>
 
-// How long to wait for the callback to be called
+// A unit for small waits in test actions
+// Sometimes we will wait a multiple of this to ensure eg. Action did happen
+// or did not
 constexpr int THREAD_WAIT_TIME_MS = 50;
 // Polling avoids a fixed long sleep so tests can finish early when callbacks
-// are fast.
+// are fast. eg. we dont need to wait for the full THREAD_WAIT_TIME_MS * 20
+// if action returns true early
 constexpr int kPollIntervalMs = 5;
 
 // Helper function to simulate file modification

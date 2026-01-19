@@ -205,7 +205,12 @@ TEST_F(FileWatcherTest, SafeSaveRenameCallbackSeesFile) {
     watcher->startWatching(testFilePath, callback);
     std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     safeSaveFile(testFilePath, "Updated content");
-    std::this_thread::sleep_for(std::chrono::milliseconds(kSafeSaveWaitMs));
+    for (int waitedMs = 0;
+         waitedMs < kSafeSaveWaitMs && callbackCount.load() == 0 &&
+         failedOpenCount.load() == 0;
+         waitedMs += kPollIntervalMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
+    }
     watcher->stopWatching();
 
     EXPECT_EQ(failedOpenCount.load(), 0);

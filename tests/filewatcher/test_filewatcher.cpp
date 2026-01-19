@@ -105,8 +105,7 @@ TEST_F(FileWatcherTest, FileModifiedCallbackCalled) {
 
     // This one sometimes takes a bit longer to trigger eg. on Mac
     // so use THREAD_WAIT_TIME_MS * 20
-    // If it takes all of that time, it is worth investigating why
-    // but it should have finished way before
+    // But usually it just finishes really early
     for (int waitedMs = 0;
          waitedMs < THREAD_WAIT_TIME_MS * 20 && !callbackCalled.load();
          waitedMs += kPollIntervalMs) {
@@ -126,6 +125,10 @@ TEST_F(FileWatcherTest, FileDeletedAndReplacedCallbackCalled) {
     watcher->startWatching(testFilePath, callback);
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
     replaceFile(testFilePath, "Replacement content");
+
+    // This one sometimes takes a bit longer to trigger eg. on Mac
+    // so use THREAD_WAIT_TIME_MS * 20
+    // But usually it just finishes really early
     for (int waitedMs = 0;
          waitedMs < THREAD_WAIT_TIME_MS && !callbackCalled.load();
          waitedMs += kPollIntervalMs) {

@@ -96,12 +96,11 @@ TEST_F(FileWatcherTest, FileModifiedCallbackCalled) {
     watcher->startWatching(testFilePath, callback);
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
     appendToFile(testFilePath, "New content");
-    // Do this in a loop for longer than the normal THREAD_WAIT_TIME_MS
-    // as this test case doesn't get triggered sometimes.
-    // The loop allows it to finish early if the callback is called
-    for (int i = 0; i < THREAD_WAIT_TIME_MS * 5 && !callbackCalled.load();
-         ++i) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // Poll briefly so fast callbacks return quickly without a fixed long sleep.
+    for (int waitedMs = 0;
+         waitedMs < THREAD_WAIT_TIME_MS && !callbackCalled.load();
+         waitedMs += kPollIntervalMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }
     watcher->stopWatching();
 
@@ -117,15 +116,19 @@ TEST_F(FileWatcherTest, FileDeletedAndReplacedCallbackCalled) {
     watcher->startWatching(testFilePath, callback);
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
     replaceFile(testFilePath, "Replacement content");
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    for (int waitedMs = 0;
+         waitedMs < THREAD_WAIT_TIME_MS && !callbackCalled.load();
+         waitedMs += kPollIntervalMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
+    }
     watcher->stopWatching();
 
     EXPECT_TRUE(callbackCalled.load());
 }
 
 TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
-    int callbackCount = 0;
-    auto callback = [&callbackCount]() { callbackCount++; };
+    std::atomic<int> callbackCount{0};
+    auto callback = [&callbackCount]() { callbackCount.fetch_add(1); };
 
     createFile(testFilePath, "New content");
     auto watcher = filewatcher_factory::createFileWatcher();
@@ -136,9 +139,14 @@ TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
         std::this_thread::sleep_for(
             std::chrono::milliseconds(50)); // Wait a bit between replacements
     }
+    for (int waitedMs = 0;
+         waitedMs < THREAD_WAIT_TIME_MS && callbackCount.load() < 10;
+         waitedMs += kPollIntervalMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
+    }
     watcher->stopWatching();
 
-    EXPECT_GE(callbackCount, 10); // Ensure callback was called at least once
+    EXPECT_GE(callbackCount.load(), 10); // Ensure callback was called at least once
 }
 
 // This can be Windows only for now

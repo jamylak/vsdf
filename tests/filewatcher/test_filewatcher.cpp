@@ -97,9 +97,11 @@ TEST_F(FileWatcherTest, FileModifiedCallbackCalled) {
     watcher->startWatching(testFilePath, callback);
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
     appendToFile(testFilePath, "New content");
-    // Poll briefly so fast callbacks return quickly without a fixed long sleep.
+
+    // This one sometimes takes a bit longer to trigger eg. on Mac
+    // so use THREAD_WAIT_TIME_MS * 5
     for (int waitedMs = 0;
-         waitedMs < THREAD_WAIT_TIME_MS && !callbackCalled.load();
+         waitedMs < THREAD_WAIT_TIME_MS * 5 && !callbackCalled.load();
          waitedMs += kPollIntervalMs) {
         std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }

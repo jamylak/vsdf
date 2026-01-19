@@ -9,13 +9,21 @@
 #include <stdexcept>
 #include <thread>
 
-// A unit for small waits in test actions
-// Sometimes we will wait a multiple of this to ensure eg. Action did happen
-// or did not
-constexpr int THREAD_WAIT_TIME_MS = 50;
+// A unit for small waits in test actions.
+constexpr int kThreadWaitTimeMs = 50;
+// Wait long enough to confirm no change occurred.
+constexpr int kNoChangeWaitMs = kThreadWaitTimeMs * 2;
+// Max wait to confirm a change occurred.
+// We don't have to wait this long due to kPollIntervalMs below,
+// So early stoppage on an action almost always make tests faster.
+constexpr int kCallbackMaxWaitMs = kThreadWaitTimeMs * 20;
+// A small delay between repeated file replacements.
+constexpr int kBetweenReplacementsWaitMs = kThreadWaitTimeMs;
+// Wait long enough for safe-save rename callback to occur.
+constexpr int kSafeSaveWaitMs = kThreadWaitTimeMs * 4;
 // Polling avoids a fixed long sleep so tests can finish early when callbacks
-// are fast. eg. we dont need to wait for the full THREAD_WAIT_TIME_MS * 20
-// if action returns true early
+// are fast. eg. we dont need to wait for the full kCallbackMaxWaitMs
+// if action returns true early.
 constexpr int kPollIntervalMs = 5;
 
 // Helper function to simulate file modification
@@ -80,14 +88,12 @@ TEST_F(FileWatcherTest, NoChangeCallbackNotCalled) {
     auto callback = [&callbackCalled]() { callbackCalled.store(true); };
     createFile(testFilePath, "New content");
     createFile(differentFilePath, "Different content");
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(THREAD_WAIT_TIME_MS * 2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kNoChangeWaitMs));
 
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
     appendToFile(differentFilePath, "New content");
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(THREAD_WAIT_TIME_MS * 2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kNoChangeWaitMs));
     watcher->stopWatching();
 
     EXPECT_FALSE(callbackCalled.load());
@@ -100,14 +106,14 @@ TEST_F(FileWatcherTest, FileModifiedCallbackCalled) {
 
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     appendToFile(testFilePath, "New content");
 
     // This one sometimes takes a bit longer to trigger eg. on Mac
-    // so use THREAD_WAIT_TIME_MS * 20
+    // so use kCallbackMaxWaitMs.
     // But usually it just finishes really early
     for (int waitedMs = 0;
-         waitedMs < THREAD_WAIT_TIME_MS * 20 && !callbackCalled.load();
+         waitedMs < kCallbackMaxWaitMs && !callbackCalled.load();
          waitedMs += kPollIntervalMs) {
         std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }
@@ -123,14 +129,14 @@ TEST_F(FileWatcherTest, FileDeletedAndReplacedCallbackCalled) {
 
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     replaceFile(testFilePath, "Replacement content");
 
     // This one sometimes takes a bit longer to trigger eg. on Mac
-    // so use THREAD_WAIT_TIME_MS * 20
+    // so use kCallbackMaxWaitMs.
     // But usually it just finishes really early
     for (int waitedMs = 0;
-         waitedMs < THREAD_WAIT_TIME_MS * 20 && !callbackCalled.load();
+         waitedMs < kCallbackMaxWaitMs && !callbackCalled.load();
          waitedMs += kPollIntervalMs) {
         std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }
@@ -146,14 +152,14 @@ TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
     createFile(testFilePath, "New content");
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     for (int i = 0; i < 10; ++i) {
         replaceFile(testFilePath, "Content " + std::to_string(i));
-        std::this_thread::sleep_for(std::chrono::milliseconds(
-            THREAD_WAIT_TIME_MS)); // Wait a bit between replacements
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(kBetweenReplacementsWaitMs));
     }
     for (int waitedMs = 0;
-         waitedMs < THREAD_WAIT_TIME_MS * 20 && callbackCount.load() < 10;
+         waitedMs < kCallbackMaxWaitMs && callbackCount.load() < 10;
          waitedMs += kPollIntervalMs) {
         std::this_thread::sleep_for(std::chrono::milliseconds(kPollIntervalMs));
     }
@@ -174,10 +180,9 @@ TEST_F(FileWatcherTest, FileDeletedDoesNotTriggerCallback) {
 
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     std::remove(testFilePath.c_str());
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(THREAD_WAIT_TIME_MS * 2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kNoChangeWaitMs));
     watcher->stopWatching();
 
     EXPECT_FALSE(callbackCalled);
@@ -198,10 +203,9 @@ TEST_F(FileWatcherTest, SafeSaveRenameCallbackSeesFile) {
     createFile(testFilePath, "Initial content");
     auto watcher = filewatcher_factory::createFileWatcher();
     watcher->startWatching(testFilePath, callback);
-    std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kThreadWaitTimeMs));
     safeSaveFile(testFilePath, "Updated content");
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(THREAD_WAIT_TIME_MS * 4));
+    std::this_thread::sleep_for(std::chrono::milliseconds(kSafeSaveWaitMs));
     watcher->stopWatching();
 
     EXPECT_EQ(failedOpenCount.load(), 0);

@@ -71,8 +71,8 @@ class FileWatcherTest : public ::testing::Test {
 };
 
 TEST_F(FileWatcherTest, NoChangeCallbackNotCalled) {
-    bool callbackCalled = false;
-    auto callback = [&callbackCalled]() { callbackCalled = true; };
+    std::atomic<bool> callbackCalled{false};
+    auto callback = [&callbackCalled]() { callbackCalled.store(true); };
     createFile(testFilePath, "New content");
     createFile(differentFilePath, "Different content");
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
@@ -83,12 +83,12 @@ TEST_F(FileWatcherTest, NoChangeCallbackNotCalled) {
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
     watcher->stopWatching();
 
-    EXPECT_FALSE(callbackCalled);
+    EXPECT_FALSE(callbackCalled.load());
 }
 
 TEST_F(FileWatcherTest, FileModifiedCallbackCalled) {
-    bool callbackCalled = false;
-    auto callback = [&callbackCalled]() { callbackCalled = true; };
+    std::atomic<bool> callbackCalled{false};
+    auto callback = [&callbackCalled]() { callbackCalled.store(true); };
     createFile(testFilePath, "New content");
 
     auto watcher = filewatcher_factory::createFileWatcher();
@@ -98,12 +98,12 @@ TEST_F(FileWatcherTest, FileModifiedCallbackCalled) {
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
     watcher->stopWatching();
 
-    EXPECT_TRUE(callbackCalled);
+    EXPECT_TRUE(callbackCalled.load());
 }
 
 TEST_F(FileWatcherTest, FileDeletedAndReplacedCallbackCalled) {
-    bool callbackCalled = false;
-    auto callback = [&callbackCalled]() { callbackCalled = true; };
+    std::atomic<bool> callbackCalled{false};
+    auto callback = [&callbackCalled]() { callbackCalled.store(true); };
     createFile(testFilePath, "New content");
 
     auto watcher = filewatcher_factory::createFileWatcher();
@@ -113,7 +113,7 @@ TEST_F(FileWatcherTest, FileDeletedAndReplacedCallbackCalled) {
     std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_WAIT_TIME_MS));
     watcher->stopWatching();
 
-    EXPECT_TRUE(callbackCalled);
+    EXPECT_TRUE(callbackCalled.load());
 }
 
 TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {

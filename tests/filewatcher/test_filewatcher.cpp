@@ -149,7 +149,8 @@ TEST_F(FileWatcherTest, FileReplacedMultipleTimesCallbackCalled) {
     }
     watcher->stopWatching();
 
-    EXPECT_GE(callbackCount.load(), 10); // Ensure callback was called at least once
+    EXPECT_GE(callbackCount.load(),
+              10); // Ensure callback was called at least once
 }
 
 // This can be Windows only for now

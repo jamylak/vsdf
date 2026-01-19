@@ -192,6 +192,7 @@ TEST_F(FileWatcherTest, FileDeletedDoesNotTriggerCallback) {
 }
 
 TEST_F(FileWatcherTest, SafeSaveRenameCallbackSeesFile) {
+    // expects at least one callback and no “file couldn’t open” failures
     std::atomic<int> callbackCount{0};
     std::atomic<int> failedOpenCount{0};
     auto callback = [&]() {

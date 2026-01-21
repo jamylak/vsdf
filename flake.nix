@@ -39,6 +39,7 @@
             llvmPackages_21.clang
             cmake
             cmakeCurses
+            ninja
 
             # Development time dependencies
             gtest

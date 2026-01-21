@@ -299,13 +299,13 @@ OfflineSDFRenderer::getPushConstants(uint32_t currentFrame) noexcept {
                               glm::vec2(imageSize.width, imageSize.height));
 }
 
-ReadbackFrame
+PPMDebugFrame
 OfflineSDFRenderer::debugReadbackOffscreenImage(const RingSlot &slot) {
     // Only for debug PPM dump
     const auto formatInfo = readbackFormatInfo;
     const uint8_t *data = static_cast<const uint8_t *>(slot.mappedData);
 
-    ReadbackFrame frame;
+    PPMDebugFrame frame;
     frame.allocateRGB(imageSize.width, imageSize.height);
     const uint8_t *src = data;
     const size_t pixelCount = static_cast<size_t>(imageSize.width) *
@@ -426,7 +426,7 @@ void OfflineSDFRenderer::runEncoderLoop() {
         if (debugDumpPPMDir) {
             // Blocking readback + PPM dump; this will stall the encode
             // thread but remains an optional debug extra.
-            ReadbackFrame frame = debugReadbackOffscreenImage(slot);
+            PPMDebugFrame frame = debugReadbackOffscreenImage(slot);
             dumpDebugFrame(frame);
         }
 

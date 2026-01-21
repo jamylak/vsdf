@@ -14,7 +14,7 @@ class SDFRenderer {
     void logDeviceLimits() const;
     void initDeviceQueue();
     void createPipelineLayoutCommon();
-    void dumpDebugFrame(const ReadbackFrame &frame);
+    void dumpDebugFrame(const PPMDebugFrame &frame);
     void destroyPipelineCommon() noexcept;
     [[nodiscard]] vkutils::PushConstants
     buildPushConstants(float timeSeconds, uint32_t currentFrame,

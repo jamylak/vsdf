@@ -56,7 +56,7 @@ class OfflineSDFRenderer : public SDFRenderer {
     void destroy();
 
     void recordCommandBuffer(uint32_t slotIndex, uint32_t currentFrame);
-    [[nodiscard]] ReadbackFrame debugReadbackOffscreenImage(const RingSlot &slot);
+    [[nodiscard]] PPMDebugFrame debugReadbackOffscreenImage(const RingSlot &slot);
     [[nodiscard]] vkutils::PushConstants
     getPushConstants(uint32_t currentFrame) noexcept;
 

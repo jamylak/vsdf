@@ -5,8 +5,8 @@
 #include <vector>
 
 // CPU-side buffer produced by GPU readback (RGB, row-major).
-// Used as a neutral handoff for debug PPM dumps and later FFmpeg ingestion.
-struct ReadbackFrame {
+// Just used for debugging through PPM dumps
+struct PPMDebugFrame {
     uint32_t width = 0;
     uint32_t height = 0;
     uint32_t stride = 0;

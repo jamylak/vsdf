@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 TEST(Frame, BufferSizeMatchesDimensions) {
-    ReadbackFrame frame{};
+    PPMDebugFrame frame{};
     frame.allocateRGB(64, 32);
 
     EXPECT_EQ(frame.rgb.size(),

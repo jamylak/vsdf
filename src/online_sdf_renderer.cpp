@@ -244,7 +244,7 @@ void OnlineSDFRenderer::gameLoop() {
             readbackContext.physicalDevice = physicalDevice;
             readbackContext.commandPool = commandPool;
             readbackContext.queue = queue;
-            ReadbackFrame frame = vkutils::debugReadbackSwapchainImage(
+            PPMDebugFrame frame = vkutils::debugReadbackSwapchainImage(
                 readbackContext, swapchainImages.images[imageIndex],
                 swapchainFormat.format, swapchainSize);
             dumpDebugFrame(frame);

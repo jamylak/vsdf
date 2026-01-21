@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 namespace image_dump {
-void writePPM(const ReadbackFrame &frame, const std::filesystem::path &path) {
+void writePPM(const PPMDebugFrame &frame, const std::filesystem::path &path) {
     // Layout (RGB, row-major):
     // row 0: [R G B][R G B]...[R G B]  (width pixels)
     // row 1: [R G B][R G B]...[R G B]

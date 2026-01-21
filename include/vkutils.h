@@ -1259,7 +1259,7 @@ struct ReadbackContext {
     VkQueue queue = VK_NULL_HANDLE;
 };
 
-[[nodiscard]] static ReadbackFrame
+[[nodiscard]] static PPMDebugFrame
 debugReadbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
                             VkFormat format, VkExtent2D extent) {
     // Intended for quick validation/smoke tests of the presented swapchain
@@ -1380,7 +1380,7 @@ debugReadbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
     VK_CHECK(vkMapMemory(context.device, stagingBuffer.memory, 0, imageSize, 0,
                          &data));
 
-    ReadbackFrame frame;
+    PPMDebugFrame frame;
     frame.allocateRGB(extent.width, extent.height);
     const uint8_t *src = static_cast<const uint8_t *>(data);
     const size_t pixelCount =

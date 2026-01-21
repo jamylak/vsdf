@@ -21,7 +21,7 @@ void SDFRenderer::createPipelineLayoutCommon() {
     pipelineLayout = vkutils::createPipelineLayout(logicalDevice);
 }
 
-void SDFRenderer::dumpDebugFrame(const ReadbackFrame &frame) {
+void SDFRenderer::dumpDebugFrame(const PPMDebugFrame &frame) {
     if (!debugDumpPPMDir) {
         return;
     }

@@ -1,6 +1,9 @@
 a.out
 .cache/clangd/index
 build
+build/ffmpeg-mini
+external/ffmpeg-mini
+external/ffmpeg-src
 testshaders
 shaders/*.spv
 _codeql_detected_source_root

@@ -106,6 +106,7 @@ sudo apt-get install -y \
 2. Install dependencies using vcpkg (includes Vulkan):
    ```powershell
    vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
+   # Note: ffmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it
    vcpkg install ffmpeg[avcodec,avformat,swscale]:x64-windows
    vcpkg integrate install
    ```

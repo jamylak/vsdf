@@ -29,14 +29,14 @@ sudo mv linux/vsdf /usr/local/bin/vsdf
 rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
 ```
 
-### Windows (binary, no `ffmpeg`)
+### Windows (binary)
 
 The only dependency is Vulkan.
-Download the pre-built Windows release (built without `ffmpeg`):
+Download the pre-built Windows release:
 
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/jamylak/vsdf/releases/latest).tag_name
-$zip = "vsdf-windows-x86_64-disable_ffmpeg.zip"
+$zip = "vsdf-windows-x86_64.zip"
 $url = "https://github.com/jamylak/vsdf/releases/download/$tag/$zip"
 Invoke-WebRequest -Uri $url -OutFile $zip
 Expand-Archive $zip -DestinationPath vsdf
@@ -56,14 +56,12 @@ If you want to build from source or if you want `ffmpeg` integration to save vid
 2. Install deps (includes Vulkan):
    ```powershell
    vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
-   # (Optional) set -DDISABLE_FFMPEG=ON to skip
    vcpkg install ffmpeg[avcodec,avformat,swscale]:x64-windows
    vcpkg integrate install
    ```
 3. Build:
    ```powershell
    git submodule update --init --recursive
-   # ffmpeg is optional; set `-DDISABLE_FFMPEG=ON` (see `CMakeLists.txt`) to build without it.
    cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" .
    cmake --build build --config Release
    ```

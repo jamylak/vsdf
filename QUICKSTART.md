@@ -43,29 +43,6 @@ Expand-Archive $zip -DestinationPath vsdf
 .\vsdf\vsdf.exe --version
 ```
 
-### Windows (vcpkg, build from source)
-
-If you want to build from source or if you want `ffmpeg` integration to save videos.
-
-1. Install vcpkg:
-   ```powershell
-   git clone https://github.com/Microsoft/vcpkg.git
-   cd vcpkg
-   .\bootstrap-vcpkg.bat
-   ```
-2. Install deps (includes Vulkan):
-   ```powershell
-   vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows
-   vcpkg install ffmpeg[avcodec,avformat,swscale]:x64-windows
-   vcpkg integrate install
-   ```
-3. Build:
-   ```powershell
-   git submodule update --init --recursive
-   cmake -B build -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" .
-   cmake --build build --config Release
-   ```
-
 ## 2) Quick Start - INSTANT shader development!
 
 The fastest way to get started is by using the `vsdf` command line tool directly.

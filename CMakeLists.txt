@@ -156,12 +156,53 @@ include_directories(${PROJECT_NAME} PRIVATE include ${GLM_INCLUDE_DIRS})
 if (VSDF_ENABLE_FFMPEG)
   target_sources(${PROJECT_NAME} PRIVATE src/offline_sdf_renderer.cpp src/ffmpeg_utils.cpp src/ffmpeg_encoder.cpp)
   if (WIN32)
-    find_package(FFMPEG CONFIG REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-      FFMPEG::avformat
-      FFMPEG::avcodec
-      FFMPEG::avutil
-      FFMPEG::swscale)
+    if (DEFINED FFMPEG_MINI_ROOT)
+      set(_FFMPEG_MINI_ROOT "${FFMPEG_MINI_ROOT}")
+      find_path(FFMPEG_INCLUDE_DIR libavcodec/avcodec.h
+        PATHS "${_FFMPEG_MINI_ROOT}/include"
+        NO_DEFAULT_PATH)
+      find_library(FFMPEG_AVFORMAT_LIBRARY avformat
+        PATHS "${_FFMPEG_MINI_ROOT}/lib"
+        NO_DEFAULT_PATH)
+      find_library(FFMPEG_AVCODEC_LIBRARY avcodec
+        PATHS "${_FFMPEG_MINI_ROOT}/lib"
+        NO_DEFAULT_PATH)
+      find_library(FFMPEG_AVUTIL_LIBRARY avutil
+        PATHS "${_FFMPEG_MINI_ROOT}/lib"
+        NO_DEFAULT_PATH)
+      find_library(FFMPEG_SWSCALE_LIBRARY swscale
+        PATHS "${_FFMPEG_MINI_ROOT}/lib"
+        NO_DEFAULT_PATH)
+
+      if (NOT FFMPEG_INCLUDE_DIR OR NOT FFMPEG_AVFORMAT_LIBRARY OR NOT FFMPEG_AVCODEC_LIBRARY OR NOT FFMPEG_AVUTIL_LIBRARY OR NOT FFMPEG_SWSCALE_LIBRARY)
+        message(FATAL_ERROR "FFMPEG_MINI_ROOT is set but required headers or libraries were not found.")
+      endif()
+
+      target_include_directories(${PROJECT_NAME} PRIVATE "${FFMPEG_INCLUDE_DIR}")
+      target_link_libraries(${PROJECT_NAME} PRIVATE
+        ${FFMPEG_AVFORMAT_LIBRARY}
+        ${FFMPEG_AVCODEC_LIBRARY}
+        ${FFMPEG_AVUTIL_LIBRARY}
+        ${FFMPEG_SWSCALE_LIBRARY})
+
+      find_library(X264_LIBRARY x264
+        PATHS
+          "${_FFMPEG_MINI_ROOT}/lib"
+          "${_FFMPEG_MINI_ROOT}/lib64"
+          "${X264_ROOT}/lib"
+        NO_DEFAULT_PATH)
+      if (NOT X264_LIBRARY)
+        message(FATAL_ERROR "FFMPEG_MINI_ROOT is set but x264 library was not found. Set X264_ROOT or install x264 alongside the mini FFmpeg build.")
+      endif()
+      target_link_libraries(${PROJECT_NAME} PRIVATE ${X264_LIBRARY})
+    else()
+      find_package(FFMPEG CONFIG REQUIRED)
+      target_link_libraries(${PROJECT_NAME} PRIVATE
+        FFMPEG::avformat
+        FFMPEG::avcodec
+        FFMPEG::avutil
+        FFMPEG::swscale)
+    endif()
   else()
     # Temporarily restore dynamic library preference for FFmpeg (too many static deps)
     set(_SAVED_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})

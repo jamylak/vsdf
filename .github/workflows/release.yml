@@ -403,18 +403,22 @@ jobs:
         Write-Host "Dependencies installed successfully"
 
     - name: Install NASM
+      timeout-minutes: 5
       run: |
         choco install nasm -y
 
     - name: Fetch FFmpeg source
+      timeout-minutes: 5
       run: |
         .\scripts\fetch_ffmpeg_src.ps1
 
     - name: Build minimal FFmpeg
+      timeout-minutes: 15
       run: |
         .\scripts\build_ffmpeg_min.ps1 -FfmpegSrc external\ffmpeg-src -Prefix external\ffmpeg-mini -BuildDir build\ffmpeg-mini -X264Dir "C:\vcpkg\installed\x64-windows-static"
 
     - name: Configure CMake
+      timeout-minutes: 10
       run: |
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `

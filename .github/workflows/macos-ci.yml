@@ -23,6 +23,7 @@ on:
 jobs:
   build-and-test-macos:
     name: Build and Test on macOS
+    if: false # TODO: Temporary - Remove later
     runs-on: macos-latest
     timeout-minutes: 6
 

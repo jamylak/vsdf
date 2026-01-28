@@ -23,7 +23,6 @@ on:
 jobs:
   build-and-test-windows:
     name: Build and Test on Windows
-    if: false # TODO: Temporary - Remove later
     runs-on: windows-latest
     
     permissions:

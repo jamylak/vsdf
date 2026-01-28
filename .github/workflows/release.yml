@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - 'ffmpeg-mini-02'
   workflow_dispatch:
 
 jobs:

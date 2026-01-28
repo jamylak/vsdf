@@ -6,6 +6,12 @@ param(
   [string]$X264Dir = $env:X264_DIR
 )
 
+$ErrorActionPreference = "Stop"
+trap {
+  Write-Error $_
+  exit 1
+}
+
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
   Write-Error "cl.exe not found. Run this from a Visual Studio Developer Prompt."
   exit 1
@@ -21,6 +27,20 @@ if (-not (Get-Command nasm.exe -ErrorAction SilentlyContinue)) {
   exit 1
 }
 
+$bash = $null
+$bashCmd = Get-Command bash.exe -ErrorAction SilentlyContinue
+if ($bashCmd) {
+  $bash = $bashCmd.Source
+} elseif (Test-Path "C:\Program Files\Git\bin\bash.exe") {
+  $bash = "C:\Program Files\Git\bin\bash.exe"
+} elseif (Test-Path "C:\Program Files\Git\usr\bin\bash.exe") {
+  $bash = "C:\Program Files\Git\usr\bin\bash.exe"
+}
+if (-not $bash) {
+  Write-Error "bash.exe not found. Install Git for Windows or MSYS2 so FFmpeg's configure script can run."
+  exit 1
+}
+
 New-Item -ItemType Directory -Force $Prefix | Out-Null
 New-Item -ItemType Directory -Force $BuildDir | Out-Null
 
@@ -33,32 +53,45 @@ if ($X264Dir) {
   $extraLdflags = "/LIBPATH:`"$X264Dir\lib`""
 }
 
-& "$FfmpegSrc\configure" `
-  --prefix="$Prefix" `
-  --toolchain=msvc `
-  --arch=x86_64 `
-  --target-os=win64 `
-  --disable-everything `
-  --enable-avcodec `
-  --enable-avformat `
-  --enable-avutil `
-  --enable-swscale `
-  --enable-encoder=libx264 `
-  --enable-muxer=mp4 `
-  --enable-protocol=file `
-  --enable-libx264 `
-  --enable-gpl `
-  --disable-programs `
-  --disable-doc `
-  --disable-network `
-  --disable-avdevice `
-  --disable-postproc `
-  --disable-swresample `
-  --enable-small `
-  --enable-static `
-  --disable-shared `
-  --extra-cflags="$extraCflags" `
-  --extra-ldflags="$extraLdflags"
+function Convert-ToUnixPath([string]$path) {
+  return ($path -replace '\\', '/')
+}
+
+$ffmpegSrcUnix = Convert-ToUnixPath (Resolve-Path $FfmpegSrc)
+$buildDirUnix = Convert-ToUnixPath (Resolve-Path $BuildDir)
+$prefixUnix = Convert-ToUnixPath (Resolve-Path $Prefix)
+
+$configureCmd = @"
+cd '$buildDirUnix' && '$ffmpegSrcUnix/configure' \
+  --prefix='$prefixUnix' \
+  --toolchain=msvc \
+  --arch=x86_64 \
+  --target-os=win64 \
+  --disable-everything \
+  --enable-avcodec \
+  --enable-avformat \
+  --enable-avutil \
+  --enable-swscale \
+  --enable-encoder=libx264 \
+  --enable-muxer=mp4 \
+  --enable-protocol=file \
+  --enable-libx264 \
+  --enable-gpl \
+  --disable-programs \
+  --disable-doc \
+  --disable-network \
+  --disable-avdevice \
+  --disable-postproc \
+  --disable-swresample \
+  --enable-small \
+  --enable-static \
+  --disable-shared \
+  --extra-cflags='$extraCflags' \
+  --extra-ldflags='$extraLdflags'
+"@
+$configureCmd = $configureCmd -replace "\r?\n", " "
+
+& $bash -lc $configureCmd
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 
 nmake

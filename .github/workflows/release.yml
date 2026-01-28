@@ -417,7 +417,18 @@ jobs:
     - name: Build minimal FFmpeg
       timeout-minutes: 15
       run: |
-        .\scripts\build_ffmpeg_min.ps1 -FfmpegSrc external\ffmpeg-src -Prefix external\ffmpeg-mini -BuildDir build\ffmpeg-mini -X264Dir "C:\vcpkg\installed\x64-windows-static"
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $vsInstall = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if (-not $vsInstall) {
+          Write-Error "Visual Studio Build Tools not found"
+          exit 1
+        }
+        $vcvars = Join-Path $vsInstall "VC\Auxiliary\Build\vcvars64.bat"
+        if (!(Test-Path $vcvars)) {
+          Write-Error "vcvars64.bat not found"
+          exit 1
+        }
+        cmd /c "`"$vcvars`" && pwsh -File .\scripts\build_ffmpeg_min.ps1 -FfmpegSrc external\ffmpeg-src -Prefix external\ffmpeg-mini -BuildDir build\ffmpeg-mini -X264Dir `"C:\vcpkg\installed\x64-windows-static`""
 
     - name: Configure CMake
       timeout-minutes: 10

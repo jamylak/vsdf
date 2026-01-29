@@ -89,7 +89,6 @@ $configureArgs = @(
   "--disable-doc",
   "--disable-network",
   "--disable-avdevice",
-  "--disable-postproc",
   "--disable-swresample",
   "--enable-small",
   "--enable-static",

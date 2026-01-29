@@ -41,8 +41,17 @@ if (-not $bash) {
   exit 1
 }
 
+if (-not (Test-Path $FfmpegSrc)) {
+  Write-Error "FFmpeg source path not found: $FfmpegSrc"
+  exit 1
+}
+
 New-Item -ItemType Directory -Force $Prefix | Out-Null
 New-Item -ItemType Directory -Force $BuildDir | Out-Null
+
+$ffmpegSrcAbs = (Resolve-Path $FfmpegSrc).Path
+$buildDirAbs = (Resolve-Path $BuildDir).Path
+$prefixAbs = (Resolve-Path $Prefix).Path
 
 Push-Location $BuildDir
 
@@ -57,9 +66,9 @@ function Convert-ToUnixPath([string]$path) {
   return ($path -replace '\\', '/')
 }
 
-$ffmpegSrcUnix = Convert-ToUnixPath (Resolve-Path $FfmpegSrc)
-$buildDirUnix = Convert-ToUnixPath (Resolve-Path $BuildDir)
-$prefixUnix = Convert-ToUnixPath (Resolve-Path $Prefix)
+$ffmpegSrcUnix = Convert-ToUnixPath $ffmpegSrcAbs
+$buildDirUnix = Convert-ToUnixPath $buildDirAbs
+$prefixUnix = Convert-ToUnixPath $prefixAbs
 
 $configureCmd = @"
 cd '$buildDirUnix' && '$ffmpegSrcUnix/configure' \

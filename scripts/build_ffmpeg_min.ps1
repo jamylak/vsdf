@@ -103,16 +103,7 @@ if ($extraLdflags) {
   $configureArgs += "--extra-ldflags=$extraLdflags"
 }
 
-function Quote-ForBash([string]$arg) {
-  $replacement = "'`\"'`\"'"
-  $escaped = $arg -replace "'", $replacement
-  return "'" + $escaped + "'"
-}
-
-$quotedArgs = $configureArgs | ForEach-Object { Quote-ForBash $_ }
-$configureCmd = "cd '$buildDirUnix' && '$ffmpegSrcUnix/configure' " + ($quotedArgs -join " ")
-
-& $bash -lc $configureCmd
+& $bash "$ffmpegSrcUnix/configure" @configureArgs
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 
 nmake

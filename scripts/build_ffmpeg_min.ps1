@@ -57,9 +57,19 @@ Push-Location $BuildDir
 
 $extraCflags = "/MT"
 $extraLdflags = ""
+$pkgConfigPath = $null
+$pkgConfigExe = $null
 if ($X264Dir) {
   $extraCflags = "$extraCflags /I`"$X264Dir\include`""
   $extraLdflags = "/LIBPATH:`"$X264Dir\lib`""
+  $pkgConfigPath = Join-Path $X264Dir "lib\pkgconfig"
+  $pkgconfPath = Join-Path $X264Dir "tools\pkgconf\pkgconf.exe"
+  $pkgconfAltPath = Join-Path $X264Dir "tools\pkgconf\pkg-config.exe"
+  if (Test-Path $pkgconfPath) {
+    $pkgConfigExe = $pkgconfPath
+  } elseif (Test-Path $pkgconfAltPath) {
+    $pkgConfigExe = $pkgconfAltPath
+  }
 }
 
 function Convert-ToUnixPath([string]$path) {
@@ -101,6 +111,13 @@ if ($extraCflags) {
 if ($extraLdflags) {
   $configureArgs += "--extra-ldflags=$extraLdflags"
 }
+if ($pkgConfigExe) {
+  $configureArgs += "--pkg-config=$pkgConfigExe"
+}
+if ($pkgConfigPath -and (Test-Path $pkgConfigPath)) {
+  $env:PKG_CONFIG_PATH = $pkgConfigPath
+}
+$configureArgs += "--pkg-config-flags=--static"
 
 & $bash "$ffmpegSrcUnix/configure" @configureArgs
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }

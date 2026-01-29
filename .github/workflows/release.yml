@@ -4,11 +4,14 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - 'ffmpeg-mini-02'
   workflow_dispatch:
 
 jobs:
   build-linux:
     name: Build Linux Release
+    if: false # TODO: Temporary - Remove later
     # Use ubuntu-latest (currently 24.04) to build with modern toolchain
     # Bundle dependencies and test on multiple distros to ensure compatibility
     runs-on: ubuntu-latest
@@ -112,6 +115,7 @@ jobs:
 
   test-linux-ubuntu-24:
     name: Test on Ubuntu 24.04
+    if: false # TODO: Temporary - Remove later
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -169,6 +173,7 @@ jobs:
 
   test-linux-debian-13:
     name: Test on Debian 13 (Trixie)
+    if: false # TODO: Temporary - Remove later
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -204,6 +209,7 @@ jobs:
 
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
+    if: false # TODO: Temporary - Remove later
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
@@ -380,7 +386,6 @@ jobs:
         path: release/vsdf-macos-${{ matrix.arch }}.tar.gz
 
   build-windows:
-    # Note: build-windows builds WITHOUT FFMPEG due to issue #33
     name: Build Windows Release
     runs-on: windows-latest
     timeout-minutes: 30
@@ -395,17 +400,45 @@ jobs:
       timeout-minutes: 25
       run: |
         Write-Host "Installing dependencies via vcpkg..."
-        vcpkg install vulkan:x64-windows-static glfw3:x64-windows-static glslang:x64-windows-static spdlog:x64-windows-static glm:x64-windows-static --recurse
+        vcpkg install vulkan:x64-windows-static glfw3:x64-windows-static glslang:x64-windows-static spdlog:x64-windows-static glm:x64-windows-static x264:x64-windows-static --recurse
         vcpkg integrate install
         Write-Host "Dependencies installed successfully"
 
+    - name: Install NASM
+      timeout-minutes: 5
+      run: |
+        choco install nasm -y
+
+    - name: Fetch FFmpeg source
+      timeout-minutes: 5
+      run: |
+        .\scripts\fetch_ffmpeg_src.ps1
+
+    - name: Build minimal FFmpeg
+      timeout-minutes: 15
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $vsInstall = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if (-not $vsInstall) {
+          Write-Error "Visual Studio Build Tools not found"
+          exit 1
+        }
+        $vcvars = Join-Path $vsInstall "VC\Auxiliary\Build\vcvars64.bat"
+        if (!(Test-Path $vcvars)) {
+          Write-Error "vcvars64.bat not found"
+          exit 1
+        }
+        cmd /c "`"$vcvars`" && pwsh -File .\scripts\build_ffmpeg_min.ps1 -FfmpegSrc external\ffmpeg-src -Prefix external\ffmpeg-mini -BuildDir build\ffmpeg-mini -X264Dir `"C:\vcpkg\installed\x64-windows-static`""
+
     - name: Configure CMake
+      timeout-minutes: 10
       run: |
         cmake -B build `
           -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_POLICY_DEFAULT_CMP0091=NEW `
           -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
-          -DDISABLE_FFMPEG=ON `
+          -DFFMPEG_MINI_ROOT="${{ github.workspace }}\external\ffmpeg-mini" `
+          -DX264_ROOT="C:\vcpkg\installed\x64-windows-static" `
           -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
           -DVCPKG_TARGET_TRIPLET=x64-windows-static `
           .
@@ -429,13 +462,13 @@ jobs:
         Copy-Item -Recurse shaders release\windows\
         Copy-Item README.md release\windows\
         Copy-Item LICENSE release\windows\
-        Compress-Archive -Path release\windows\* -DestinationPath release\vsdf-windows-x86_64-disable_ffmpeg.zip
+        Compress-Archive -Path release\windows\* -DestinationPath release\vsdf-windows-x86_64.zip
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: vsdf-windows-x86_64-disable_ffmpeg
-        path: release/vsdf-windows-x86_64-disable_ffmpeg.zip
+        name: vsdf-windows-x86_64
+        path: release/vsdf-windows-x86_64.zip
 
   test-windows:
     name: Test Windows Release Binary
@@ -447,11 +480,11 @@ jobs:
     - name: Download artifact
       uses: actions/download-artifact@v4
       with:
-        name: vsdf-windows-x86_64-disable_ffmpeg
+        name: vsdf-windows-x86_64
 
     - name: Extract zip
       run: |
-        Expand-Archive -Path vsdf-windows-x86_64-disable_ffmpeg.zip -DestinationPath extracted -Force
+        Expand-Archive -Path vsdf-windows-x86_64.zip -DestinationPath extracted -Force
 
     - name: Dump binary dependencies
       run: |
@@ -479,7 +512,6 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    # Note: build-windows builds WITHOUT FFMPEG due to issue #33
     needs: [build-linux, test-linux-ubuntu-24, test-linux-debian-13, build-macos, build-windows, test-windows]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
@@ -503,7 +535,7 @@ jobs:
           artifacts/vsdf-linux-x86_64/vsdf-linux-x86_64.tar.gz
           artifacts/vsdf-macos-x86_64/vsdf-macos-x86_64.tar.gz
           artifacts/vsdf-macos-arm64/vsdf-macos-arm64.tar.gz
-          artifacts/vsdf-windows-x86_64-disable_ffmpeg/vsdf-windows-x86_64-disable_ffmpeg.zip
+          artifacts/vsdf-windows-x86_64/vsdf-windows-x86_64.zip
         draft: false
         prerelease: false
       env:

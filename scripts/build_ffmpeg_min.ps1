@@ -70,35 +70,45 @@ $ffmpegSrcUnix = Convert-ToUnixPath $ffmpegSrcAbs
 $buildDirUnix = Convert-ToUnixPath $buildDirAbs
 $prefixUnix = Convert-ToUnixPath $prefixAbs
 
-$configureCmd = @"
-cd '$buildDirUnix' && '$ffmpegSrcUnix/configure' \
-  --prefix='$prefixUnix' \
-  --toolchain=msvc \
-  --arch=x86_64 \
-  --target-os=win64 \
-  --disable-everything \
-  --enable-avcodec \
-  --enable-avformat \
-  --enable-avutil \
-  --enable-swscale \
-  --enable-encoder=libx264 \
-  --enable-muxer=mp4 \
-  --enable-protocol=file \
-  --enable-libx264 \
-  --enable-gpl \
-  --disable-programs \
-  --disable-doc \
-  --disable-network \
-  --disable-avdevice \
-  --disable-postproc \
-  --disable-swresample \
-  --enable-small \
-  --enable-static \
-  --disable-shared \
-  --extra-cflags='$extraCflags' \
-  --extra-ldflags='$extraLdflags'
-"@
-$configureCmd = $configureCmd -replace "\r?\n", " "
+$configureArgs = @(
+  "--prefix=$prefixUnix",
+  "--toolchain=msvc",
+  "--arch=x86_64",
+  "--target-os=win64",
+  "--disable-everything",
+  "--enable-avcodec",
+  "--enable-avformat",
+  "--enable-avutil",
+  "--enable-swscale",
+  "--enable-encoder=libx264",
+  "--enable-muxer=mp4",
+  "--enable-protocol=file",
+  "--enable-libx264",
+  "--enable-gpl",
+  "--disable-programs",
+  "--disable-doc",
+  "--disable-network",
+  "--disable-avdevice",
+  "--disable-postproc",
+  "--disable-swresample",
+  "--enable-small",
+  "--enable-static",
+  "--disable-shared"
+)
+
+if ($extraCflags) {
+  $configureArgs += "--extra-cflags=$extraCflags"
+}
+if ($extraLdflags) {
+  $configureArgs += "--extra-ldflags=$extraLdflags"
+}
+
+function Quote-ForBash([string]$arg) {
+  return "'" + ($arg -replace "'", "'\"'\"'") + "'"
+}
+
+$quotedArgs = $configureArgs | ForEach-Object { Quote-ForBash $_ }
+$configureCmd = "cd '$buildDirUnix' && '$ffmpegSrcUnix/configure' " + ($quotedArgs -join " ")
 
 & $bash -lc $configureCmd
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }

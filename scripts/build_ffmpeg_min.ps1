@@ -59,6 +59,8 @@ $extraCflags = "/MT"
 $extraLdflags = ""
 $pkgConfigPath = $null
 $pkgConfigExe = $null
+$pkgConfigPathUnix = $null
+$pkgConfigExeUnix = $null
 if ($X264Dir) {
   $extraCflags = "$extraCflags /I`"$X264Dir\include`""
   $extraLdflags = "/LIBPATH:`"$X264Dir\lib`""
@@ -79,6 +81,12 @@ function Convert-ToUnixPath([string]$path) {
 $ffmpegSrcUnix = Convert-ToUnixPath $ffmpegSrcAbs
 $buildDirUnix = Convert-ToUnixPath $buildDirAbs
 $prefixUnix = Convert-ToUnixPath $prefixAbs
+if ($pkgConfigPath) {
+  $pkgConfigPathUnix = Convert-ToUnixPath $pkgConfigPath
+}
+if ($pkgConfigExe) {
+  $pkgConfigExeUnix = Convert-ToUnixPath $pkgConfigExe
+}
 
 $configureArgs = @(
   "--prefix=$prefixUnix",
@@ -111,11 +119,11 @@ if ($extraCflags) {
 if ($extraLdflags) {
   $configureArgs += "--extra-ldflags=$extraLdflags"
 }
-if ($pkgConfigExe) {
-  $configureArgs += "--pkg-config=$pkgConfigExe"
+if ($pkgConfigExeUnix) {
+  $configureArgs += "--pkg-config=$pkgConfigExeUnix"
 }
-if ($pkgConfigPath -and (Test-Path $pkgConfigPath)) {
-  $env:PKG_CONFIG_PATH = $pkgConfigPath
+if ($pkgConfigPathUnix -and (Test-Path $pkgConfigPath)) {
+  $env:PKG_CONFIG_PATH = $pkgConfigPathUnix
 }
 $configureArgs += "--pkg-config-flags=--static"
 

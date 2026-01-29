@@ -104,7 +104,9 @@ if ($extraLdflags) {
 }
 
 function Quote-ForBash([string]$arg) {
-  return "'" + ($arg -replace "'", "'\"'\"'") + "'"
+  $replacement = "'`\"'`\"'"
+  $escaped = $arg -replace "'", $replacement
+  return "'" + $escaped + "'"
 }
 
 $quotedArgs = $configureArgs | ForEach-Object { Quote-ForBash $_ }

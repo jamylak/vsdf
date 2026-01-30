@@ -47,12 +47,11 @@ void OnlineSDFRenderer::glfwSetup() {
 
 void OnlineSDFRenderer::vulkanSetup() {
     instance = vkutils::setupVulkanInstance();
-    physicalDevice = vkutils::findGPU(instance);
+    surface = vkutils::createVulkanSurface(instance, window);
+    physicalDevice =
+        vkutils::findGPUForSurface(instance, surface, &graphicsQueueIndex);
     deviceProperties = vkutils::getDeviceProperties(physicalDevice);
     logDeviceLimits();
-    surface = vkutils::createVulkanSurface(instance, window);
-    graphicsQueueIndex =
-        vkutils::getVulkanGraphicsQueueIndex(physicalDevice, surface);
     logicalDevice =
         vkutils::createVulkanLogicalDevice(physicalDevice, graphicsQueueIndex);
     queue = VK_NULL_HANDLE;

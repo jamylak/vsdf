@@ -248,6 +248,53 @@ getDeviceProperties(VkPhysicalDevice physicalDevice) {
     return deviceProperties;
 }
 
+[[nodiscard]] static bool deviceSupportsSwapchain(
+    VkPhysicalDevice physicalDevice) {
+    uint32_t extensionCount = 0;
+    VK_CHECK(vkEnumerateDeviceExtensionProperties(
+        physicalDevice, nullptr, &extensionCount, nullptr));
+    if (extensionCount == 0)
+        return false;
+
+    std::vector<VkExtensionProperties> extensions(extensionCount);
+    VK_CHECK(vkEnumerateDeviceExtensionProperties(
+        physicalDevice, nullptr, &extensionCount, extensions.data()));
+
+    for (const auto &ext : extensions) {
+        if (std::strcmp(ext.extensionName, "VK_KHR_swapchain") == 0)
+            return true;
+    }
+    return false;
+}
+
+[[nodiscard]] static bool deviceHasPresentQueue(
+    VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
+    uint32_t *outQueueIndex) {
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount,
+                                             nullptr);
+    if (queueFamilyCount == 0)
+        return false;
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount,
+                                             queueFamilies.data());
+
+    for (uint32_t i = 0; i < queueFamilyCount; ++i) {
+        if (!(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+            continue;
+        VkBool32 supportsPresent = VK_FALSE;
+        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface,
+                                             &supportsPresent);
+        if (supportsPresent) {
+            if (outQueueIndex)
+                *outQueueIndex = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 [[nodiscard]] static VkPhysicalDevice findGPU(VkInstance instance) {
     uint32_t deviceCount = 0;
     spdlog::debug("Enumerating devices...");
@@ -290,6 +337,69 @@ getDeviceProperties(VkPhysicalDevice physicalDevice) {
     // If no discrete GPU is found, fallback to the first device
     spdlog::debug("No discrete GPU found. Fallback to the first device.");
     return devices[0];
+}
+
+[[nodiscard]] static VkPhysicalDevice
+findGPUForSurface(VkInstance instance, VkSurfaceKHR surface,
+                  uint32_t *outQueueIndex) {
+    uint32_t deviceCount = 0;
+    spdlog::debug("Enumerating devices for present-capable GPU...");
+    VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr));
+
+    if (deviceCount == 0) {
+        spdlog::error("No devices found!");
+        throw std::runtime_error("No devices found!");
+    }
+
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    VK_CHECK(
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()));
+
+    VkPhysicalDevice fallback = VK_NULL_HANDLE;
+    uint32_t fallbackQueueIndex = 0;
+    std::string fallbackName;
+
+    for (uint32_t i = 0; i < deviceCount; ++i) {
+        VkPhysicalDeviceProperties deviceProperties{};
+        vkGetPhysicalDeviceProperties(devices[i], &deviceProperties);
+        spdlog::debug("Device {} has device name {}", i,
+                      deviceProperties.deviceName);
+
+        if (!deviceSupportsSwapchain(devices[i])) {
+            spdlog::debug("Device {} lacks VK_KHR_swapchain", i);
+            continue;
+        }
+
+        uint32_t presentQueueIndex = 0;
+        if (!deviceHasPresentQueue(devices[i], surface, &presentQueueIndex)) {
+            spdlog::debug("Device {} has no present-capable graphics queue", i);
+            continue;
+        }
+
+        if (deviceProperties.deviceType ==
+            VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+            if (outQueueIndex)
+                *outQueueIndex = presentQueueIndex;
+            spdlog::info("Selecting discrete present-capable GPU: {}",
+                         deviceProperties.deviceName);
+            return devices[i];
+        }
+
+        if (fallback == VK_NULL_HANDLE) {
+            fallback = devices[i];
+            fallbackQueueIndex = presentQueueIndex;
+            fallbackName = deviceProperties.deviceName;
+        }
+    }
+
+    if (fallback != VK_NULL_HANDLE) {
+        if (outQueueIndex)
+            *outQueueIndex = fallbackQueueIndex;
+        spdlog::info("Selecting present-capable GPU: {}", fallbackName);
+        return fallback;
+    }
+
+    throw std::runtime_error("No present-capable Vulkan device found");
 }
 
 [[nodiscard]] static VkSurfaceKHR createVulkanSurface(VkInstance instance,

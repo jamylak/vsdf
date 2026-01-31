@@ -60,13 +60,15 @@ The only dependency is Vulkan.
 
 ```sh
 LATEST_RELEASE_TAG=$(curl -sL https://api.github.com/repos/jamylak/vsdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-DOWNLOAD_URL="https://github.com/jamylak/vsdf/releases/download/${LATEST_RELEASE_TAG}/vsdf-linux-x86_64.tar.gz"
+LINUX_ARCH=$( [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ] && echo arm64 || echo x86_64 )
+LINUX_DIR="linux-${LINUX_ARCH}"
+DOWNLOAD_URL="https://github.com/jamylak/vsdf/releases/download/${LATEST_RELEASE_TAG}/vsdf-linux-${LINUX_ARCH}.tar.gz"
 echo "Downloading from: ${DOWNLOAD_URL}"
 curl -LO "${DOWNLOAD_URL}"
-tar -xzf vsdf-linux-x86_64.tar.gz
-chmod +x linux/vsdf
-sudo mv linux/vsdf /usr/local/bin/vsdf
-rm -rf vsdf-linux-x86_64.tar.gz linux # Clean up downloaded files
+tar -xzf vsdf-linux-${LINUX_ARCH}.tar.gz
+chmod +x ${LINUX_DIR}/vsdf
+sudo mv ${LINUX_DIR}/vsdf /usr/local/bin/vsdf
+rm -rf vsdf-linux-${LINUX_ARCH}.tar.gz ${LINUX_DIR} # Clean up downloaded files
 ```
 
 ## Windows Binary Installation (no `ffmpeg`)

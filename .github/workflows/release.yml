@@ -8,11 +8,24 @@ on:
 
 jobs:
   build-linux:
-    name: Build Linux Release
+    name: Build Linux ${{ matrix.arch }} Release
     # Use ubuntu-latest (currently 24.04) to build with modern toolchain
     # Bundle dependencies and test on multiple distros to ensure compatibility
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+            release_dir: linux-x86_64
+            artifact_name: vsdf-linux-x86_64
+            tar_name: vsdf-linux-x86_64.tar.gz
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            release_dir: linux-arm64
+            artifact_name: vsdf-linux-arm64
+            tar_name: vsdf-linux-arm64.tar.gz
 
     steps:
     - name: Checkout code
@@ -56,9 +69,9 @@ jobs:
 
     - name: Bundle dependencies and fix paths
       run: |
-        mkdir -p release/linux/libs
-        cp build/vsdf release/linux/
-        chmod +x release/linux/vsdf
+        mkdir -p release/${{ matrix.release_dir }}/libs
+        cp build/vsdf release/${{ matrix.release_dir }}/
+        chmod +x release/${{ matrix.release_dir }}/vsdf
         
         echo "Finding and copying non-system libraries..."
         
@@ -69,39 +82,39 @@ jobs:
           if [ -f "$lib" ]; then
             libname=$(basename "$lib")
             echo "  → Copying $libname"
-            cp "$lib" release/linux/libs/ 2>/dev/null || true
+            cp "$lib" release/${{ matrix.release_dir }}/libs/ 2>/dev/null || true
           fi
         done
         
-        BUNDLED_COUNT=$(ls release/linux/libs/*.so* 2>/dev/null | wc -l)
+        BUNDLED_COUNT=$(ls release/${{ matrix.release_dir }}/libs/*.so* 2>/dev/null | wc -l)
         echo "Total libraries bundled: $BUNDLED_COUNT"
         
         echo "Setting RPATH..."
         # Set RPATH on main binary to look in libs/ folder
-        patchelf --set-rpath '$ORIGIN/libs' release/linux/vsdf
+        patchelf --set-rpath '$ORIGIN/libs' release/${{ matrix.release_dir }}/vsdf
         
         # Fix RPATH for each bundled library
-        for lib in release/linux/libs/*.so*; do
+        for lib in release/${{ matrix.release_dir }}/libs/*.so*; do
           [ -f "$lib" ] && patchelf --set-rpath '$ORIGIN' "$lib" 2>/dev/null || true
         done
         
         echo "✓ Bundling complete"
         echo ""
         echo "📦 Binary info:"
-        file release/linux/vsdf
-        ls -lh release/linux/vsdf
+        file release/${{ matrix.release_dir }}/vsdf
+        ls -lh release/${{ matrix.release_dir }}/vsdf
         echo ""
         echo "🔗 RPATH configuration:"
-        patchelf --print-rpath release/linux/vsdf
+        patchelf --print-rpath release/${{ matrix.release_dir }}/vsdf
         echo ""
         echo "📚 Bundled libraries:"
-        ls -lh release/linux/libs/
+        ls -lh release/${{ matrix.release_dir }}/libs/
         echo ""
         echo "🔍 Binary dependencies after bundling:"
-        ldd release/linux/vsdf
+        ldd release/${{ matrix.release_dir }}/vsdf
         echo ""
         echo "⚠️  Checking for missing dependencies:"
-        if ldd release/linux/vsdf | grep 'not found'; then
+        if ldd release/${{ matrix.release_dir }}/vsdf | grep 'not found'; then
           echo "❌ ERROR: Missing dependencies found!"
           exit 1
         else
@@ -110,17 +123,17 @@ jobs:
 
     - name: Package binary
       run: |
-        cp -r shaders release/linux/
-        cp README.md release/linux/
-        cp LICENSE release/linux/
+        cp -r shaders release/${{ matrix.release_dir }}/
+        cp README.md release/${{ matrix.release_dir }}/
+        cp LICENSE release/${{ matrix.release_dir }}/
         cd release
-        tar -czf vsdf-linux-x86_64.tar.gz linux/
+        tar -czf ${{ matrix.tar_name }} ${{ matrix.release_dir }}/
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: vsdf-linux-x86_64
-        path: release/vsdf-linux-x86_64.tar.gz
+        name: ${{ matrix.artifact_name }}
+        path: release/${{ matrix.tar_name }}
 
   test-linux-ubuntu-24:
     name: Test on Ubuntu 24.04
@@ -139,7 +152,7 @@ jobs:
     - name: Extract binary
       run: |
         tar -xzf vsdf-linux-x86_64.tar.gz
-        cd linux
+        cd linux-x86_64
         chmod +x vsdf
 
     - name: Install runtime dependencies
@@ -152,14 +165,14 @@ jobs:
 
     - name: Test version
       run: |
-        cd linux
+        cd linux-x86_64
         echo "→ Testing --version..."
         ./vsdf --version
         echo "✓ --version works"
 
     - name: Test 1-frame headless render
       run: |
-        cd linux
+        cd linux-x86_64
         echo "→ Testing 1-frame headless render (requires Vulkan)..."
         xvfb-run -s '-screen 0 1024x768x24' \
           ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
@@ -167,7 +180,7 @@ jobs:
 
     - name: Test offline render
       run: |
-        cd linux
+        cd linux-x86_64
         echo "→ Testing offline render (FFmpeg, requires Vulkan)..."
         xvfb-run -s '-screen 0 1024x768x24' \
           ./vsdf --toy shaders/testtoyshader.frag --frames 10 --ffmpeg-output out-test.mp4 --log-level info
@@ -196,7 +209,7 @@ jobs:
     - name: Extract binary
       run: |
         tar -xzf vsdf-linux-x86_64.tar.gz
-        cd linux
+        cd linux-x86_64
         chmod +x vsdf
 
     - name: Install runtime dependencies
@@ -209,7 +222,7 @@ jobs:
 
     - name: Test version
       run: |
-        cd linux
+        cd linux-x86_64
         echo "→ Testing --version..."
         ./vsdf --version
         echo "✓ --version works"
@@ -513,6 +526,7 @@ jobs:
       with:
         files: |
           artifacts/vsdf-linux-x86_64/vsdf-linux-x86_64.tar.gz
+          artifacts/vsdf-linux-arm64/vsdf-linux-arm64.tar.gz
           artifacts/vsdf-macos-x86_64/vsdf-macos-x86_64.tar.gz
           artifacts/vsdf-macos-arm64/vsdf-macos-arm64.tar.gz
           artifacts/vsdf-windows-x86_64-disable_ffmpeg/vsdf-windows-x86_64-disable_ffmpeg.zip

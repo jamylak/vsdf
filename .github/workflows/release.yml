@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.json
 
     steps:
     - name: Download artifact

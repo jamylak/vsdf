@@ -227,7 +227,8 @@ nix develop
 ### Nix Run / Install (one command)
 Run without installing (builds and runs):
 ```sh
-nix run github:jamylak/vsdf
+nix run github:jamylak/vsdf -- --new-toy example.frag
+nix run github:jamylak/vsdf -- --toy example.frag
 ```
 
 Install into your profile (then `vsdf` is on PATH):

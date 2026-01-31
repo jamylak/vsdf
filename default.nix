@@ -16,7 +16,7 @@
 }:
 
 let
-  _ = assert lib.versionAtLeast glfw.version "3.4";
+  _ = assert lib.versionAtLeast glfw.version "3.4"; null;
   volk = fetchFromGitHub {
     owner = "zeux";
     repo = "volk";

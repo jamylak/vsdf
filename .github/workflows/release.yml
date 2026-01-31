@@ -12,7 +12,6 @@ on:
 jobs:
   build-linux:
     name: Build Linux ${{ matrix.arch }} Release
-    if: false # TODO: UNDO later
     # Use ubuntu-latest (currently 24.04) to build with modern toolchain
     # Bundle dependencies and test on multiple distros to ensure compatibility
     runs-on: ${{ matrix.runner }}

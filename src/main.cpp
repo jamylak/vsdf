@@ -415,14 +415,15 @@ int run(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
-    OnlineRenderOptions options{};
-    options.maxFrames = maxFrames;
-    options.headless = headless;
-    options.noFocus = noFocus;
-    options.debugDumpPPMDir = debugDumpPPMDir;
-    options.ciResizeAfter = ciResizeAfter;
-    options.ciResizeWidth = ciResizeWidth;
-    options.ciResizeHeight = ciResizeHeight;
+    OnlineRenderOptions options{
+        .maxFrames = maxFrames,
+        .headless = headless,
+        .noFocus = noFocus,
+        .debugDumpPPMDir = debugDumpPPMDir,
+        .ciResizeAfter = ciResizeAfter,
+        .ciResizeWidth = ciResizeWidth,
+        .ciResizeHeight = ciResizeHeight,
+    };
 
     auto runOnline = [&]() {
         OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,

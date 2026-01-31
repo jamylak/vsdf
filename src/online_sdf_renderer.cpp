@@ -193,6 +193,13 @@ void OnlineSDFRenderer::gameLoop() {
     filewatcher->startWatching(fragShaderPath, [&]() {
         pipelineUpdated.store(true, std::memory_order_relaxed);
     });
+    auto recreateSwapchain = [&]() {
+        destroyRenderContext();
+        setupRenderContext();
+        app.framebufferResized = false;
+        frameIndex = 0;
+        spdlog::info("Swapchain out of date, recreating.");
+    };
     while (!glfwWindowShouldClose(window)) {
         if (options.maxFrames && currentFrame >= *options.maxFrames) {
             spdlog::info("Reached max frames {}, exiting.",
@@ -203,11 +210,8 @@ void OnlineSDFRenderer::gameLoop() {
         glfwPollEvents();
         uint32_t imageIndex;
         if (app.framebufferResized) {
-            destroyRenderContext();
-            setupRenderContext();
-            app.framebufferResized = false;
-            frameIndex = 0;
             spdlog::info("Framebuffer resized!");
+            recreateSwapchain();
         }
         if (pipelineUpdated.exchange(false, std::memory_order_relaxed)) {
             spdlog::info("Recreating pipeline");
@@ -228,10 +232,18 @@ void OnlineSDFRenderer::gameLoop() {
         VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[frameIndex],
                                  VK_TRUE, UINT64_MAX));
 
-        VK_CHECK(vkAcquireNextImageKHR(
+        VkResult acquireResult = vkAcquireNextImageKHR(
             logicalDevice, swapchain, UINT64_MAX,
             imageAvailableSemaphores.semaphores[frameIndex], VK_NULL_HANDLE,
-            &imageIndex));
+            &imageIndex);
+        if (acquireResult != VK_SUCCESS) {
+            if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR ||
+                acquireResult == VK_SUBOPTIMAL_KHR) {
+                recreateSwapchain();
+                continue;
+            }
+            VK_CHECK(acquireResult);
+        }
 
         VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[frameIndex]));
         vkutils::recordCommandBuffer(
@@ -260,9 +272,17 @@ void OnlineSDFRenderer::gameLoop() {
                 swapchainFormat.format, swapchainSize);
             dumpDebugFrame(frame);
         }
-        vkutils::presentImage(queue, swapchain,
-                              renderFinishedSemaphores.semaphores[frameIndex],
-                              imageIndex);
+        VkResult presentResult = vkutils::presentImage(
+            queue, swapchain, renderFinishedSemaphores.semaphores[frameIndex],
+            imageIndex);
+        if (presentResult != VK_SUCCESS) {
+            if (presentResult == VK_ERROR_OUT_OF_DATE_KHR ||
+                presentResult == VK_SUBOPTIMAL_KHR) {
+                recreateSwapchain();
+                continue;
+            }
+            VK_CHECK(presentResult);
+        }
         frameIndex = (frameIndex + 1) % swapchainImages.count;
         currentFrame++;
         cpuEndFrame = std::chrono::high_resolution_clock::now();

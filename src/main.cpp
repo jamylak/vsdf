@@ -425,15 +425,10 @@ int run(int argc, char **argv) {
         .ciResizeHeight = ciResizeHeight,
     };
 
-    auto runOnline = [&]() {
-        OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
-                                   options};
-        renderer.setup();
-        renderer.gameLoop();
-    };
-
+    bool shouldRunOnline = true;
 #if defined(VSDF_ENABLE_FFMPEG)
     if (useFfmpeg) {
+        shouldRunOnline = false;
         OfflineRenderOptions offlineOptions{
             .maxFrames = *maxFrames,
             .debugDumpPPMDir = debugDumpPPMDir,
@@ -446,12 +441,14 @@ int run(int argc, char **argv) {
                                     std::move(offlineOptions)};
         renderer.setup();
         renderer.renderFrames();
-    } else {
-        runOnline();
     }
-#else
-    runOnline();
 #endif
+    if (shouldRunOnline) {
+        OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
+                                   options};
+        renderer.setup();
+        renderer.gameLoop();
+    }
     return 0;
 }
 

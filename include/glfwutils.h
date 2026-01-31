@@ -23,7 +23,7 @@ static void initGLFW() {
 #if defined(__linux__)
 #if (GLFW_VERSION_MAJOR < 3) ||                                              \
     (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR < 4)
-#error "GLFW 3.4+ is required on Linux to force X11/Wayland via GLFW_PLATFORM."
+#error "GLFW 3.4+ is required on Linux to force X11 via GLFW_PLATFORM. See issue #68: https://github.com/jamylak/vsdf/issues/68"
 #endif
     const char *platformEnv = std::getenv("GLFW_PLATFORM");
     if (platformEnv && platformEnv[0] != '\0') {

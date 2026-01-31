@@ -48,6 +48,8 @@ jobs:
       - name: Build and install GLFW 3.4 (Linux X11 platform hints required)
         run: |
           git clone --depth 1 --branch 3.4 https://github.com/glfw/glfw.git /tmp/glfw
+          # Build X11-only to avoid Wayland issue
+          # See issue #68: https://github.com/jamylak/vsdf/issues/68
           cmake -S /tmp/glfw -B /tmp/glfw/build -G Ninja \
             -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF \
             -DGLFW_BUILD_DOCS=OFF -DGLFW_INSTALL=ON \

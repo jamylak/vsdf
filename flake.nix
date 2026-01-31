@@ -29,6 +29,8 @@
           #
           # config.allowUnfree = true;
         };
+
+        vsdfPkg = pkgs.callPackage ./default.nix { };
       in
       {
         devShells.default =
@@ -71,6 +73,20 @@
             '';
         };
 
-        packages.default = pkgs.callPackage ./default.nix { };
+        packages = {
+          default = vsdfPkg;
+          vsdf = vsdfPkg;
+        };
+
+        apps = {
+          default = {
+            type = "app";
+            program = "${vsdfPkg}/bin/vsdf";
+          };
+          vsdf = {
+            type = "app";
+            program = "${vsdfPkg}/bin/vsdf";
+          };
+        };
       });
 }

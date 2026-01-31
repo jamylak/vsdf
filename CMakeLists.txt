@@ -8,8 +8,11 @@ else()
   set(VSDF_ENABLE_FFMPEG ON)
 endif()
 
+# -fno-sanitize=vptr to suppress undefined reference to typeinfo errors when using ASan with C++ RTTI
+# eg. /usr/bin/ld: CMakeFiles/vsdf.dir/src/shader_utils.cpp.o:(.data.rel+0x18):
+#     undefined reference to `typeinfo for glslang::TShader
 if (ENABLE_SANITIZERS)
-  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
+  add_compile_options(-fsanitize=address,undefined -fno-sanitize=vptr -fno-omit-frame-pointer -g)
   add_link_options(-fsanitize=address,undefined)
 endif()
 

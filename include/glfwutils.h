@@ -19,6 +19,15 @@ namespace glfwutils {
  * Must be called once before creating windows.
  */
 static void initGLFW() {
+    // Default to X11 on Linux to avoid Wayland/libdecor ASAN leak noise.
+    // See issue #68: https://github.com/jamylak/vsdf/issues/68
+    // Summary: ASAN reports leaks from the Wayland decoration stack
+    // (libdecor/GTK/Pango/Fontconfig via GLFW) that persist until process exit.
+    // This is not related to render/present stalls; override with GLFW_PLATFORM
+    // if you explicitly want Wayland.
+#if defined(__linux__)
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+#endif
     const char *platform = std::getenv("GLFW_PLATFORM");
     if (platform) {
         if (std::string(platform) == "x11" || std::string(platform) == "X11") {

@@ -54,7 +54,7 @@ jobs:
           echo "VK_ICD_FILENAMES=$VK_ICD_FILENAMES"
           ls -l /usr/share/vulkan/icd.d/
           xvfb-run -s "-screen 0 1024x768x24" \
-            env VSDF_SMOKE_TESTS=1 build/tests/vsdf_tests
+            env VK_LOADER_DEBUG=all VSDF_SMOKE_TESTS=1 build/tests/vsdf_tests
 
       - name: Vulkan single frame smoke test (CPU driver via lavapipe + fake display)
         run: |

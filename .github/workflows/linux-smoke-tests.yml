@@ -80,10 +80,16 @@ jobs:
             fi
             sleep 0.2
           done
-          test -S "$XDG_RUNTIME_DIR/wayland-0"
+          if [ ! -S "$XDG_RUNTIME_DIR/wayland-0" ]; then
+            echo "Wayland socket not found; dumping weston.log"
+            cat weston.log || true
+            exit 1
+          fi
 
       - name: Wayland headless smoke test
         env:
+          GLFW_PLATFORM: wayland
+          XDG_SESSION_TYPE: wayland
           XDG_RUNTIME_DIR: /tmp/xdg-runtime
           WAYLAND_DISPLAY: wayland-0
         run: |

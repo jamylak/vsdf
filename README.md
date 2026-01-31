@@ -223,6 +223,22 @@ cmake --build build --config Debug
 nix develop
 ```
 
+## Nix Run / Install (one command)
+Run without installing (builds and runs):
+```sh
+nix run github:jamylak/vsdf
+```
+
+Install into your profile (then `vsdf` is on PATH):
+```sh
+nix profile install github:jamylak/vsdf
+```
+
+Open a one-off shell with `vsdf` available:
+```sh
+nix shell github:jamylak/vsdf
+```
+
 ### Manually create your own vulkan compatible shader
 If you don't want any template prepended or you want
 to use a Vulkan shader directly you can copy `shaders/vulktemplate.frag`

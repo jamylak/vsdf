@@ -435,7 +435,7 @@ int run(int argc, char **argv) {
     }
 #endif
     if (shouldRunOnline) {
-        OnlineRenderOptions options{
+        OnlineRenderOptions onlineOptions{
             .maxFrames = maxFrames,
             .headless = headless,
             .noFocus = noFocus,
@@ -445,7 +445,7 @@ int run(int argc, char **argv) {
             .ciResizeHeight = ciResizeHeight,
         };
         OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
-                                   options};
+                                   std::move(onlineOptions)};
         renderer.setup();
         renderer.gameLoop();
     }

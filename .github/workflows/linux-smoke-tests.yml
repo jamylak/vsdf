@@ -44,9 +44,8 @@ jobs:
             libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
             weston
 
-      # Normal Debug Build will use -fsanitize=address
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -G Ninja .
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON -G Ninja .
 
       - name: Build
         run: cmake --build build
@@ -55,14 +54,6 @@ jobs:
         run: |
           xvfb-run -s "-screen 0 1024x768x24" \
             env VSDF_SMOKE_TESTS=1 build/tests/vsdf_tests
-
-      # -DENABLE_SANITIZERS will use
-      # -fsanitize=address,undefined -fno-sanitize=vptr -fno-omit-frame-pointer -g
-      - name: Configure (Sanitizers)
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON -G Ninja .
-
-      - name: Build (Sanitizers)
-        run: cmake --build build --clean-first
 
       - name: Vulkan single frame smoke test (CPU driver via lavapipe + fake display)
         run: |

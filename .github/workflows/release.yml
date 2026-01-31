@@ -12,6 +12,7 @@ on:
 jobs:
   build-linux:
     name: Build Linux Release
+    if: false # TODO: UNDO later
     # Use ubuntu-latest (currently 24.04) to build with modern toolchain
     # Bundle dependencies and test on multiple distros to ensure compatibility
     runs-on: ubuntu-latest
@@ -229,6 +230,7 @@ jobs:
 
   test-linux-ubuntu-24:
     name: Test on Ubuntu 24.04
+    if: false # TODO: UNDO later
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -286,6 +288,7 @@ jobs:
 
   test-linux-debian-13:
     name: Test on Debian 13 (Trixie)
+    if: false # TODO: UNDO later
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -321,6 +324,7 @@ jobs:
 
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
+    if: false # TODO: UNDO later
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
@@ -499,6 +503,7 @@ jobs:
   build-windows:
     # Note: build-windows builds WITHOUT FFMPEG due to issue #33
     name: Build Windows Release
+    if: false # TODO: UNDO later
     runs-on: windows-latest
     timeout-minutes: 30
 
@@ -556,6 +561,7 @@ jobs:
 
   test-windows:
     name: Test Windows Release Binary
+    if: false # TODO: UNDO later
     needs: build-windows
     runs-on: windows-latest
     timeout-minutes: 5

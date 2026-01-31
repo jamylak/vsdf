@@ -44,7 +44,7 @@ jobs:
             libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -G Ninja .
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON -G Ninja .
 
       - name: Build
         run: cmake --build build

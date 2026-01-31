@@ -29,6 +29,10 @@
           #
           # config.allowUnfree = true;
         };
+        glfwX11 = pkgs.glfw.override {
+          waylandSupport = false;
+          x11Support = true;
+        };
       in
       {
         devShells.default = pkgs.mkShell rec {
@@ -45,7 +49,7 @@
             gtest
 
             # Dependencies
-            glfw
+            glfwX11
             glm
             spdlog
             vulkan-loader
@@ -66,9 +70,12 @@
             in
             ''
               export PS1="$(echo -e '\u${icon}') {\[$(tput sgr0)\]\[\033[38;5;228m\]\w\[$(tput sgr0)\]\[\033[38;5;15m\]} (${name}) \\$ \[$(tput sgr0)\]"
+              if [ "$(uname -s)" = "Linux" ]; then
+                export GLFW_PLATFORM=x11
+              fi
             '';
         };
 
-        packages.default = pkgs.callPackage ./default.nix { };
+        packages.default = pkgs.callPackage ./default.nix { glfw = glfwX11; };
       });
 }

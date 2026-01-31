@@ -11,6 +11,7 @@ RUN apt-get update && \
     ninja-build \
     make \
     git \
+    ca-certificates \
     libgtest-dev \
     libspdlog-dev \
     libvulkan-dev \

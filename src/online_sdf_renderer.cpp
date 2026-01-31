@@ -236,12 +236,12 @@ void OnlineSDFRenderer::gameLoop() {
             logicalDevice, swapchain, UINT64_MAX,
             imageAvailableSemaphores.semaphores[frameIndex], VK_NULL_HANDLE,
             &imageIndex);
-        if (acquireResult != VK_SUCCESS) {
-            if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR ||
-                acquireResult == VK_SUBOPTIMAL_KHR) {
-                recreateSwapchain();
-                continue;
-            }
+        switch (acquireResult) {
+        case VK_ERROR_OUT_OF_DATE_KHR:
+        case VK_SUBOPTIMAL_KHR:
+            recreateSwapchain();
+            continue;
+        default:
             VK_CHECK(acquireResult);
         }
 
@@ -275,12 +275,12 @@ void OnlineSDFRenderer::gameLoop() {
         VkResult presentResult = vkutils::presentImage(
             queue, swapchain, renderFinishedSemaphores.semaphores[frameIndex],
             imageIndex);
-        if (presentResult != VK_SUCCESS) {
-            if (presentResult == VK_ERROR_OUT_OF_DATE_KHR ||
-                presentResult == VK_SUBOPTIMAL_KHR) {
-                recreateSwapchain();
-                continue;
-            }
+        switch (presentResult) {
+        case VK_ERROR_OUT_OF_DATE_KHR:
+        case VK_SUBOPTIMAL_KHR:
+            recreateSwapchain();
+            continue;
+        default:
             VK_CHECK(presentResult);
         }
         frameIndex = (frameIndex + 1) % swapchainImages.count;

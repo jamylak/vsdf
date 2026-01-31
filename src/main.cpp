@@ -336,8 +336,8 @@ int run(int argc, char **argv) {
             try {
                 ciResizeAfter = static_cast<uint32_t>(std::stoul(argv[++i]));
             } catch (const std::invalid_argument &) {
-                throw CLIError(
-                    "--ci-resize-after requires a valid positive integer value");
+                throw CLIError("--ci-resize-after requires a valid positive "
+                               "integer value");
             } catch (const std::out_of_range &) {
                 throw CLIError("--ci-resize-after value is out of range "
                                "for a positive integer");
@@ -351,8 +351,8 @@ int run(int argc, char **argv) {
             try {
                 ciResizeWidth = static_cast<uint32_t>(std::stoul(argv[++i]));
             } catch (const std::invalid_argument &) {
-                throw CLIError(
-                    "--ci-resize-width requires a valid positive integer value");
+                throw CLIError("--ci-resize-width requires a valid positive "
+                               "integer value");
             } catch (const std::out_of_range &) {
                 throw CLIError("--ci-resize-width value is out of range "
                                "for a positive integer");
@@ -370,8 +370,8 @@ int run(int argc, char **argv) {
             try {
                 ciResizeHeight = static_cast<uint32_t>(std::stoul(argv[++i]));
             } catch (const std::invalid_argument &) {
-                throw CLIError(
-                    "--ci-resize-height requires a valid positive integer value");
+                throw CLIError("--ci-resize-height requires a valid positive "
+                               "integer value");
             } catch (const std::out_of_range &) {
                 throw CLIError("--ci-resize-height value is out of range "
                                "for a positive integer");

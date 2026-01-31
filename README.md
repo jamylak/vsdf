@@ -218,12 +218,13 @@ cmake --build build --config Debug
 .\build\tests\filewatcher\Debug\filewatcher_tests.exe
 ```
 
-## Nix Develop Shell
+## Nix
+### Nix Develop Shell
 ```sh
 nix develop
 ```
 
-## Nix Run / Install (one command)
+### Nix Run / Install (one command)
 Run without installing (builds and runs):
 ```sh
 nix run github:jamylak/vsdf
@@ -237,6 +238,23 @@ nix profile install github:jamylak/vsdf
 Open a one-off shell with `vsdf` available:
 ```sh
 nix shell github:jamylak/vsdf
+```
+
+### Home Manager (flake) install
+```nix
+# flake.nix
+{
+  inputs.vsdf.url = "github:jamylak/vsdf";
+}
+```
+```nix
+# home.nix
+{ inputs, pkgs, ... }:
+{
+  home.packages = [
+    inputs.vsdf.packages.${pkgs.system}.default
+  ];
+}
 ```
 
 ### Manually create your own vulkan compatible shader

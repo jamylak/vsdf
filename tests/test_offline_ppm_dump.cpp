@@ -48,17 +48,26 @@ TEST(OfflinePPMDump, DebugQuadrants) {
     std::filesystem::current_path(VSDF_SOURCE_DIR);
 
     const auto outVideoPath = outDir / "offline_ppm_dump.mp4";
+    const auto logPath = outDir / "offline_ppm_dump.log";
     std::error_code ec;
     std::filesystem::remove(outVideoPath, ec);
+    std::filesystem::remove(logPath, ec);
     const std::string cmd =
         fmt::format("\"{}\" \"{}\" --toy --frames {} "
                     "--debug-dump-ppm \"{}\" --ffmpeg-output \"{}\" "
-                    "--ffmpeg-codec {}",
+                    "--ffmpeg-codec {} --log-level debug > \"{}\" 2>&1",
                     VSDF_BINARY_PATH, shaderPath.string(), framesToRender,
-                    outDir.string(), outVideoPath.string(), encoderName);
+                    outDir.string(), outVideoPath.string(), encoderName,
+                    logPath.string());
     const int rc = std::system(cmd.c_str());
     std::filesystem::current_path(oldCwd);
-    ASSERT_EQ(rc, 0);
+    if (rc != 0) {
+        const std::string log = readLogFileToString(logPath);
+        std::filesystem::remove(logPath, ec);
+        FAIL() << "Command failed (" << rc << "): " << cmd
+               << "\n--- vsdf log ---\n"
+               << log;
+    }
 
     const std::filesystem::path ppmPath = outDir / "frame_0000.ppm";
     ASSERT_TRUE(std::filesystem::exists(ppmPath));
@@ -118,16 +127,26 @@ TEST(OfflinePPMDump, RingBufferMultipleFrames) {
     const uint32_t framesToRender = 10;
     const uint32_t ringSize = 3;
     const auto outVideoPath = outDir / "offline_ppm_ring_dump.mp4";
+    const auto logPath = outDir / "offline_ppm_ring_dump.log";
     std::error_code ec;
     std::filesystem::remove(outVideoPath, ec);
+    std::filesystem::remove(logPath, ec);
     const std::string cmd = fmt::format(
         "\"{}\" \"{}\" --toy --frames {} --ffmpeg-ring-buffer-size {} "
-        "--debug-dump-ppm \"{}\" --ffmpeg-output \"{}\" --ffmpeg-codec {}",
+        "--debug-dump-ppm \"{}\" --ffmpeg-output \"{}\" --ffmpeg-codec {} "
+        "--log-level debug > \"{}\" 2>&1",
         VSDF_BINARY_PATH, shaderPath.string(), framesToRender, ringSize,
-        outDir.string(), outVideoPath.string(), encoderName);
+        outDir.string(), outVideoPath.string(), encoderName,
+        logPath.string());
     const int rc = std::system(cmd.c_str());
     std::filesystem::current_path(oldCwd);
-    ASSERT_EQ(rc, 0);
+    if (rc != 0) {
+        const std::string log = readLogFileToString(logPath);
+        std::filesystem::remove(logPath, ec);
+        FAIL() << "Command failed (" << rc << "): " << cmd
+               << "\n--- vsdf log ---\n"
+               << log;
+    }
 
     const std::filesystem::path ppmPathFirst = outDir / "frame_0000.ppm";
     ASSERT_TRUE(std::filesystem::exists(ppmPathFirst));

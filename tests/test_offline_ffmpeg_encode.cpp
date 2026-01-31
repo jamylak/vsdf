@@ -31,20 +31,30 @@ TEST(OfflineFFmpegEncode, RendersAndEncodesMp4) {
 
     const auto outPath =
         std::filesystem::current_path() / "offline_ffmpeg_test.mp4";
+    const auto logPath =
+        std::filesystem::current_path() / "offline_ffmpeg_test.log";
     std::error_code ec;
     std::filesystem::remove(outPath, ec);
+    std::filesystem::remove(logPath, ec);
 
     const uint32_t framesToRender = 10;
     const std::string cmd = fmt::format(
         "\"{}\" \"{}\" --toy --frames {} "
         "--ffmpeg-output \"{}\" --ffmpeg-codec {} --ffmpeg-fps 30 "
-        "--ffmpeg-crf 23 --ffmpeg-preset veryfast",
+        "--ffmpeg-crf 23 --ffmpeg-preset veryfast --log-level debug "
+        "> \"{}\" 2>&1",
         VSDF_BINARY_PATH, shaderPath.string(), framesToRender,
-        outPath.string(), encoderName);
+        outPath.string(), encoderName, logPath.string());
 
     const int rc = std::system(cmd.c_str());
     std::filesystem::current_path(oldCwd);
-    ASSERT_EQ(rc, 0);
+    if (rc != 0) {
+        const std::string log = readLogFileToString(logPath);
+        std::filesystem::remove(logPath, ec);
+        FAIL() << "Command failed (" << rc << "): " << cmd
+               << "\n--- vsdf log ---\n"
+               << log;
+    }
 
     ASSERT_TRUE(std::filesystem::exists(outPath));
     ASSERT_GT(std::filesystem::file_size(outPath), 0u);

@@ -17,10 +17,9 @@ void framebufferResizeCallback(GLFWwindow *window, int width,
 
 OnlineSDFRenderer::OnlineSDFRenderer(
     const std::string &fragShaderPath, bool useToyTemplate,
-    std::optional<uint32_t> maxFrames, bool headless,
-    std::optional<std::filesystem::path> debugDumpPPMDir, bool noFocus)
-    : SDFRenderer(fragShaderPath, useToyTemplate, debugDumpPPMDir),
-      headless(headless), noFocus(noFocus), maxFrames(maxFrames) {}
+    OnlineRenderOptions options)
+    : SDFRenderer(fragShaderPath, useToyTemplate, options.debugDumpPPMDir),
+      options(std::move(options)) {}
 
 void OnlineSDFRenderer::setup() {
     glfwSetup();
@@ -33,8 +32,8 @@ void OnlineSDFRenderer::setup() {
 void OnlineSDFRenderer::glfwSetup() {
     // GLFW Setup
     glfwutils::initGLFW();
-    glfwWindowHint(GLFW_VISIBLE, headless ? GLFW_FALSE : GLFW_TRUE);
-    if (noFocus) {
+    glfwWindowHint(GLFW_VISIBLE, options.headless ? GLFW_FALSE : GLFW_TRUE);
+    if (options.noFocus) {
         glfwWindowHint(GLFW_FLOATING, GLFW_TRUE); // Always on top
         glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
         glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
@@ -195,8 +194,9 @@ void OnlineSDFRenderer::gameLoop() {
         pipelineUpdated.store(true, std::memory_order_relaxed);
     });
     while (!glfwWindowShouldClose(window)) {
-        if (maxFrames && currentFrame >= *maxFrames) {
-            spdlog::info("Reached max frames {}, exiting.", *maxFrames);
+        if (options.maxFrames && currentFrame >= *options.maxFrames) {
+            spdlog::info("Reached max frames {}, exiting.",
+                         *options.maxFrames);
             break;
         }
         cpuStartFrame = std::chrono::high_resolution_clock::now();
@@ -212,6 +212,17 @@ void OnlineSDFRenderer::gameLoop() {
         if (pipelineUpdated.exchange(false, std::memory_order_relaxed)) {
             spdlog::info("Recreating pipeline");
             tryRecreatePipeline();
+        }
+        if (options.ciResizeAfter && !ciResizeTriggered &&
+            currentFrame >= *options.ciResizeAfter) {
+            const uint32_t targetWidth = options.ciResizeWidth.value_or(1024);
+            const uint32_t targetHeight =
+                options.ciResizeHeight.value_or(768);
+            spdlog::info("CI resize at frame {} to {}x{}", currentFrame,
+                         targetWidth, targetHeight);
+            glfwSetWindowSize(window, static_cast<int>(targetWidth),
+                              static_cast<int>(targetHeight));
+            ciResizeTriggered = true;
         }
 
         VK_CHECK(vkWaitForFences(logicalDevice, 1, &fences.fences[frameIndex],

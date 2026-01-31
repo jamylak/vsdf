@@ -26,12 +26,22 @@ TEST(OnlinePPMDump, DebugQuadrants) {
     // Move to the current dir to resolve shaders correctly
     std::filesystem::current_path(VSDF_SOURCE_DIR);
 
-    const std::string cmd =
-        fmt::format("\"{}\" \"{}\" --toy --headless --frames 1 --debug-dump-ppm \"{}\"",
-                    VSDF_BINARY_PATH, shaderPath.string(), outDir.string());
+    const auto logPath = outDir / "online_ppm_dump.log";
+    std::error_code ec;
+    std::filesystem::remove(logPath, ec);
+    const std::string cmd = fmt::format(
+        "\"{}\" \"{}\" --toy --headless --frames 1 --debug-dump-ppm \"{}\" "
+        "--log-level debug > \"{}\" 2>&1",
+        VSDF_BINARY_PATH, shaderPath.string(), outDir.string(),
+        logPath.string());
     const int rc = std::system(cmd.c_str());
     std::filesystem::current_path(oldCwd);
-    ASSERT_EQ(rc, 0);
+    if (rc != 0) {
+        const std::string log = readLogFileToString(logPath);
+        FAIL() << "Command failed (" << rc << "): " << cmd
+               << "\n--- vsdf log ---\n"
+               << log;
+    }
 
     const std::filesystem::path ppmPath = outDir / "frame_0000.ppm";
     ASSERT_TRUE(std::filesystem::exists(ppmPath));

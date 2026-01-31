@@ -3,6 +3,7 @@
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
 
@@ -18,6 +19,18 @@ namespace glfwutils {
  * Must be called once before creating windows.
  */
 static void initGLFW() {
+    const char *platform = std::getenv("GLFW_PLATFORM");
+    if (platform) {
+        if (std::string(platform) == "x11" || std::string(platform) == "X11") {
+            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+        } else if (std::string(platform) == "wayland" || std::string(platform) == "Wayland") {
+            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+        } else if (std::string(platform) == "any" || std::string(platform) == "ANY") {
+            glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+        } else if (std::string(platform) == "null" || std::string(platform) == "NULL") {
+            glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_NULL);
+        }
+    }
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize GLFW");
     }

@@ -65,4 +65,4 @@ jobs:
       - name: Vulkan 100 frame smoke test
         run: |
           xvfb-run -s "-screen 0 1024x768x24" \
-            ./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info
+            ./build/vsdf --toy shaders/testtoyshader.frag --frames 100 --headless --log-level info --ci-resize-after 50

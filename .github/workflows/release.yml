@@ -21,7 +21,7 @@ jobs:
         include:
           - arch: x86_64
             runner: ubuntu-latest
-            release_dir: linux
+            release_dir: linux-x86_64
             artifact_name: vsdf-linux-x86_64
             tar_name: vsdf-linux-x86_64.tar.gz
           - arch: arm64
@@ -140,7 +140,6 @@ jobs:
 
   test-linux-ubuntu-24:
     name: Test on Ubuntu 24.04
-    if: false # TODO: UNDO later
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -156,7 +155,7 @@ jobs:
     - name: Extract binary
       run: |
         tar -xzf vsdf-linux-x86_64.tar.gz
-        cd linux
+        cd linux-x86_64
         chmod +x vsdf
 
     - name: Install runtime dependencies
@@ -169,14 +168,14 @@ jobs:
 
     - name: Test version
       run: |
-        cd linux
+        cd linux-x86_64
         echo "→ Testing --version..."
         ./vsdf --version
         echo "✓ --version works"
 
     - name: Test 1-frame headless render
       run: |
-        cd linux
+        cd linux-x86_64
         echo "→ Testing 1-frame headless render (requires Vulkan)..."
         xvfb-run -s '-screen 0 1024x768x24' \
           ./vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level info
@@ -184,7 +183,7 @@ jobs:
 
     - name: Test offline render
       run: |
-        cd linux
+        cd linux-x86_64
         echo "→ Testing offline render (FFmpeg, requires Vulkan)..."
         xvfb-run -s '-screen 0 1024x768x24' \
           ./vsdf --toy shaders/testtoyshader.frag --frames 10 --ffmpeg-output out-test.mp4 --log-level info
@@ -198,7 +197,6 @@ jobs:
 
   test-linux-debian-13:
     name: Test on Debian 13 (Trixie)
-    if: false # TODO: UNDO later
     needs: build-linux
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -214,7 +212,7 @@ jobs:
     - name: Extract binary
       run: |
         tar -xzf vsdf-linux-x86_64.tar.gz
-        cd linux
+        cd linux-x86_64
         chmod +x vsdf
 
     - name: Install runtime dependencies
@@ -227,7 +225,7 @@ jobs:
 
     - name: Test version
       run: |
-        cd linux
+        cd linux-x86_64
         echo "→ Testing --version..."
         ./vsdf --version
         echo "✓ --version works"

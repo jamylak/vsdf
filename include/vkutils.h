@@ -543,9 +543,9 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
         physicalDevice, config.surface, &presentModeCount, presentModes.data());
 
     // Log only the valid entries
-    spdlog::info("Available present modes:");
+    spdlog::debug("Available present modes:");
     for (uint32_t i = 0; i < presentModeCount; i++) {
-        spdlog::info("- {}", (int)presentModes[i]);
+        spdlog::debug("- {}", (int)presentModes[i]);
     }
 
     VkPresentModeKHR swapchainPresentMode =
@@ -582,10 +582,10 @@ createSwapchain(VkPhysicalDevice physicalDevice, VkDevice device,
     spdlog::debug("Composite alpha: {}", static_cast<int>(composite));
 
     spdlog::debug("Selected surface format");
-    spdlog::info("Surface format: {}",
-                 static_cast<int>(config.surfaceFormat.format));
-    spdlog::info("Color space: {}",
-                 static_cast<int>(config.surfaceFormat.colorSpace));
+    spdlog::debug("Surface format: {}",
+                  static_cast<int>(config.surfaceFormat.format));
+    spdlog::debug("Color space: {}",
+                  static_cast<int>(config.surfaceFormat.colorSpace));
 
     // Create a swapchain
     spdlog::debug("Create a swapchain");

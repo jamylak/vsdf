@@ -13,7 +13,6 @@ on:
   pull_request:
     branches:
       - main
-      - glfw-platform
     paths:
       - 'src/**'
       - 'include/**'

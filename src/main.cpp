@@ -327,6 +327,7 @@ int run(int argc, char **argv) {
         }
 #endif
 
+        // CI-only flags (intentionally undocumented).
         if (arg == "--ci-resize-after") {
             if (i + 1 >= argc) {
                 throw CLIError(
@@ -381,6 +382,7 @@ int run(int argc, char **argv) {
             }
             continue;
         }
+        // END CI-only flags (intentionally undocumented).
 
         if (arg.substr(0, 2) != "--") {
             if (shaderFile.empty()) {
@@ -431,10 +433,15 @@ int run(int argc, char **argv) {
 
 #if defined(VSDF_ENABLE_FFMPEG)
     if (useFfmpeg) {
-        OfflineSDFRenderer renderer{shaderFile.string(), *maxFrames,
-                                    useToyTemplate,      debugDumpPPMDir,
-                                    offlineWidth,        offlineHeight,
-                                    offlineRingSize,     encodeSettings};
+        OfflineRenderOptions offlineOptions{};
+        offlineOptions.maxFrames = *maxFrames;
+        offlineOptions.debugDumpPPMDir = debugDumpPPMDir;
+        offlineOptions.width = offlineWidth;
+        offlineOptions.height = offlineHeight;
+        offlineOptions.ringSize = offlineRingSize;
+        offlineOptions.encodeSettings = encodeSettings;
+        OfflineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
+                                    std::move(offlineOptions)};
         renderer.setup();
         renderer.renderFrames();
     } else {

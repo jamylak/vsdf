@@ -212,6 +212,7 @@ void OnlineSDFRenderer::gameLoop() {
         if (app.framebufferResized) {
             spdlog::info("Framebuffer resized!");
             recreateSwapchain();
+            continue;
         }
         if (pipelineUpdated.exchange(false, std::memory_order_relaxed)) {
             spdlog::info("Recreating pipeline");

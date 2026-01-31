@@ -415,16 +415,6 @@ int run(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
-    OnlineRenderOptions options{
-        .maxFrames = maxFrames,
-        .headless = headless,
-        .noFocus = noFocus,
-        .debugDumpPPMDir = debugDumpPPMDir,
-        .ciResizeAfter = ciResizeAfter,
-        .ciResizeWidth = ciResizeWidth,
-        .ciResizeHeight = ciResizeHeight,
-    };
-
     bool shouldRunOnline = true;
 #if defined(VSDF_ENABLE_FFMPEG)
     if (useFfmpeg) {
@@ -444,6 +434,15 @@ int run(int argc, char **argv) {
     }
 #endif
     if (shouldRunOnline) {
+        OnlineRenderOptions options{
+            .maxFrames = maxFrames,
+            .headless = headless,
+            .noFocus = noFocus,
+            .debugDumpPPMDir = debugDumpPPMDir,
+            .ciResizeAfter = ciResizeAfter,
+            .ciResizeWidth = ciResizeWidth,
+            .ciResizeHeight = ciResizeHeight,
+        };
         OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
                                    options};
         renderer.setup();

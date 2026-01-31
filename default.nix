@@ -63,6 +63,7 @@ stdenv.mkDerivation {
     description = "Vulkan SDF Renderer + Hot Reloader";
     homepage = "https://github.com/jamylak/vsdf";
     license = licenses.mit;
+    mainProgram = "vsdf";
     platforms = platforms.linux ++ platforms.darwin;
   };
 }

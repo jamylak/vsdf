@@ -26,10 +26,22 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
           build-essential cmake ninja-build \
           libspdlog-dev \
-          libglfw3 libglfw3-dev libvulkan-dev \
+          libvulkan-dev \
           glslang-tools glslang-dev libglm-dev \
           pkg-config \
+          libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
           libavcodec-dev libavformat-dev libavutil-dev libswscale-dev patchelf
+    - name: Build and install GLFW 3.4 (Linux X11 platform hints required)
+      run: |
+        git clone --depth 1 --branch 3.4 https://github.com/glfw/glfw.git /tmp/glfw
+        # Build X11-only to avoid Wayland issue
+        # See issue #68: https://github.com/jamylak/vsdf/issues/68
+        cmake -S /tmp/glfw -B /tmp/glfw/build -G Ninja \
+          -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF \
+          -DGLFW_BUILD_DOCS=OFF -DGLFW_INSTALL=ON \
+          -DGLFW_BUILD_WAYLAND=OFF
+        cmake --build /tmp/glfw/build
+        sudo cmake --install /tmp/glfw/build
 
     - name: Configure
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-Wno-error=array-bounds" -G Ninja .
@@ -116,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.json
 
     steps:
     - name: Download artifact

@@ -31,7 +31,9 @@
         };
       in
       {
-        devShells.default = pkgs.mkShell rec {
+        devShells.default =
+          assert pkgs.lib.versionAtLeast pkgs.glfw.version "3.4";
+          pkgs.mkShell rec {
           name = "vsdf";
 
           packages = with pkgs; [

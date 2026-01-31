@@ -51,6 +51,8 @@ jobs:
 
       - name: GTEST (Includes Validating Frame Dumps)
         run: |
+          echo "VK_ICD_FILENAMES=$VK_ICD_FILENAMES"
+          ls -l /usr/share/vulkan/icd.d/
           xvfb-run -s "-screen 0 1024x768x24" \
             env VSDF_SMOKE_TESTS=1 build/tests/vsdf_tests
 

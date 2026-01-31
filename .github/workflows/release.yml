@@ -229,7 +229,6 @@ jobs:
 
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
-    if: false # TODO: UNDO later
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
@@ -408,7 +407,6 @@ jobs:
   build-windows:
     # Note: build-windows builds WITHOUT FFMPEG due to issue #33
     name: Build Windows Release
-    if: false # TODO: UNDO later
     runs-on: windows-latest
     timeout-minutes: 30
 
@@ -466,7 +464,6 @@ jobs:
 
   test-windows:
     name: Test Windows Release Binary
-    if: false # TODO: UNDO later
     needs: build-windows
     runs-on: windows-latest
     timeout-minutes: 5

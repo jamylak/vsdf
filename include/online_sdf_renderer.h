@@ -13,6 +13,16 @@ struct GLFWApplication {
     bool framebufferResized = false;
 };
 
+struct OnlineRenderOptions {
+    std::optional<uint32_t> maxFrames = std::nullopt;
+    bool headless = false;
+    bool noFocus = false;
+    std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt;
+    std::optional<uint32_t> ciResizeAfter = std::nullopt;
+    std::optional<uint32_t> ciResizeWidth = std::nullopt;
+    std::optional<uint32_t> ciResizeHeight = std::nullopt;
+};
+
 // Online renderer: Vulkan + swapchain -- meant to be displayed.
 class OnlineSDFRenderer : public SDFRenderer {
   private:
@@ -34,9 +44,8 @@ class OnlineSDFRenderer : public SDFRenderer {
     vkutils::SwapchainImages swapchainImages;
     vkutils::SwapchainImageViews swapchainImageViews;
     vkutils::FrameBuffers frameBuffers;
-    bool headless = false;
-    bool noFocus = false;
-    std::optional<uint32_t> maxFrames;
+    OnlineRenderOptions options{};
+    bool ciResizeTriggered = false;
 
     // Timing
     std::chrono::time_point<std::chrono::high_resolution_clock> cpuStartFrame,
@@ -61,9 +70,7 @@ class OnlineSDFRenderer : public SDFRenderer {
     OnlineSDFRenderer &operator=(const OnlineSDFRenderer &) = delete;
     OnlineSDFRenderer(
         const std::string &fragShaderPath, bool useToyTemplate = false,
-        std::optional<uint32_t> maxFrames = std::nullopt, bool headless = false,
-        std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt,
-        bool noFocus = false);
+        OnlineRenderOptions options = {});
     void setup();
     void gameLoop();
 };

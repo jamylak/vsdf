@@ -142,6 +142,9 @@ int run(int argc, char **argv) {
     bool headless = false;
     bool noFocus = false;
     std::optional<std::filesystem::path> debugDumpPPMDir;
+    std::optional<uint32_t> ciResizeAfter;
+    std::optional<uint32_t> ciResizeWidth;
+    std::optional<uint32_t> ciResizeHeight;
 #if defined(VSDF_ENABLE_FFMPEG)
     uint32_t offlineRingSize = OFFSCREEN_DEFAULT_RING_SIZE;
     uint32_t offlineWidth = OFFSCREEN_DEFAULT_WIDTH;
@@ -211,6 +214,48 @@ int run(int argc, char **argv) {
                                "(trace|debug|info|warn|error|critical|off)");
             }
             logLevel = parseLogLevel(argv[++i]);
+            continue;
+        } else if (arg == "--ci-resize-after") {
+            if (i + 1 >= argc) {
+                throw CLIError("--ci-resize-after requires a positive integer value");
+            }
+            try {
+                ciResizeAfter = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw CLIError("--ci-resize-after requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw CLIError("--ci-resize-after value is out of range for a positive integer");
+            }
+            continue;
+        } else if (arg == "--ci-resize-width") {
+            if (i + 1 >= argc) {
+                throw CLIError("--ci-resize-width requires a positive integer value");
+            }
+            try {
+                ciResizeWidth = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw CLIError("--ci-resize-width requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw CLIError("--ci-resize-width value is out of range for a positive integer");
+            }
+            if (*ciResizeWidth == 0) {
+                throw CLIError("--ci-resize-width requires a positive integer value");
+            }
+            continue;
+        } else if (arg == "--ci-resize-height") {
+            if (i + 1 >= argc) {
+                throw CLIError("--ci-resize-height requires a positive integer value");
+            }
+            try {
+                ciResizeHeight = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw CLIError("--ci-resize-height requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw CLIError("--ci-resize-height value is out of range for a positive integer");
+            }
+            if (*ciResizeHeight == 0) {
+                throw CLIError("--ci-resize-height requires a positive integer value");
+            }
             continue;
         } else if (arg == "--debug-dump-ppm") {
             if (i + 1 >= argc) {
@@ -355,6 +400,22 @@ int run(int argc, char **argv) {
     spdlog::info("Setting things up...");
     spdlog::default_logger()->set_pattern("[%H:%M:%S] [%l] %v");
 
+    OnlineRenderOptions options{};
+    options.maxFrames = maxFrames;
+    options.headless = headless;
+    options.noFocus = noFocus;
+    options.debugDumpPPMDir = debugDumpPPMDir;
+    options.ciResizeAfter = ciResizeAfter;
+    options.ciResizeWidth = ciResizeWidth;
+    options.ciResizeHeight = ciResizeHeight;
+
+    auto runOnline = [&]() {
+        OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
+                                   options};
+        renderer.setup();
+        renderer.gameLoop();
+    };
+
 #if defined(VSDF_ENABLE_FFMPEG)
     if (useFfmpeg) {
         OfflineSDFRenderer renderer{shaderFile.string(), *maxFrames,
@@ -364,18 +425,10 @@ int run(int argc, char **argv) {
         renderer.setup();
         renderer.renderFrames();
     } else {
-        OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
-                                   maxFrames,           headless,
-                                   debugDumpPPMDir,     noFocus};
-        renderer.setup();
-        renderer.gameLoop();
+        runOnline();
     }
 #else
-    OnlineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
-                               maxFrames,           headless,
-                               debugDumpPPMDir,     noFocus};
-    renderer.setup();
-    renderer.gameLoop();
+    runOnline();
 #endif
     return 0;
 }

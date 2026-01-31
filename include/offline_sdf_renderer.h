@@ -17,6 +17,15 @@ inline constexpr uint32_t OFFSCREEN_DEFAULT_WIDTH = 1280;
 inline constexpr uint32_t OFFSCREEN_DEFAULT_HEIGHT = 720;
 inline constexpr uint32_t OFFSCREEN_DEFAULT_RING_SIZE = 2;
 
+struct OfflineRenderOptions {
+    uint32_t maxFrames = 1;
+    std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt;
+    uint32_t width = OFFSCREEN_DEFAULT_WIDTH;
+    uint32_t height = OFFSCREEN_DEFAULT_HEIGHT;
+    uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE;
+    ffmpeg_utils::EncodeSettings encodeSettings = {};
+};
+
 // Offline SDF Renderer
 // This basis will be used for FFMPEG integration
 class OfflineSDFRenderer : public SDFRenderer {
@@ -84,13 +93,8 @@ class OfflineSDFRenderer : public SDFRenderer {
     OfflineSDFRenderer(const OfflineSDFRenderer &) = delete;
     OfflineSDFRenderer &operator=(const OfflineSDFRenderer &) = delete;
     OfflineSDFRenderer(
-        const std::string &fragShaderPath, uint32_t maxFrames,
-        bool useToyTemplate = false,
-        std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt,
-        uint32_t width = OFFSCREEN_DEFAULT_WIDTH,
-        uint32_t height = OFFSCREEN_DEFAULT_HEIGHT,
-        uint32_t ringSize = OFFSCREEN_DEFAULT_RING_SIZE,
-        ffmpeg_utils::EncodeSettings encodeSettings = {});
+        const std::string &fragShaderPath, bool useToyTemplate = false,
+        OfflineRenderOptions options = {});
     void setup();
     void renderFrames();
 };

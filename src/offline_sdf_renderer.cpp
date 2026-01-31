@@ -8,13 +8,13 @@
 #include <stdexcept>
 
 OfflineSDFRenderer::OfflineSDFRenderer(
-    const std::string &fragShaderPath, uint32_t maxFrames, bool useToyTemplate,
-    std::optional<std::filesystem::path> debugDumpPPMDir, uint32_t width,
-    uint32_t height, uint32_t ringSize,
-    ffmpeg_utils::EncodeSettings encodeSettings)
-    : SDFRenderer(fragShaderPath, useToyTemplate, debugDumpPPMDir),
-      imageSize({width, height}), ringSize(validateRingSize(ringSize)),
-      maxFrames(maxFrames), encodeSettings(std::move(encodeSettings)) {}
+    const std::string &fragShaderPath, bool useToyTemplate,
+    OfflineRenderOptions options)
+    : SDFRenderer(fragShaderPath, useToyTemplate, options.debugDumpPPMDir),
+      imageSize({options.width, options.height}),
+      ringSize(validateRingSize(options.ringSize)),
+      maxFrames(options.maxFrames),
+      encodeSettings(std::move(options.encodeSettings)) {}
 
 uint32_t OfflineSDFRenderer::validateRingSize(uint32_t value) {
     if (value == 0 || value > MAX_FRAME_SLOTS) {

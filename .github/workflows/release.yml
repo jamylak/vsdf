@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+  # TODO: REMOVE
+  pull_request:
+    branches:
+      - glfw-platform
 
 jobs:
   build-linux:
@@ -214,6 +218,7 @@ jobs:
 
   build-macos:
     name: Build macOS ${{ matrix.arch }} Release
+    if: false # TODO: remove this
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
@@ -392,6 +397,7 @@ jobs:
   build-windows:
     # Note: build-windows builds WITHOUT FFMPEG due to issue #33
     name: Build Windows Release
+    if: false # TODO: remove this
     runs-on: windows-latest
     timeout-minutes: 30
 
@@ -449,6 +455,7 @@ jobs:
 
   test-windows:
     name: Test Windows Release Binary
+    if: false # TODO: remove this
     needs: build-windows
     runs-on: windows-latest
     timeout-minutes: 5

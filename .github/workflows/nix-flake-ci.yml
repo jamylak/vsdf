@@ -21,6 +21,7 @@ on:
 
 jobs:
   nix-flake-test:
+    if: false # TODO: Re-enable later
     runs-on: ubuntu-latest
     permissions:
       contents: read

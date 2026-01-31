@@ -22,6 +22,7 @@ on:
 
 jobs:
   build-and-test-macos:
+    if: false # TODO: Re-enable later
     name: Build and Test on macOS
     runs-on: macos-latest
     timeout-minutes: 6

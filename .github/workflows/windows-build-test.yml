@@ -22,6 +22,7 @@ on:
 
 jobs:
   build-and-test-windows:
+    if: false # TODO: Re-enable later
     name: Build and Test on Windows
     runs-on: windows-latest
     

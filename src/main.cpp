@@ -434,13 +434,14 @@ int run(int argc, char **argv) {
 
 #if defined(VSDF_ENABLE_FFMPEG)
     if (useFfmpeg) {
-        OfflineRenderOptions offlineOptions{};
-        offlineOptions.maxFrames = *maxFrames;
-        offlineOptions.debugDumpPPMDir = debugDumpPPMDir;
-        offlineOptions.width = offlineWidth;
-        offlineOptions.height = offlineHeight;
-        offlineOptions.ringSize = offlineRingSize;
-        offlineOptions.encodeSettings = encodeSettings;
+        OfflineRenderOptions offlineOptions{
+            .maxFrames = *maxFrames,
+            .debugDumpPPMDir = debugDumpPPMDir,
+            .width = offlineWidth,
+            .height = offlineHeight,
+            .ringSize = offlineRingSize,
+            .encodeSettings = encodeSettings,
+        };
         OfflineSDFRenderer renderer{shaderFile.string(), useToyTemplate,
                                     std::move(offlineOptions)};
         renderer.setup();

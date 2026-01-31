@@ -36,7 +36,8 @@ jobs:
         git clone --depth 1 --branch 3.4 https://github.com/glfw/glfw.git /tmp/glfw
         cmake -S /tmp/glfw -B /tmp/glfw/build -G Ninja \
           -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF \
-          -DGLFW_BUILD_DOCS=OFF -DGLFW_INSTALL=ON
+          -DGLFW_BUILD_DOCS=OFF -DGLFW_INSTALL=ON \
+          -DGLFW_BUILD_WAYLAND=OFF
         cmake --build /tmp/glfw/build
         sudo cmake --install /tmp/glfw/build
 

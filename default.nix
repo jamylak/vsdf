@@ -16,6 +16,7 @@
 }:
 
 let
+  _ = assert lib.versionAtLeast glfw.version "3.4";
   volk = fetchFromGitHub {
     owner = "zeux";
     repo = "volk";

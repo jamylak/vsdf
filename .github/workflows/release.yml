@@ -26,10 +26,19 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
           build-essential cmake ninja-build \
           libspdlog-dev \
-          libglfw3 libglfw3-dev libvulkan-dev \
+          libvulkan-dev \
           glslang-tools glslang-dev libglm-dev \
           pkg-config \
+          libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
           libavcodec-dev libavformat-dev libavutil-dev libswscale-dev patchelf
+    - name: Build and install GLFW 3.4 (Linux X11 platform hints required)
+      run: |
+        git clone --depth 1 --branch 3.4 https://github.com/glfw/glfw.git /tmp/glfw
+        cmake -S /tmp/glfw -B /tmp/glfw/build -G Ninja \
+          -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_EXAMPLES=OFF \
+          -DGLFW_BUILD_DOCS=OFF -DGLFW_INSTALL=ON
+        cmake --build /tmp/glfw/build
+        sudo cmake --install /tmp/glfw/build
 
     - name: Configure
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-Wno-error=array-bounds" -G Ninja .

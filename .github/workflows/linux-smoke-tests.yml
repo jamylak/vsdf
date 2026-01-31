@@ -45,7 +45,7 @@ jobs:
             weston
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -G Ninja .
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON -G Ninja .
 
       - name: Build
         run: cmake --build build
@@ -84,8 +84,6 @@ jobs:
         env:
           XDG_RUNTIME_DIR: /tmp/xdg-runtime
           WAYLAND_DISPLAY: wayland-0
-          # Should be on by default
-          # ASAN_OPTIONS: detect_leaks=1
         run: |
           env -u DISPLAY \
             ./build/vsdf --toy shaders/testtoyshader.frag --frames 1 --headless --log-level debug

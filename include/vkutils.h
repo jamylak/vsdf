@@ -1417,9 +1417,9 @@ debugReadbackSwapchainImage(const ReadbackContext &context, VkImage srcImage,
     return frame;
 }
 
-static void presentImage(VkQueue queue, VkSwapchainKHR swapchain,
-                         VkSemaphore renderFinishedSemaphore,
-                         uint32_t imageIndex) {
+static VkResult presentImage(VkQueue queue, VkSwapchainKHR swapchain,
+                             VkSemaphore renderFinishedSemaphore,
+                             uint32_t imageIndex) {
     VkPresentInfoKHR presentInfo{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
@@ -1428,7 +1428,7 @@ static void presentImage(VkQueue queue, VkSwapchainKHR swapchain,
         .pSwapchains = &swapchain,
         .pImageIndices = &imageIndex,
     };
-    VK_CHECK(vkQueuePresentKHR(queue, &presentInfo));
+    return vkQueuePresentKHR(queue, &presentInfo);
 }
 
 static void

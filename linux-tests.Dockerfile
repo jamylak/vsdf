@@ -10,6 +10,7 @@ RUN apt-get update && \
     cmake \
     ninja-build \
     make \
+    git \
     libgtest-dev \
     libspdlog-dev \
     libvulkan-dev \

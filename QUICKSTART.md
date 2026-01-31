@@ -20,7 +20,7 @@ To get the **latest release**:
 
 ```sh
 LATEST_RELEASE_TAG=$(curl -sL https://api.github.com/repos/jamylak/vsdf/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-LINUX_ARCH="x86_64" # or "arm64"
+LINUX_ARCH=$( [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ] && echo arm64 || echo x86_64 )
 LINUX_DIR="linux-${LINUX_ARCH}"
 DOWNLOAD_URL="https://github.com/jamylak/vsdf/releases/download/${LATEST_RELEASE_TAG}/vsdf-linux-${LINUX_ARCH}.tar.gz"
 echo "Downloading from: ${DOWNLOAD_URL}"

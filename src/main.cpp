@@ -142,6 +142,7 @@ int run(int argc, char **argv) {
     bool headless = false;
     bool noFocus = false;
     std::optional<std::filesystem::path> debugDumpPPMDir;
+    // For CI to test resize
     std::optional<uint32_t> ciResizeAfter;
     std::optional<uint32_t> ciResizeWidth;
     std::optional<uint32_t> ciResizeHeight;

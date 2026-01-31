@@ -18,6 +18,7 @@ struct OnlineRenderOptions {
     bool headless = false;
     bool noFocus = false;
     std::optional<std::filesystem::path> debugDumpPPMDir = std::nullopt;
+    // For CI to test resize
     std::optional<uint32_t> ciResizeAfter = std::nullopt;
     std::optional<uint32_t> ciResizeWidth = std::nullopt;
     std::optional<uint32_t> ciResizeHeight = std::nullopt;
@@ -45,6 +46,8 @@ class OnlineSDFRenderer : public SDFRenderer {
     vkutils::SwapchainImageViews swapchainImageViews;
     vkutils::FrameBuffers frameBuffers;
     OnlineRenderOptions options{};
+
+    // For CI to test resize
     bool ciResizeTriggered = false;
 
     // Timing
@@ -68,9 +71,9 @@ class OnlineSDFRenderer : public SDFRenderer {
   public:
     OnlineSDFRenderer(const OnlineSDFRenderer &) = delete;
     OnlineSDFRenderer &operator=(const OnlineSDFRenderer &) = delete;
-    OnlineSDFRenderer(
-        const std::string &fragShaderPath, bool useToyTemplate = false,
-        OnlineRenderOptions options = {});
+    OnlineSDFRenderer(const std::string &fragShaderPath,
+                      bool useToyTemplate = false,
+                      OnlineRenderOptions options = {});
     void setup();
     void gameLoop();
 };

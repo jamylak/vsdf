@@ -25,8 +25,12 @@
 #define VK_CHECK(x)                                                            \
     do {                                                                       \
         VkResult err = x;                                                      \
-        if (err)                                                               \
+        if (err) {                                                             \
+            spdlog::error("Vulkan error: {} (0x{:x})",                         \
+                          static_cast<int>(err),                               \
+                          static_cast<uint32_t>(err));                         \
             throw std::logic_error("Got a runtime_error");                     \
+        }                                                                      \
     } while (0);
 
 inline constexpr size_t MAX_FRAME_SLOTS = 10;

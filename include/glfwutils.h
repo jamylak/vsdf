@@ -3,6 +3,8 @@
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#include <cctype>
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
 
@@ -18,6 +20,41 @@ namespace glfwutils {
  * Must be called once before creating windows.
  */
 static void initGLFW() {
+#if defined(__linux__)
+#if (GLFW_VERSION_MAJOR < 3) ||                                              \
+    (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR < 4)
+#error "GLFW 3.4+ is required on Linux to force X11 via GLFW_PLATFORM. See issue #68: https://github.com/jamylak/vsdf/issues/68"
+#endif
+    const char *platformEnv = std::getenv("GLFW_PLATFORM");
+    if (platformEnv && platformEnv[0] != '\0') {
+        std::string platform = platformEnv;
+        for (char &ch : platform) {
+            ch = static_cast<char>(
+                std::tolower(static_cast<unsigned char>(ch)));
+        }
+        int platformHint = 0;
+        if (platform == "x11") {
+            platformHint = GLFW_PLATFORM_X11;
+        } else if (platform == "wayland") {
+            platformHint = GLFW_PLATFORM_WAYLAND;
+        } else if (platform == "null") {
+            platformHint = GLFW_PLATFORM_NULL;
+        } else {
+            throw std::runtime_error(
+                "Invalid GLFW_PLATFORM value on Linux: " + platform +
+                " (expected x11, wayland, null)");
+        }
+        glfwInitHint(GLFW_PLATFORM, platformHint);
+    } else {
+        // Default to X11 on Linux to avoid Wayland/libdecor ASAN leak.
+        // See issue #68: https://github.com/jamylak/vsdf/issues/68
+        // Summary: ASAN reports leaks seemingly from the Wayland decoration stack
+        // (libdecor/GTK/Pango/Fontconfig via GLFW) that persist until process exit.
+        // This is not related to render/present stalls; override with GLFW_PLATFORM
+        // if you explicitly want Wayland.
+        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    }
+#endif
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize GLFW");
     }

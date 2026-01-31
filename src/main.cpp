@@ -215,48 +215,6 @@ int run(int argc, char **argv) {
             }
             logLevel = parseLogLevel(argv[++i]);
             continue;
-        } else if (arg == "--ci-resize-after") {
-            if (i + 1 >= argc) {
-                throw CLIError("--ci-resize-after requires a positive integer value");
-            }
-            try {
-                ciResizeAfter = static_cast<uint32_t>(std::stoul(argv[++i]));
-            } catch (const std::invalid_argument &) {
-                throw CLIError("--ci-resize-after requires a valid positive integer value");
-            } catch (const std::out_of_range &) {
-                throw CLIError("--ci-resize-after value is out of range for a positive integer");
-            }
-            continue;
-        } else if (arg == "--ci-resize-width") {
-            if (i + 1 >= argc) {
-                throw CLIError("--ci-resize-width requires a positive integer value");
-            }
-            try {
-                ciResizeWidth = static_cast<uint32_t>(std::stoul(argv[++i]));
-            } catch (const std::invalid_argument &) {
-                throw CLIError("--ci-resize-width requires a valid positive integer value");
-            } catch (const std::out_of_range &) {
-                throw CLIError("--ci-resize-width value is out of range for a positive integer");
-            }
-            if (*ciResizeWidth == 0) {
-                throw CLIError("--ci-resize-width requires a positive integer value");
-            }
-            continue;
-        } else if (arg == "--ci-resize-height") {
-            if (i + 1 >= argc) {
-                throw CLIError("--ci-resize-height requires a positive integer value");
-            }
-            try {
-                ciResizeHeight = static_cast<uint32_t>(std::stoul(argv[++i]));
-            } catch (const std::invalid_argument &) {
-                throw CLIError("--ci-resize-height requires a valid positive integer value");
-            } catch (const std::out_of_range &) {
-                throw CLIError("--ci-resize-height value is out of range for a positive integer");
-            }
-            if (*ciResizeHeight == 0) {
-                throw CLIError("--ci-resize-height requires a positive integer value");
-            }
-            continue;
         } else if (arg == "--debug-dump-ppm") {
             if (i + 1 >= argc) {
                 throw CLIError("--debug-dump-ppm requires a directory path");
@@ -368,6 +326,61 @@ int run(int argc, char **argv) {
             continue;
         }
 #endif
+
+        if (arg == "--ci-resize-after") {
+            if (i + 1 >= argc) {
+                throw CLIError(
+                    "--ci-resize-after requires a positive integer value");
+            }
+            try {
+                ciResizeAfter = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw CLIError(
+                    "--ci-resize-after requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw CLIError("--ci-resize-after value is out of range "
+                               "for a positive integer");
+            }
+            continue;
+        } else if (arg == "--ci-resize-width") {
+            if (i + 1 >= argc) {
+                throw CLIError(
+                    "--ci-resize-width requires a positive integer value");
+            }
+            try {
+                ciResizeWidth = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw CLIError(
+                    "--ci-resize-width requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw CLIError("--ci-resize-width value is out of range "
+                               "for a positive integer");
+            }
+            if (*ciResizeWidth == 0) {
+                throw CLIError(
+                    "--ci-resize-width requires a positive integer value");
+            }
+            continue;
+        } else if (arg == "--ci-resize-height") {
+            if (i + 1 >= argc) {
+                throw CLIError(
+                    "--ci-resize-height requires a positive integer value");
+            }
+            try {
+                ciResizeHeight = static_cast<uint32_t>(std::stoul(argv[++i]));
+            } catch (const std::invalid_argument &) {
+                throw CLIError(
+                    "--ci-resize-height requires a valid positive integer value");
+            } catch (const std::out_of_range &) {
+                throw CLIError("--ci-resize-height value is out of range "
+                               "for a positive integer");
+            }
+            if (*ciResizeHeight == 0) {
+                throw CLIError(
+                    "--ci-resize-height requires a positive integer value");
+            }
+            continue;
+        }
 
         if (arg.substr(0, 2) != "--") {
             if (shaderFile.empty()) {

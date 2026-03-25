@@ -60,9 +60,10 @@ class OfflineSDFRenderer : public SDFRenderer {
     void setupRenderContext();
     void createPipeline();
     void createCommandBuffers();
-    void destroyRenderContext();
-    void destroyPipeline();
-    void destroy();
+    void destroyDeviceObjects() noexcept;
+    void destroyRenderContext() noexcept;
+    void destroyPipeline() noexcept;
+    void destroy() noexcept;
 
     void recordCommandBuffer(uint32_t slotIndex, uint32_t currentFrame);
     [[nodiscard]] PPMDebugFrame debugReadbackOffscreenImage(const RingSlot &slot);

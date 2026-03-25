@@ -21,6 +21,8 @@ OnlineSDFRenderer::OnlineSDFRenderer(
     : SDFRenderer(fragShaderPath, useToyTemplate, options.debugDumpPPMDir),
       options(std::move(options)) {}
 
+OnlineSDFRenderer::~OnlineSDFRenderer() { destroy(); }
+
 void OnlineSDFRenderer::setup() {
     glfwSetup();
     vulkanSetup();

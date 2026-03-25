@@ -74,6 +74,7 @@ class OnlineSDFRenderer : public SDFRenderer {
     OnlineSDFRenderer(const std::string &fragShaderPath,
                       bool useToyTemplate = false,
                       OnlineRenderOptions options = {});
+    ~OnlineSDFRenderer();
     void setup();
     void gameLoop();
 };

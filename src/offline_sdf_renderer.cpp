@@ -16,6 +16,11 @@ OfflineSDFRenderer::OfflineSDFRenderer(
       maxFrames(options.maxFrames),
       encodeSettings(std::move(options.encodeSettings)) {}
 
+OfflineSDFRenderer::~OfflineSDFRenderer() {
+    stopEncoding();
+    destroy();
+}
+
 uint32_t OfflineSDFRenderer::validateRingSize(uint32_t value) {
     if (value == 0 || value > MAX_FRAME_SLOTS) {
         throw std::runtime_error("ringSize must be 1..MAX_FRAME_SLOTS");

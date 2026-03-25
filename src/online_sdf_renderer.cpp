@@ -303,7 +303,6 @@ void OnlineSDFRenderer::gameLoop() {
 
     filewatcher->stopWatching();
     spdlog::info("Done!");
-    destroy();
 }
 
 void OnlineSDFRenderer::destroy() {

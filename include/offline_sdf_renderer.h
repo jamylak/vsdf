@@ -95,6 +95,7 @@ class OfflineSDFRenderer : public SDFRenderer {
     OfflineSDFRenderer(
         const std::string &fragShaderPath, bool useToyTemplate = false,
         OfflineRenderOptions options = {});
+    ~OfflineSDFRenderer();
     void setup();
     void renderFrames();
 };

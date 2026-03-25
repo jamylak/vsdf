@@ -486,9 +486,18 @@ void OfflineSDFRenderer::waitForSlotEncode(uint32_t slotIndex) {
 }
 
 void OfflineSDFRenderer::destroyPipeline() {
-    vkDestroyPipeline(logicalDevice, pipeline, nullptr);
-    vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
-    vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
+    if (pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(logicalDevice, pipeline, nullptr);
+        pipeline = VK_NULL_HANDLE;
+    }
+    if (pipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
+        pipelineLayout = VK_NULL_HANDLE;
+    }
+    if (fragShaderModule != VK_NULL_HANDLE) {
+        vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
+        fragShaderModule = VK_NULL_HANDLE;
+    }
 }
 
 void OfflineSDFRenderer::destroyRenderContext() {

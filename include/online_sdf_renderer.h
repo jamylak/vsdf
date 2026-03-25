@@ -29,19 +29,19 @@ class OnlineSDFRenderer : public SDFRenderer {
   private:
     // GLFW Setup
     GLFWApplication app;
-    GLFWwindow *window;
+    GLFWwindow *window = nullptr;
 
     // Vulkan Setup
-    VkSurfaceKHR surface;
-    VkSurfaceFormatKHR swapchainFormat;
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    VkSurfaceFormatKHR swapchainFormat{};
     vkutils::Semaphores imageAvailableSemaphores;
     vkutils::Semaphores renderFinishedSemaphores;
 
     // Shader Modules.
     // Full screen quad vert shader + frag shader
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-    VkSurfaceCapabilitiesKHR surfaceCapabilities;
-    VkExtent2D swapchainSize;
+    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+    VkExtent2D swapchainSize{};
     vkutils::SwapchainImages swapchainImages;
     vkutils::SwapchainImageViews swapchainImageViews;
     vkutils::FrameBuffers frameBuffers;

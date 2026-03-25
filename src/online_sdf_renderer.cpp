@@ -138,18 +138,12 @@ void OnlineSDFRenderer::createCommandBuffers() {
 }
 
 void OnlineSDFRenderer::destroyPipeline() {
-    if (pipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(logicalDevice, pipeline, nullptr);
-        pipeline = VK_NULL_HANDLE;
-    }
-    if (pipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
-        pipelineLayout = VK_NULL_HANDLE;
-    }
-    if (fragShaderModule != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
-        fragShaderModule = VK_NULL_HANDLE;
-    }
+    vkDestroyPipeline(logicalDevice, pipeline, nullptr);
+    pipeline = VK_NULL_HANDLE;
+    vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
+    pipelineLayout = VK_NULL_HANDLE;
+    vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
+    fragShaderModule = VK_NULL_HANDLE;
 }
 
 void OnlineSDFRenderer::destroyRenderContext() {

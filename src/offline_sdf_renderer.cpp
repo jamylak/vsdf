@@ -363,7 +363,6 @@ void OfflineSDFRenderer::renderFrames() {
     stopEncoding();
 
     spdlog::info("Offline render done.");
-    destroy();
 }
 
 void OfflineSDFRenderer::startEncoding() {

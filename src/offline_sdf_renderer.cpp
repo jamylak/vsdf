@@ -512,21 +512,14 @@ void OfflineSDFRenderer::destroyRenderContextObjects() noexcept {
     for (size_t i = 0; i < ringSize; ++i) {
         RingSlot &slot = ringSlots[i];
         vkDestroyFramebuffer(logicalDevice, slot.framebuffer, nullptr);
-        slot.framebuffer = VK_NULL_HANDLE;
         vkDestroyImageView(logicalDevice, slot.imageView, nullptr);
-        slot.imageView = VK_NULL_HANDLE;
         vkDestroyImage(logicalDevice, slot.image, nullptr);
-        slot.image = VK_NULL_HANDLE;
         vkFreeMemory(logicalDevice, slot.imageMemory, nullptr);
-        slot.imageMemory = VK_NULL_HANDLE;
 
         if (slot.mappedData) {
             vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
-            slot.mappedData = nullptr;
         }
         vkutils::destroyReadbackBuffer(logicalDevice, slot.stagingBuffer);
-        slot.pendingReadback = false;
-        slot.pendingEncode = false;
     }
 }
 

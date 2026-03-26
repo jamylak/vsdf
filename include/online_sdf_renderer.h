@@ -61,9 +61,11 @@ class OnlineSDFRenderer : public SDFRenderer {
     void createPipeline();
     void tryRecreatePipeline();
     void calcTimestamps(uint32_t imageIndex);
-    void destroyRenderContext();
-    void destroyPipeline();
-    void destroy();
+    void destroyRenderContextOrThrow();
+    void destroyDeviceObjects() noexcept;
+    void destroyRenderContextObjects() noexcept;
+    void destroyPipelineObjects() noexcept;
+    void destroy() noexcept;
 
     [[nodiscard]] vkutils::PushConstants
     getPushConstants(uint32_t currentFrame) noexcept;
@@ -74,7 +76,7 @@ class OnlineSDFRenderer : public SDFRenderer {
     OnlineSDFRenderer(const std::string &fragShaderPath,
                       bool useToyTemplate = false,
                       OnlineRenderOptions options = {});
-    ~OnlineSDFRenderer();
+    ~OnlineSDFRenderer() noexcept;
     void setup();
     void gameLoop();
 };

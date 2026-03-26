@@ -559,11 +559,9 @@ void OfflineSDFRenderer::destroyDeviceObjects() noexcept {
 void OfflineSDFRenderer::destroy() noexcept {
     if (logicalDevice != VK_NULL_HANDLE) {
         destroyDeviceObjects();
-        vkDestroyDevice(logicalDevice, nullptr);
     }
+    vkDestroyDevice(logicalDevice, nullptr);
 
-    if (instance != VK_NULL_HANDLE) {
-        // Instance owns no other offline objects at this point.
-        vkDestroyInstance(instance, nullptr);
-    }
+    // Instance owns no other offline objects at this point.
+    vkDestroyInstance(instance, nullptr);
 }

@@ -325,14 +325,12 @@ void OnlineSDFRenderer::gameLoop() {
 void OnlineSDFRenderer::destroy() noexcept {
     if (logicalDevice != VK_NULL_HANDLE) {
         destroyDeviceObjects();
-        vkDestroyDevice(logicalDevice, nullptr);
     }
+    vkDestroyDevice(logicalDevice, nullptr);
 
-    if (instance != VK_NULL_HANDLE) {
-        // The surface belongs to the instance, so destroy it first.
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-        vkDestroyInstance(instance, nullptr);
-    }
+    // The surface belongs to the instance, so destroy it first.
+    vkDestroySurfaceKHR(instance, surface, nullptr);
+    vkDestroyInstance(instance, nullptr);
 
     if (window != nullptr) {
         // GLFW window teardown comes last after Vulkan is gone.

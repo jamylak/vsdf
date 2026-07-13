@@ -195,14 +195,16 @@ sequenceDiagram
     participant S as swapchain
 
     CPU->>W: glfwPollEvents()
-    CPU->>Q: wait fence[frameIndex]
-    CPU->>S: vkAcquireNextImageKHR()
+    CPU->>CPU: wait fence[frameIndex] (blocks CPU until prior GPU work finishes)
+    CPU->>S: vkAcquireNextImageKHR(waiting on imageAvailable semaphore)
+    S-->>CPU: imageIndex
     CPU->>CPU: record command buffer + push constants
-    CPU->>Q: submit (wait imageAvailable semaphore)
-    Q->>GPU: fullscreen draw
-    GPU->>S: render into acquired image
+    CPU->>Q: vkQueueSubmit(wait imageAvailable, signal renderFinished + fence)
+    Q->>GPU: execute fullscreen draw
+    GPU->>S: render into acquired swapchain image[index]
     GPU-->>Q: signal renderFinished semaphore + fence
-    CPU->>S: present (wait renderFinished)
+    CPU->>Q: vkQueuePresentKHR(wait renderFinished, imageIndex)
+    Q->>S: present rendered image
     CPU->>CPU: frameIndex = (frameIndex + 1) % imageCount
 ```
 
@@ -212,6 +214,8 @@ The synchronization story is intentionally visible:
 * **Image-available semaphore** = submission waits until the swapchain image is acquired.
 * **Render-finished semaphore** = presentation waits until GPU rendering is done.
 * **Swapchain** = the platform-owned set of images displayed by the window.
+
+> **Code-reading note:** `frameIndex` selects the CPU-in-flight synchronization slot; `imageIndex` is returned by `vkAcquireNextImageKHR` and selects the swapchain image/command buffer. They are different concepts even when their values happen to match. The current implementation should keep the `imageAvailable`/`renderFinished` semaphore index consistent across acquire, submit, and present; inspect those calls carefully when changing this loop.
 
 Resize and shader edits are slow-path events. A resize tears down/rebuilds the swapchain context; a shader edit waits for the device, destroys only the fragment pipeline objects, recompiles, and recreates the pipeline. A failed compile logs a warning and keeps the previous pipeline alive.
 

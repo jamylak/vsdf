@@ -29,7 +29,9 @@ flowchart LR
     S[📝 shader.frag] -->|glslang| P[⚙️ SPIR-V pipeline]
     P --> G[🎮 fullscreen draw]
     G --> R{output route}
-    R -->|interactive| W[🖥️ swapchain → present]
+    R -->|interactive| W[🖥️ acquire swapchain image]
+    W --> WP[🎨 render into acquired image]
+    WP --> PR[📺 present rendered image]
     R -->|offline| I[🌈 offscreen image]
     I --> B[🔁 ring of reusable slots]
     B --> H[📦 mapped staging bytes]
@@ -40,21 +42,22 @@ flowchart LR
     classDef io fill:#173c3a,stroke:#b7f34a,color:#fff
     class S shader
     class P,G,R,I gpu
-    class W,B,H,E io
+    class W,WP,PR,B,H,E io
 ```
 
 ```text
-OFFLINE SLOT CAROUSEL  ·  GPU and encoder overlap
+OFFLINE SLOT CAROUSEL  ·  default: 2 slots  ·  configurable: 1..10
 
    ┌───────┐       ┌───────┐       ┌───────┐
    │  GPU  │──────▶│ COPY  │──────▶│ ENCODE│
    │ draw  │       │ image │       │ frame │
    └───┬───┘       └───────┘       └───┬───┘
        │                               │
-       └────────── reuse ◀─────────────┘
+       └────────── fence + reuse ◀─────┘
 
        [ slot 0 ]  →  [ slot 1 ]  →  [ slot 0 ]  →  …
-          device-local image + host-visible staging buffer
+          each slot = device-local image + host-visible staging buffer
+          slot reuse waits for both GPU completion and encode completion
 ```
 
 VSDF is deliberately a thin pipeline: one fragment shader, one fullscreen draw, and a small amount of Vulkan orchestration around it. The important fork is whether the finished image goes to a window (**online**) or into a reusable GPU/CPU pipeline (**offline**).

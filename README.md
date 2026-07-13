@@ -142,16 +142,26 @@ shader.frag
                     └─ VkPipeline(fullscreen vertex + fragment)
 ```
 
-The vertex shader is embedded and has no vertex buffer: six generated vertices form two triangles covering the screen. That means the fragment shader does the interesting work once per output pixel, with no mesh upload or scene graph in the hot loop.
+The vertex shader is embedded and has no vertex buffer: it generates six vertices, which are submitted as two triangles covering the rectangular viewport. That means the fragment shader does the interesting work once per output pixel, with no mesh upload or scene graph in the hot loop.
 
-```glsl
-// conceptual geometry from FULLSCREEN_QUAD_VERT_SOURCE
-(-1,-1) ───── (1,-1)
-   ╲       ╱      │
-    ╲     ╱       │   → six vertices, one fullscreen quad
-     ╲   ╱        │
-(-1,1) ───── (1,1)
+```text
+The rectangle is split by one diagonal. There are exactly two triangles:
+
+ A (-1,  1) ┌──────────────┐ C (1,  1)
+            │╲   triangle 2│
+            │ ╲            │
+            │  ╲           │
+            │   ╲          │
+ B (-1, -1) └────╲─────────┘ D (1, -1)
+                  triangle 1
+
+triangle 1 = B → D → C
+triangle 2 = B → C → A
 ```
+
+Why two triangles in **this repo**? Because `FULLSCREEN_QUAD_VERT_SOURCE` explicitly lists those six vertices and `vkCmdDraw(6, 1, 0, 0)` draws them as two triangle primitives. A rectangle needs two triangles when triangles are the chosen primitive: the shared diagonal tessellates the rectangle exactly, so every pixel in the viewport is covered once.
+
+Could this be one giant triangle? **Yes.** Nothing else in the renderer makes two triangles mandatory. A three-vertex triangle placed partly outside the viewport would be clipped to cover the screen and would produce the same fragment coverage. It can save one vertex and avoid the shared diagonal, but that is a tiny optimization compared with running the fragment shader for every pixel. The current two-triangle version is simply the conventional, more immediately readable fullscreen quad; switching to one triangle would be a valid future optimization, not a correctness fix.
 
 ### 2. Feed the shader without descriptor traffic
 

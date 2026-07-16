@@ -21,6 +21,8 @@ OnlineSDFRenderer::OnlineSDFRenderer(
     : SDFRenderer(fragShaderPath, useToyTemplate, options.debugDumpPPMDir),
       options(std::move(options)) {}
 
+OnlineSDFRenderer::~OnlineSDFRenderer() noexcept { destroy(); }
+
 void OnlineSDFRenderer::setup() {
     glfwSetup();
     vulkanSetup();
@@ -122,7 +124,7 @@ void OnlineSDFRenderer::tryRecreatePipeline() {
     }
 
     VK_CHECK(vkDeviceWaitIdle(logicalDevice));
-    destroyPipeline();
+    destroyPipelineObjects();
     createPipelineLayoutCommon();
     fragShaderModule = vkutils::createShaderModule(logicalDevice, fragSpirv);
     pipeline = vkutils::createGraphicsPipeline(
@@ -135,17 +137,43 @@ void OnlineSDFRenderer::createCommandBuffers() {
                                                    swapchainImages.count);
 }
 
-void OnlineSDFRenderer::destroyPipeline() {
+void OnlineSDFRenderer::destroyPipelineObjects() noexcept {
     vkDestroyPipeline(logicalDevice, pipeline, nullptr);
+    pipeline = VK_NULL_HANDLE;
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
+    pipelineLayout = VK_NULL_HANDLE;
     vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
+    fragShaderModule = VK_NULL_HANDLE;
 }
 
-void OnlineSDFRenderer::destroyRenderContext() {
-    VK_CHECK(vkDeviceWaitIdle(logicalDevice));
-    VK_CHECK(vkResetCommandPool(logicalDevice, commandPool, 0));
+void OnlineSDFRenderer::destroyRenderContextObjects() noexcept {
     vkutils::destroyFrameBuffers(logicalDevice, frameBuffers);
     vkutils::destroySwapchainImageViews(logicalDevice, swapchainImageViews);
+}
+
+void OnlineSDFRenderer::destroyDeviceObjects() noexcept {
+    const VkResult waitResult = vkDeviceWaitIdle(logicalDevice);
+    if (waitResult != VK_SUCCESS) {
+        spdlog::warn("vkDeviceWaitIdle failed during OnlineSDFRenderer teardown: {}",
+                     static_cast<int>(waitResult));
+    }
+
+    vkutils::destroySemaphores(logicalDevice, imageAvailableSemaphores);
+    vkutils::destroySemaphores(logicalDevice, renderFinishedSemaphores);
+    vkutils::destroyFences(logicalDevice, fences);
+    destroyPipelineObjects();
+    vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
+    destroyRenderContextObjects();
+    vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
+    vkDestroySwapchainKHR(logicalDevice, swapchain, nullptr);
+    vkDestroyQueryPool(logicalDevice, queryPool, nullptr);
+    vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
+}
+
+void OnlineSDFRenderer::destroyRenderContextOrThrow() {
+    VK_CHECK(vkDeviceWaitIdle(logicalDevice));
+    VK_CHECK(vkResetCommandPool(logicalDevice, commandPool, 0));
+    destroyRenderContextObjects();
     // Swapchain gets destroyed after passing oldSwapchain to createSwapchain
 }
 
@@ -194,7 +222,7 @@ void OnlineSDFRenderer::gameLoop() {
         pipelineUpdated.store(true, std::memory_order_relaxed);
     });
     auto recreateSwapchain = [&]() {
-        destroyRenderContext();
+        destroyRenderContextOrThrow();
         setupRenderContext();
         app.framebufferResized = false;
         frameIndex = 0;
@@ -292,27 +320,21 @@ void OnlineSDFRenderer::gameLoop() {
 
     filewatcher->stopWatching();
     spdlog::info("Done!");
-    destroy();
 }
 
-void OnlineSDFRenderer::destroy() {
-    VK_CHECK(vkDeviceWaitIdle(logicalDevice));
-    vkutils::destroySemaphores(logicalDevice, imageAvailableSemaphores);
-    vkutils::destroySemaphores(logicalDevice, renderFinishedSemaphores);
-    vkutils::destroyFences(logicalDevice, fences);
-    vkDestroyPipeline(logicalDevice, pipeline, nullptr);
-    vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
-    vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
-    vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
-    vkutils::destroyFrameBuffers(logicalDevice, frameBuffers);
-    vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
-    vkutils::destroySwapchainImageViews(logicalDevice, swapchainImageViews);
-    vkDestroySwapchainKHR(logicalDevice, swapchain, nullptr);
-    vkDestroyQueryPool(logicalDevice, queryPool, nullptr);
-    vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
+void OnlineSDFRenderer::destroy() noexcept {
+    if (logicalDevice != VK_NULL_HANDLE) {
+        destroyDeviceObjects();
+    }
     vkDestroyDevice(logicalDevice, nullptr);
+
+    // The surface belongs to the instance, so destroy it first.
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
-    glfwDestroyWindow(window);
-    glfwTerminate();
+
+    if (window != nullptr) {
+        // GLFW window teardown comes last after Vulkan is gone.
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    }
 }

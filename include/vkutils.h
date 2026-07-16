@@ -1438,6 +1438,7 @@ destroySwapchainImageViews(VkDevice device,
         vkDestroyImageView(device, swapchainImageViews.imageViews[i], nullptr);
         swapchainImageViews.imageViews[i] = VK_NULL_HANDLE;
     }
+    swapchainImageViews.count = 0;
 }
 
 static void destroyFrameBuffers(VkDevice device,
@@ -1446,6 +1447,7 @@ static void destroyFrameBuffers(VkDevice device,
         vkDestroyFramebuffer(device, frameBuffers.framebuffers[i], nullptr);
         frameBuffers.framebuffers[i] = VK_NULL_HANDLE;
     }
+    frameBuffers.count = 0;
 }
 
 static void destroyFences(VkDevice device, Fences &fences) noexcept {
@@ -1453,6 +1455,7 @@ static void destroyFences(VkDevice device, Fences &fences) noexcept {
         vkDestroyFence(device, fences.fences[i], nullptr);
         fences.fences[i] = VK_NULL_HANDLE;
     }
+    fences.count = 0;
 }
 
 static void destroySemaphores(VkDevice device,
@@ -1461,6 +1464,7 @@ static void destroySemaphores(VkDevice device,
         vkDestroySemaphore(device, semaphores.semaphores[i], nullptr);
         semaphores.semaphores[i] = VK_NULL_HANDLE;
     }
+    semaphores.count = 0;
 }
 
 } // namespace vkutils

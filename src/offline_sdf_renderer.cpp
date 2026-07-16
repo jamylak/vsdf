@@ -16,6 +16,11 @@ OfflineSDFRenderer::OfflineSDFRenderer(
       maxFrames(options.maxFrames),
       encodeSettings(std::move(options.encodeSettings)) {}
 
+OfflineSDFRenderer::~OfflineSDFRenderer() noexcept {
+    stopEncodingNoexcept();
+    destroy();
+}
+
 uint32_t OfflineSDFRenderer::validateRingSize(uint32_t value) {
     if (value == 0 || value > MAX_FRAME_SLOTS) {
         throw std::runtime_error("ringSize must be 1..MAX_FRAME_SLOTS");
@@ -358,7 +363,6 @@ void OfflineSDFRenderer::renderFrames() {
     stopEncoding();
 
     spdlog::info("Offline render done.");
-    destroy();
 }
 
 void OfflineSDFRenderer::startEncoding() {
@@ -458,6 +462,16 @@ void OfflineSDFRenderer::stopEncoding() {
     encoder.reset();
 }
 
+void OfflineSDFRenderer::stopEncodingNoexcept() noexcept {
+    try {
+        stopEncoding();
+    } catch (const std::exception &e) {
+        spdlog::error("stopEncoding failed during teardown: {}", e.what());
+    } catch (...) {
+        spdlog::error("stopEncoding failed during teardown: unknown error");
+    }
+}
+
 void OfflineSDFRenderer::enqueueEncode(uint32_t slotIndex,
                                        uint32_t frameIndex) {
     std::unique_lock<std::mutex> lock(encodeMutex);
@@ -485,72 +499,52 @@ void OfflineSDFRenderer::waitForSlotEncode(uint32_t slotIndex) {
         throw std::runtime_error("FFmpeg encoder failed");
 }
 
-void OfflineSDFRenderer::destroyPipeline() {
+void OfflineSDFRenderer::destroyPipelineObjects() noexcept {
     vkDestroyPipeline(logicalDevice, pipeline, nullptr);
+    pipeline = VK_NULL_HANDLE;
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
+    pipelineLayout = VK_NULL_HANDLE;
     vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
+    fragShaderModule = VK_NULL_HANDLE;
 }
 
-void OfflineSDFRenderer::destroyRenderContext() {
-    VK_CHECK(vkDeviceWaitIdle(logicalDevice));
+void OfflineSDFRenderer::destroyRenderContextObjects() noexcept {
     for (size_t i = 0; i < ringSize; ++i) {
         RingSlot &slot = ringSlots[i];
-        if (slot.framebuffer != VK_NULL_HANDLE) {
-            vkDestroyFramebuffer(logicalDevice, slot.framebuffer, nullptr);
-            slot.framebuffer = VK_NULL_HANDLE;
+        vkDestroyFramebuffer(logicalDevice, slot.framebuffer, nullptr);
+        vkDestroyImageView(logicalDevice, slot.imageView, nullptr);
+        vkDestroyImage(logicalDevice, slot.image, nullptr);
+        vkFreeMemory(logicalDevice, slot.imageMemory, nullptr);
+
+        if (slot.mappedData) {
+            vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
         }
-        if (slot.imageView != VK_NULL_HANDLE) {
-            vkDestroyImageView(logicalDevice, slot.imageView, nullptr);
-            slot.imageView = VK_NULL_HANDLE;
-        }
-        if (slot.image != VK_NULL_HANDLE) {
-            vkDestroyImage(logicalDevice, slot.image, nullptr);
-            slot.image = VK_NULL_HANDLE;
-        }
-        if (slot.imageMemory != VK_NULL_HANDLE) {
-            vkFreeMemory(logicalDevice, slot.imageMemory, nullptr);
-            slot.imageMemory = VK_NULL_HANDLE;
-        }
-        if (slot.stagingBuffer.buffer != VK_NULL_HANDLE ||
-            slot.stagingBuffer.memory != VK_NULL_HANDLE) {
-            if (slot.mappedData) {
-                vkUnmapMemory(logicalDevice, slot.stagingBuffer.memory);
-                slot.mappedData = nullptr;
-            }
-            vkutils::destroyReadbackBuffer(logicalDevice, slot.stagingBuffer);
-        }
-        slot.pendingReadback = false;
-        slot.pendingEncode = false;
+        vkutils::destroyReadbackBuffer(logicalDevice, slot.stagingBuffer);
     }
 }
 
-void OfflineSDFRenderer::destroy() {
-    VK_CHECK(vkDeviceWaitIdle(logicalDevice));
+void OfflineSDFRenderer::destroyDeviceObjects() noexcept {
+    const VkResult waitResult = vkDeviceWaitIdle(logicalDevice);
+    if (waitResult != VK_SUCCESS) {
+        spdlog::warn(
+            "vkDeviceWaitIdle failed during OfflineSDFRenderer teardown: {}",
+            static_cast<int>(waitResult));
+    }
     vkutils::destroyFences(logicalDevice, fences);
-    destroyPipeline();
-    destroyRenderContext();
-    if (renderPass != VK_NULL_HANDLE) {
-        vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
-        renderPass = VK_NULL_HANDLE;
-    }
-    if (queryPool != VK_NULL_HANDLE) {
-        vkDestroyQueryPool(logicalDevice, queryPool, nullptr);
-        queryPool = VK_NULL_HANDLE;
-    }
-    if (vertShaderModule != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
-        vertShaderModule = VK_NULL_HANDLE;
-    }
-    if (commandPool != VK_NULL_HANDLE) {
-        vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
-        commandPool = VK_NULL_HANDLE;
-    }
+    destroyPipelineObjects();
+    destroyRenderContextObjects();
+    vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
+    vkDestroyQueryPool(logicalDevice, queryPool, nullptr);
+    vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
+    vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
+}
+
+void OfflineSDFRenderer::destroy() noexcept {
     if (logicalDevice != VK_NULL_HANDLE) {
-        vkDestroyDevice(logicalDevice, nullptr);
-        logicalDevice = VK_NULL_HANDLE;
+        destroyDeviceObjects();
     }
-    if (instance != VK_NULL_HANDLE) {
-        vkDestroyInstance(instance, nullptr);
-        instance = VK_NULL_HANDLE;
-    }
+    vkDestroyDevice(logicalDevice, nullptr);
+
+    // Instance owns no other offline objects at this point.
+    vkDestroyInstance(instance, nullptr);
 }

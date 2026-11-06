@@ -335,27 +335,41 @@ OfflineSDFRenderer::debugReadbackOffscreenImage(const RingSlot &slot) {
 
 void OfflineSDFRenderer::renderFrames() {
     uint32_t totalFrames = maxFrames;
-    startEncoding();
-    for (uint32_t currentFrame = 0; currentFrame < totalFrames;
-         ++currentFrame) {
-        const uint32_t slotIndex = currentFrame % ringSize;
-        waitForSlotEncode(slotIndex);
+    try {
+        startEncoding();
+        for (uint32_t currentFrame = 0; currentFrame < totalFrames;
+             ++currentFrame) {
+            const uint32_t slotIndex = currentFrame % ringSize;
+            waitForSlotEncode(slotIndex);
 
-        VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[slotIndex]));
-        recordCommandBuffer(slotIndex, currentFrame);
+            VK_CHECK(vkResetFences(logicalDevice, 1, &fences.fences[slotIndex]));
+            recordCommandBuffer(slotIndex, currentFrame);
 
-        VkSubmitInfo submitInfo{
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &commandBuffers.commandBuffers[slotIndex],
-        };
-        VK_CHECK(
-            vkQueueSubmit(queue, 1, &submitInfo, fences.fences[slotIndex]));
-        enqueueEncode(slotIndex, currentFrame);
+            VkSubmitInfo submitInfo{
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &commandBuffers.commandBuffers[slotIndex],
+            };
+            VK_CHECK(
+                vkQueueSubmit(queue, 1, &submitInfo, fences.fences[slotIndex]));
+            enqueueEncode(slotIndex, currentFrame);
+        }
+
+        // Finalize after the for loop finished
+        stopEncoding();
+    } catch (...) {
+        // Always join before the renderer or its mapped frame data is released.
+        // Preserve the original error if shutdown or GPU cleanup also fails.
+        try {
+            stopEncoding();
+        } catch (...) {
+        }
+        try {
+            destroy();
+        } catch (...) {
+        }
+        throw;
     }
-
-    // Finalize after the for loop finished
-    stopEncoding();
 
     spdlog::info("Offline render done.");
     destroy();
@@ -455,7 +469,14 @@ void OfflineSDFRenderer::stopEncoding() {
     if (encoderThread.joinable()) {
         encoderThread.join();
     }
-    encoder.reset();
+    // Local ownership guarantees cleanup even when finalization throws.
+    auto finishedEncoder = std::move(encoder);
+    // Failure can happen while draining the last frames or flushing, after
+    // the render thread has finished checking slots. Check again after join.
+    if (encodeFailed)
+        throw std::runtime_error("FFmpeg encoder failed");
+    if (finishedEncoder)
+        finishedEncoder->close();
 }
 
 void OfflineSDFRenderer::enqueueEncode(uint32_t slotIndex,

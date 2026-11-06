@@ -7,8 +7,15 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <stdexcept>
 #include <string>
 #include <vector>
+
+#ifndef _WIN32
+#include <csignal>
+#include <cstdlib>
+#include <sys/resource.h>
+#endif
 
 TEST(FFmpegEncoder, EncodesSmallMp4) {
     const std::string encoderName = ffmpeg_test_utils::pickH264EncoderName();
@@ -98,3 +105,58 @@ TEST(FFmpegEncoder, EncodesSmallMp4) {
 
     std::filesystem::remove(tempPath, ec);
 }
+
+#ifndef _WIN32
+TEST(FFmpegEncoder, ReportsFinalizationFailureAndReleasesResources) {
+    const std::string encoderName = ffmpeg_test_utils::pickH264EncoderName();
+    ASSERT_FALSE(encoderName.empty()) << "No H.264 encoder available";
+    const auto stamp =
+        std::chrono::steady_clock::now().time_since_epoch().count();
+    const auto tempPath = std::filesystem::temp_directory_path() /
+        ("vsdf_ffmpeg_finalize_test_" + std::to_string(stamp) + ".mp4");
+
+    // Isolate the file-size limit and signal handling in a child process.
+    EXPECT_EXIT({
+        try {
+            ffmpeg_utils::EncodeSettings settings;
+            settings.outputPath = tempPath.string();
+            settings.codec = encoderName;
+            settings.preset = "veryfast";
+            ffmpeg_utils::FfmpegEncoder encoder(settings, 128, 72,
+                                                AV_PIX_FMT_BGRA, 128 * 4);
+            encoder.open();
+            std::vector<uint8_t> frame(128 * 72 * 4, 255);
+            for (int i = 0; i < 10; ++i)
+                encoder.encodeFrame(frame.data(), i);
+            encoder.flush();
+
+            // Encoding succeeded. Fail writes made by container finalization.
+            std::signal(SIGXFSZ, SIG_IGN);
+            struct rlimit limit;
+            if (getrlimit(RLIMIT_FSIZE, &limit) != 0)
+                std::exit(2);
+            limit.rlim_cur = 64;
+            if (setrlimit(RLIMIT_FSIZE, &limit) != 0)
+                std::exit(3);
+
+            bool reported = false;
+            try {
+                encoder.close();
+            } catch (const std::runtime_error &error) {
+                reported = std::string(error.what()).find(
+                    "Failed to finalize video:") != std::string::npos;
+            }
+            // A failed close still releases resources and is safe to repeat.
+            encoder.close();
+            if (!reported)
+                std::exit(4);
+        } catch (...) {
+            std::exit(5);
+        }
+        std::exit(0);
+    }, ::testing::ExitedWithCode(0), "");
+
+    std::error_code ec;
+    std::filesystem::remove(tempPath, ec);
+}
+#endif

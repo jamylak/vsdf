@@ -22,7 +22,13 @@ FfmpegEncoder::FfmpegEncoder(const EncodeSettings &settings, int width,
     : settings(settings), width(width), height(height), srcFormat(srcFormat),
       srcStride(srcStride) {}
 
-FfmpegEncoder::~FfmpegEncoder() { close(); }
+FfmpegEncoder::~FfmpegEncoder() {
+    // Explicit close reports errors; destruction must also be safe on unwind.
+    try {
+        close();
+    } catch (...) {
+    }
+}
 
 void FfmpegEncoder::open() {
     if (opened)
@@ -232,12 +238,13 @@ void FfmpegEncoder::flush() {
     }
 }
 
-void FfmpegEncoder::close() noexcept {
+void FfmpegEncoder::close() {
+    int finalizationError = 0;
     if (opened) {
         // Finalize the container (MP4: write/close moov if needed, etc.).
         int err = av_write_trailer(formatContext);
         if (err < 0)
-            spdlog::warn("Failed to write trailer: {}", ffmpegErrStr(err));
+            finalizationError = err;
     }
 
     if (dstFrame)
@@ -253,13 +260,25 @@ void FfmpegEncoder::close() noexcept {
     if (codecContext)
         avcodec_free_context(&codecContext);
     if (formatContext) {
-        if (!(formatContext->oformat->flags & AVFMT_NOFILE))
-            avio_closep(&formatContext->pb);
+        if (!(formatContext->oformat->flags & AVFMT_NOFILE) &&
+            formatContext->pb) {
+            // Buffered writes may fail only when the file is closed. Retain
+            // earlier I/O errors even if the muxer did not report them.
+            if (finalizationError == 0 && formatContext->pb->error < 0)
+                finalizationError = formatContext->pb->error;
+            const int err = avio_closep(&formatContext->pb);
+            if (finalizationError == 0 && err < 0)
+                finalizationError = err;
+        }
         avformat_free_context(formatContext);
         formatContext = nullptr;
+        stream = nullptr;
     }
 
     opened = false;
+    if (finalizationError < 0)
+        throw std::runtime_error("Failed to finalize video: " +
+                                 ffmpegErrStr(finalizationError));
 }
 
 void FfmpegEncoder::writePacket(AVPacket *packet) {

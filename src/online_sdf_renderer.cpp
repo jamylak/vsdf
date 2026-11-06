@@ -254,7 +254,9 @@ void OnlineSDFRenderer::gameLoop() {
             getPushConstants(currentFrame), imageIndex);
         vkutils::submitCommandBuffer(
             queue, commandBuffers.commandBuffers[imageIndex],
-            imageAvailableSemaphores.semaphores[imageIndex],
+            // Acquisition semaphores belong to frame slots; presentation
+            // semaphores belong to the acquired swapchain images.
+            imageAvailableSemaphores.semaphores[frameIndex],
             renderFinishedSemaphores.semaphores[imageIndex],
             fences.fences[frameIndex]);
         if (debugDumpPPMDir) {
@@ -274,7 +276,7 @@ void OnlineSDFRenderer::gameLoop() {
             dumpDebugFrame(frame);
         }
         VkResult presentResult = vkutils::presentImage(
-            queue, swapchain, renderFinishedSemaphores.semaphores[frameIndex],
+            queue, swapchain, renderFinishedSemaphores.semaphores[imageIndex],
             imageIndex);
         switch (presentResult) {
         case VK_ERROR_OUT_OF_DATE_KHR:

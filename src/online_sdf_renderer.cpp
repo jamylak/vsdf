@@ -26,7 +26,6 @@ void OnlineSDFRenderer::setup() {
     vulkanSetup();
     setupRenderContext();
     createPipeline();
-    createCommandBuffers();
 }
 
 void OnlineSDFRenderer::glfwSetup() {
@@ -84,16 +83,14 @@ void OnlineSDFRenderer::setupRenderContext() {
     if (oldSwapchain != VK_NULL_HANDLE)
         vkDestroySwapchainKHR(logicalDevice, oldSwapchain, nullptr);
     swapchainImages = vkutils::getSwapchainImages(logicalDevice, swapchain);
-    if (queryPool == VK_NULL_HANDLE)
-        queryPool =
-            vkutils::createQueryPool(logicalDevice, swapchainImages.count);
-    if (imageAvailableSemaphores.count == 0) {
-        imageAvailableSemaphores =
-            vkutils::createSemaphores(logicalDevice, swapchainImages.count);
-        renderFinishedSemaphores =
-            vkutils::createSemaphores(logicalDevice, swapchainImages.count);
-        fences = vkutils::createFences(logicalDevice, swapchainImages.count);
-    }
+    // Every context owns a fresh set sized to the returned image count.
+    queryPool = vkutils::createQueryPool(logicalDevice, swapchainImages.count);
+    imageAvailableSemaphores =
+        vkutils::createSemaphores(logicalDevice, swapchainImages.count);
+    renderFinishedSemaphores =
+        vkutils::createSemaphores(logicalDevice, swapchainImages.count);
+    fences = vkutils::createFences(logicalDevice, swapchainImages.count);
+    createCommandBuffers();
     swapchainImageViews = vkutils::createSwapchainImageViews(
         logicalDevice, swapchainFormat, swapchainImages);
     frameBuffers = vkutils::createFrameBuffers(
@@ -143,9 +140,25 @@ void OnlineSDFRenderer::destroyPipeline() {
 
 void OnlineSDFRenderer::destroyRenderContext() {
     VK_CHECK(vkDeviceWaitIdle(logicalDevice));
-    VK_CHECK(vkResetCommandPool(logicalDevice, commandPool, 0));
+    // Resetting the pool alone retains the old command buffer allocations.
+    // Free them before destroying anything referenced by recorded commands.
+    if (commandBuffers.count != 0) {
+        vkFreeCommandBuffers(logicalDevice, commandPool, commandBuffers.count,
+                             commandBuffers.commandBuffers.data());
+        commandBuffers = {};
+    }
+    vkutils::destroySemaphores(logicalDevice, imageAvailableSemaphores);
+    imageAvailableSemaphores = {};
+    vkutils::destroySemaphores(logicalDevice, renderFinishedSemaphores);
+    renderFinishedSemaphores = {};
+    vkutils::destroyFences(logicalDevice, fences);
+    fences = {};
+    vkDestroyQueryPool(logicalDevice, queryPool, nullptr);
+    queryPool = VK_NULL_HANDLE;
     vkutils::destroyFrameBuffers(logicalDevice, frameBuffers);
     vkutils::destroySwapchainImageViews(logicalDevice, swapchainImageViews);
+    frameBuffers = {};
+    swapchainImageViews = {};
     // Swapchain gets destroyed after passing oldSwapchain to createSwapchain
 }
 
@@ -296,19 +309,13 @@ void OnlineSDFRenderer::gameLoop() {
 }
 
 void OnlineSDFRenderer::destroy() {
-    VK_CHECK(vkDeviceWaitIdle(logicalDevice));
-    vkutils::destroySemaphores(logicalDevice, imageAvailableSemaphores);
-    vkutils::destroySemaphores(logicalDevice, renderFinishedSemaphores);
-    vkutils::destroyFences(logicalDevice, fences);
+    destroyRenderContext();
     vkDestroyPipeline(logicalDevice, pipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, pipelineLayout, nullptr);
     vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
     vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
-    vkutils::destroyFrameBuffers(logicalDevice, frameBuffers);
     vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
-    vkutils::destroySwapchainImageViews(logicalDevice, swapchainImageViews);
     vkDestroySwapchainKHR(logicalDevice, swapchain, nullptr);
-    vkDestroyQueryPool(logicalDevice, queryPool, nullptr);
     vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
     vkDestroyDevice(logicalDevice, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);

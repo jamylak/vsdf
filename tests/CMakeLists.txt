@@ -6,6 +6,10 @@ set(TEST_SOURCES
   test_shader_comp.cpp
   test_frame.cpp
   test_online_ppm_dump.cpp
+  test_online_render_context.cpp
+  ../src/online_sdf_renderer.cpp
+  ../src/sdf_renderer.cpp
+  ../src/image_dump.cpp
 )
 
 # Common libraries for all platforms
@@ -21,6 +25,15 @@ endif()
 # Add test executable
 add_executable(${PROJECT_NAME} ${TEST_SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${Vulkan_INCLUDE_DIRS})
+
+if(APPLE)
+  target_sources(${PROJECT_NAME} PRIVATE ../src/filewatcher/mac_filewatcher.cpp)
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${CORE_SERVICES_LIBRARY})
+elseif(UNIX)
+  target_sources(${PROJECT_NAME} PRIVATE ../src/filewatcher/linux_filewatcher.cpp)
+elseif(WIN32)
+  target_sources(${PROJECT_NAME} PRIVATE ../src/filewatcher/windows_filewatcher.cpp)
+endif()
 
 # Platform-specific threading library
 if(UNIX)

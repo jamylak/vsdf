@@ -198,7 +198,7 @@ void OnlineSDFRenderer::gameLoop() {
         setupRenderContext();
         app.framebufferResized = false;
         frameIndex = 0;
-        spdlog::info("Swapchain out of date, recreating.");
+        spdlog::info("Recreating swapchain.");
     };
     while (!glfwWindowShouldClose(window)) {
         if (options.maxFrames && currentFrame >= *options.maxFrames) {
@@ -239,9 +239,12 @@ void OnlineSDFRenderer::gameLoop() {
             &imageIndex);
         switch (acquireResult) {
         case VK_ERROR_OUT_OF_DATE_KHR:
-        case VK_SUBOPTIMAL_KHR:
             recreateSwapchain();
             continue;
+        case VK_SUBOPTIMAL_KHR:
+            // Acquisition succeeded: consume its semaphore and present the
+            // acquired image before retiring this swapchain.
+            break;
         default:
             VK_CHECK(acquireResult);
         }
@@ -254,7 +257,9 @@ void OnlineSDFRenderer::gameLoop() {
             getPushConstants(currentFrame), imageIndex);
         vkutils::submitCommandBuffer(
             queue, commandBuffers.commandBuffers[imageIndex],
-            imageAvailableSemaphores.semaphores[imageIndex],
+            // Acquisition signals the frame slot, while render completion
+            // follows the acquired image through presentation.
+            imageAvailableSemaphores.semaphores[frameIndex],
             renderFinishedSemaphores.semaphores[imageIndex],
             fences.fences[frameIndex]);
         if (debugDumpPPMDir) {
@@ -274,20 +279,25 @@ void OnlineSDFRenderer::gameLoop() {
             dumpDebugFrame(frame);
         }
         VkResult presentResult = vkutils::presentImage(
-            queue, swapchain, renderFinishedSemaphores.semaphores[frameIndex],
+            queue, swapchain, renderFinishedSemaphores.semaphores[imageIndex],
             imageIndex);
         switch (presentResult) {
         case VK_ERROR_OUT_OF_DATE_KHR:
         case VK_SUBOPTIMAL_KHR:
-            recreateSwapchain();
-            continue;
+            break;
         default:
             VK_CHECK(presentResult);
         }
-        frameIndex = (frameIndex + 1) % swapchainImages.count;
         currentFrame++;
         cpuEndFrame = std::chrono::high_resolution_clock::now();
         calcTimestamps(imageIndex);
+        if (acquireResult == VK_SUBOPTIMAL_KHR ||
+            presentResult == VK_ERROR_OUT_OF_DATE_KHR ||
+            presentResult == VK_SUBOPTIMAL_KHR) {
+            recreateSwapchain();
+            continue;
+        }
+        frameIndex = (frameIndex + 1) % swapchainImages.count;
     }
 
     filewatcher->stopWatching();

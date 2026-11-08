@@ -6,10 +6,25 @@ set(TEST_SOURCES
   test_shader_comp.cpp
   test_frame.cpp
   test_online_ppm_dump.cpp
+  test_online_acquire_recovery.cpp
+  ../src/sdf_renderer.cpp
+  ../src/online_sdf_renderer.cpp
+  ../src/image_dump.cpp
 )
+
+if(APPLE)
+  list(APPEND TEST_SOURCES ../src/filewatcher/mac_filewatcher.cpp)
+elseif(UNIX)
+  list(APPEND TEST_SOURCES ../src/filewatcher/linux_filewatcher.cpp)
+elseif(WIN32)
+  list(APPEND TEST_SOURCES ../src/filewatcher/windows_filewatcher.cpp)
+endif()
 
 # Common libraries for all platforms
 set(COMMON_LIBS GTest::gtest_main spdlog::spdlog glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glfw volk)
+if(APPLE)
+  list(APPEND COMMON_LIBS ${CORE_SERVICES_LIBRARY})
+endif()
 
 if (VSDF_ENABLE_FFMPEG)
   list(APPEND TEST_SOURCES

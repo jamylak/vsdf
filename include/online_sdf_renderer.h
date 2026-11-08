@@ -27,6 +27,7 @@ struct OnlineRenderOptions {
 // Online renderer: Vulkan + swapchain -- meant to be displayed.
 class OnlineSDFRenderer : public SDFRenderer {
   private:
+    friend class OnlineRenderContextTest;
     // GLFW Setup
     GLFWApplication app;
     GLFWwindow *window;

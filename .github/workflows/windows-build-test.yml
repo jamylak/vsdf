@@ -39,10 +39,27 @@ jobs:
       run: |
         Write-Host "Installing dependencies via vcpkg (faster and more reliable for CI)..."
         # vcpkg provides Vulkan headers/loader without needing full SDK installation
-        vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows --recurse
+        # Retry transient download failures; vcpkg reuses packages already installed.
+        $maxAttempts = 3
+        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+          vcpkg install vulkan:x64-windows glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows --recurse
+          $installExitCode = $LASTEXITCODE
+          if ($installExitCode -eq 0) {
+            break
+          }
+          if ($attempt -eq $maxAttempts) {
+            Write-Host "::error::vcpkg install failed after $maxAttempts attempts (exit code $installExitCode)"
+            exit $installExitCode
+          }
+          Write-Warning "vcpkg install failed (attempt $attempt/$maxAttempts, exit code $installExitCode); retrying in 10 seconds..."
+          Start-Sleep -Seconds 10
+        }
         # This takes forever to build ffmpeg... TODO: Find workaround
         # vcpkg install glfw3:x64-windows glslang:x64-windows spdlog:x64-windows glm:x64-windows gtest:x64-windows ffmpeg[avcodec,avformat,swscale]:x64-windows
         vcpkg integrate install
+        if ($LASTEXITCODE -ne 0) {
+          exit $LASTEXITCODE
+        }
         Write-Host "All dependencies installed successfully"
 
     - name: Configure CMake
